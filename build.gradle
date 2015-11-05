@@ -1,26 +1,44 @@
 buildscript {
+    ext.kotlinVersion = '1.0.0-beta-1103'
     repositories {
+        mavenLocal()
+        mavenCentral()
         maven {
             url "https://plugins.gradle.org/m2/"
         }
     }
     dependencies {
         classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.8'
+        classpath group: 'org.jetbrains.kotlin', name: 'kotlin-gradle-plugin', version: "${kotlinVersion}"
     }
 }
 
 apply plugin: 'java'
 apply plugin: 'com.github.rodm.teamcity-server'
+apply plugin: 'kotlin'
 
 group = 'org.jetbrains.teamcity.github'
 version = '1.0-SNAPSHOT'
-
+9
 ext {
-    teamcityVersion = '9.1.3'
+    teamcityVersion = '9.1'
     teamcityDir = "$rootDir/servers/TeamCity-${teamcityVersion}"
     teamcityDataDir = "$rootDir/data/" + (teamcityVersion =~ /(\d+\.\d+).*/)[0][1]
     teamcityJavaHome = System.properties['java.home']
 }
+
+repositories {
+    maven { url "http://repository.jetbrains.com/teamcity" }
+}
+
+dependencies {
+    runtime('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
+        transitive = false
+    }
+}
+
+sourceCompatibility = "1.6"
+targetCompatibility = "1.6"
 
 test {
     useTestNG()
@@ -31,7 +49,7 @@ teamcity {
 
     descriptor {
         name = project.name
-        displayName = project.name
+        displayName = 'GitHub Integration'
         version = project.version
         vendorName = 'JetBrains'
         description = 'TeamCity GitHub Integration Plugin'
