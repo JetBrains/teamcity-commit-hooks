@@ -16,6 +16,7 @@ buildscript {
 apply plugin: 'java'
 apply plugin: 'com.github.rodm.teamcity-server'
 apply plugin: 'kotlin'
+apply plugin: 'idea'
 
 group = 'org.jetbrains.teamcity.github'
 version = '1.0-SNAPSHOT'
@@ -31,10 +32,21 @@ repositories {
     maven { url "http://repository.jetbrains.com/teamcity" }
 }
 
+configurations {
+    provided
+//    provided.extendsFrom(compile)
+}
+
 dependencies {
-    runtime('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
+    provided('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
         transitive = false
     }
+    provided(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${teamcityVersion}")
+    compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
+}
+
+sourceSets {
+    main { compileClasspath += configurations.provided }
 }
 
 sourceCompatibility = "1.6"
@@ -64,4 +76,12 @@ teamcity {
     homeDir = file(teamcityDir)
     dataDir = file(teamcityDataDir)
     javaHome = file(teamcityJavaHome)
+}
+
+idea {
+    module {
+        scopes.PROVIDED.plus += [ configurations.provided ]
+        downloadJavadoc = false
+        downloadSources = true
+    }
 }
