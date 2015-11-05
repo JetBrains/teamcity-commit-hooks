@@ -1,0 +1,49 @@
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.8'
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'com.github.rodm.teamcity-server'
+
+group = 'org.jetbrains.teamcity.github'
+version = '1.0-SNAPSHOT'
+
+ext {
+    teamcityVersion = '9.1.3'
+    teamcityDir = "$rootDir/servers/TeamCity-${teamcityVersion}"
+    teamcityDataDir = "$rootDir/data/" + (teamcityVersion =~ /(\d+\.\d+).*/)[0][1]
+    teamcityJavaHome = System.properties['java.home']
+}
+
+test {
+    useTestNG()
+}
+
+teamcity {
+    version = teamcityVersion
+
+    descriptor {
+        name = project.name
+        displayName = project.name
+        version = project.version
+        vendorName = 'JetBrains'
+        description = 'TeamCity GitHub Integration Plugin'
+
+        useSeparateClassloader = true
+
+//        parameters {
+//            parameter 'param', 'value'
+//        }
+    }
+
+    homeDir = file(teamcityDir)
+    dataDir = file(teamcityDataDir)
+    javaHome = file(teamcityJavaHome)
+}
