@@ -36,9 +36,8 @@ public class WebHooksManager(private val links: WebLinks) {
     }
 
     private fun getCallbackUrl(): String {
-        // TODO: Investigate is anything after '?' is passed back to TeamCity
-        // TODO: If so ^, Consider adding origin VcsRootInstance ID to simplify search in webhook listener
-        return links.rootUrl.removeSuffix("/") + GitHubWebHookListener.PATH + "?teamcity=true";
+        // It's not possible to add some url parameters, since GitHub ignores that part of url
+        return links.rootUrl.removeSuffix("/") + GitHubWebHookListener.PATH;
     }
 
     fun findHook(info: VcsRootGitHubInfo): Any? {
