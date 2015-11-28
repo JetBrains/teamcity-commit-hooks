@@ -19,10 +19,11 @@ apply plugin: 'kotlin'
 apply plugin: 'idea'
 
 group = 'org.jetbrains.teamcity.github'
-version = '1.0-SNAPSHOT'
-9
+
+version = "1.0-SNAPSHOT"
+
 ext {
-    teamcityVersion = '9.1'
+    teamcityVersion = '10.0-SNAPSHOT'
     teamcityDir = "$rootDir/servers/TeamCity-${teamcityVersion}"
     teamcityDataDir = "$rootDir/data/" + (teamcityVersion =~ /(\d+\.\d+).*/)[0][1]
     teamcityJavaHome = System.properties['java.home']
@@ -33,20 +34,19 @@ repositories {
 }
 
 configurations {
-    provided
-//    provided.extendsFrom(compile)
 }
 
 dependencies {
-    provided('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
+    teamcity('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
         transitive = false
     }
-    provided(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${teamcityVersion}")
+    teamcity(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${teamcityVersion}")
+    teamcity(group: 'org.jetbrains.teamcity', name: 'oauth', version: "${teamcityVersion}")
+    teamcity(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${teamcityVersion}")
+//    teamcity(group: 'org.jetbrains.teamcity.plugins', name: 'git', version: "${teamcityVersion}")
     compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
-}
 
-sourceSets {
-    main { compileClasspath += configurations.provided }
+    testCompile 'org.assertj:assertj-core:2.2.0'
 }
 
 sourceCompatibility = "1.6"
@@ -80,8 +80,9 @@ teamcity {
 
 idea {
     module {
-        scopes.PROVIDED.plus += [ configurations.provided ]
         downloadJavadoc = false
         downloadSources = true
     }
 }
+
+deployPlugin.dependsOn(build)
