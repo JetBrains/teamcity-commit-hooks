@@ -98,7 +98,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
         val inConnectionId = request.getParameter("connectionId")
         var connection: OAuthConnectionDescriptor?
         if (inConnectionId != null) {
-            connection = OAuthConnectionsManager.findConnectionById(vcsRoot.project, inConnectionId)
+            connection = OAuthConnectionsManager.getAvailableConnections(vcsRoot.project).firstOrNull{ it.id == inConnectionId }
             if (connection == null) {
                 return errorView("There no connection with id '$inConnectionId' found in project ${vcsRoot.project.fullName}", HttpServletResponse.SC_NOT_FOUND, response);
             }
