@@ -5,4 +5,10 @@
        default-autowire="constructor">
 
     <bean class="jetbrains.buildServer.controllers.vcs.GitHubWebHookListener" init-method="register"/>
+    <bean class="org.jetbrains.teamcity.github.controllers.CreateWebHookController" init-method="register"/>
+
+    <bean class="org.jetbrains.teamcity.github.WebHooksManager"/>
+
+    <bean class="org.jetbrains.teamcity.github.GitHubWebHookAvailablePageExtension" init-method="register"/>
+    <bean class="org.jetbrains.teamcity.github.GitHubWebHookAvailableHealthReport"/>
 </beans>
