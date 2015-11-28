@@ -23,6 +23,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
                                    private val ProjectManager: ProjectManager,
                                    private val VcsModificationChecker: VcsModificationChecker,
                                    private val AuthorizationInterceptor: AuthorizationInterceptor,
+                                   private val WebHooksManager: WebHooksManager,
                                    server: SBuildServer) : BaseController(server) {
 
     companion object {
@@ -47,6 +48,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         }
         if (eventType == "ping" ) {
             val payload = GsonUtilsEx.fromJson(request.reader, PingWebHookPayload::class.java)
+            // TODO: Extract repo info from payload and inform WebHooksManager
             LOG.info("Received ping payload from webhook:" + payload.hook_id + " " + payload.hook.url)
         } else if (eventType == "push" ) {
             try {
@@ -55,6 +57,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
                 val url = repo?.getAsJsonPrimitive("git_url")?.asString
                 val found = url?.let { findSuitableVcsRootInstances(it) }
                 if (found != null) {
+                    updateLastUsed(found.first)
                     doScheduleCheckForPendingChanges(found.second)
                 }
                 response.status = HttpServletResponse.SC_OK
@@ -67,6 +70,10 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         }
 
         return null;
+    }
+
+    private fun updateLastUsed(info: VcsRootGitHubInfo) {
+        WebHooksManager.updateLastUsed(info, Date())
     }
 
     private fun doScheduleCheckForPendingChanges(roots: List<VcsRootInstance>) {
