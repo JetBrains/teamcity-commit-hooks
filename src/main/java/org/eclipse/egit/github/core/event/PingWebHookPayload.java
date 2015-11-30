@@ -10,7 +10,7 @@ import java.io.Serializable;
  * 'ping' webhook event payload model class.
  */
 public class PingWebHookPayload implements Serializable {
-    private static final long serialVersionUID = -1542484898545583479L;
+    private static final long serialVersionUID = 5429499953002724326L;
 
     private String zen;
     private Integer hook_id;

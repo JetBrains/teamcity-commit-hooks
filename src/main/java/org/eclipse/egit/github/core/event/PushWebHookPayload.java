@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class PushWebHookPayload implements Serializable {
 
-    private static final long serialVersionUID = -1542484898545583478L;
+    private static final long serialVersionUID = 4018755847566805828L;
 
     private String ref;
 
