@@ -1,6 +1,7 @@
 package org.jetbrains.teamcity.github
 
 import com.google.gson.stream.JsonWriter
+import jetbrains.buildServer.util.StringUtil
 import org.eclipse.egit.github.core.RepositoryId
 import java.io.StringWriter
 
@@ -16,5 +17,9 @@ public data class VcsRootGitHubInfo(val server: String, val owner: String, val n
         writer.endObject();
         writer.flush()
         return sw.toString()
+    }
+
+    public fun isHasParameterReferences(): Boolean {
+        return StringUtil.hasParameterReferences(server) || StringUtil.hasParameterReferences(owner) || StringUtil.hasParameterReferences(name);
     }
 }

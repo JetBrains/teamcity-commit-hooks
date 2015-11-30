@@ -40,6 +40,9 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
         for (rootInstance in gitRootInstances) {
             val info = Util.getGitHubInfo(rootInstance) ?: continue
 
+            // Ignore roots with unresolved references in url
+            if (info.isHasParameterReferences()) continue
+
             // Filter by known servers
             if (info.server != "github.com") {
                 val connections = Util.findConnections(OAuthConnectionsManager, info, rootInstance.parent.project)
