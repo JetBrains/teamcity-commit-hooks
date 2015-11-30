@@ -2,6 +2,7 @@ package org.jetbrains.teamcity.github
 
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
+import jetbrains.buildServer.util.MultiMap
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
 import java.util.*
@@ -36,7 +37,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
         findSuitableRoots(scope, { gitRootInstances.add(it); true })
 
 
-        val map = jetbrains.buildServer.util.MultiMap<SVcsRoot, VcsRootInstance>()
+        val map = MultiMap<SVcsRoot, VcsRootInstance>()
         for (rootInstance in gitRootInstances) {
             val info = Util.getGitHubInfo(rootInstance) ?: continue
 
@@ -68,6 +69,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
             ))
             resultConsumer.consumeForVcsRoot(rootInstance.parent, item)
             resultConsumer.consumeForProject(rootInstance.parent.project, item)
+            rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
         }
 
         for (entry in map.entrySet()) {
@@ -82,6 +84,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
             ))
             resultConsumer.consumeForVcsRoot(root, item)
             resultConsumer.consumeForProject(root.project, item)
+            root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
         }
     }
 
