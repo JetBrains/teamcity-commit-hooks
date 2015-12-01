@@ -11,7 +11,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                                                 private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
         public val TYPE = "GitHub.WebHookAvailable"
-        private val CATEGORY: ItemCategory = ItemCategory("GH.WebHook", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
+        public val CATEGORY: ItemCategory = ItemCategory("GH.WebHook", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
     }
 
     override fun getType(): String = TYPE
@@ -59,14 +59,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                 continue
             }
 
-            val item = HealthStatusItem("GH.WH.I.${rootInstance.id}", CATEGORY, mapOf(
-                    "Type" to "Instance",
-                    "Id" to rootInstance.id,
-                    "GitHubInfo" to info,
-
-                    "VcsRoot" to rootInstance.parent,
-                    "VcsRootInstance" to rootInstance
-            ))
+            val item = WebHookHealthItem(info, rootInstance)
             resultConsumer.consumeForVcsRoot(rootInstance.parent, item)
             resultConsumer.consumeForProject(rootInstance.parent.project, item)
             rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
@@ -75,13 +68,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
         for (entry in map.entrySet()) {
             val root = entry.key
             val info = Util.Companion.getGitHubInfo(root.properties["url"]!!) ?: continue
-            val item = HealthStatusItem("GH.WH.R.${root.id}", CATEGORY, mapOf(
-                    "Type" to "Root",
-                    "Id" to root.id,
-                    "GitHubInfo" to info,
-
-                    "VcsRoot" to root
-            ))
+            val item = WebHookHealthItem(info, root)
             resultConsumer.consumeForVcsRoot(root, item)
             resultConsumer.consumeForProject(root.project, item)
             root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
