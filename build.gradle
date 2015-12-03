@@ -29,7 +29,13 @@ ext {
     teamcityJavaHome = System.properties['java.home']
 }
 
+// Remove repositories added by plugins
+project.plugins.withType(JavaPlugin) {
+    project.repositories.clear()
+}
 repositories {
+    mavenLocal()
+    mavenCentral()
     maven { url "http://repository.jetbrains.com/teamcity" }
 }
 
