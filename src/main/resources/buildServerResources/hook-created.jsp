@@ -3,14 +3,13 @@
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ include file="/include-internal.jsp" %>
-<%--@elvariable id="isSuccessful" type="java.lang.Boolean"--%>
-<%--@elvariable id="info" type="org.jetbrains.teamcity.github.VcsRootGitHubInfo"--%>
+<%--@elvariable id="json" type="java.lang.String"--%>
 <script type="text/javascript">
     if (!window.opener.GitHubWebHookCallback) {
         alert("function window.opener.GitHubWebHookCallback is not defined");
     } else {
-        var r = ${info.toJson()};
-        window.opener.GitHubWebHookCallback(r, ${isSuccessful});
+        var r = ${json};
+        window.opener.GitHubWebHookCallback(r);
         window.close();
     }
 </script>

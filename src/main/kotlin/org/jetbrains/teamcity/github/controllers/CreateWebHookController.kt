@@ -1,13 +1,16 @@
 package org.jetbrains.teamcity.github.controllers
 
+import com.google.gson.Gson
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.stream.JsonWriter
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.BaseController
-import jetbrains.buildServer.controllers.SimpleView
 import jetbrains.buildServer.serverSide.SBuildServer
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
-import jetbrains.buildServer.serverSide.oauth.OAuthToken
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
+import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.vcs.SVcsRoot
@@ -16,15 +19,19 @@ import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.SessionUser
+import jetbrains.buildServer.web.util.WebUtil
 import org.eclipse.egit.github.core.client.RequestException
 import org.intellij.lang.annotations.MagicConstant
+import org.jetbrains.teamcity.github.TokensHelper
 import org.jetbrains.teamcity.github.Util
 import org.jetbrains.teamcity.github.VcsRootGitHubInfo
 import org.jetbrains.teamcity.github.WebHooksManager
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import org.springframework.web.servlet.view.RedirectView
 import java.io.IOException
+import java.io.OutputStreamWriter
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
@@ -42,7 +49,10 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
     lateinit var OAuthTokensStorage: OAuthTokensStorage
 
     @Autowired
-    lateinit var WebHooksManager: WebHooksManager
+    lateinit var manager: WebHooksManager
+
+    @Autowired
+    lateinit var TokensHelper: TokensHelper
 
     private val myResultJspPath = descriptor.getPluginResourcesPath("hook-created.jsp")
 
@@ -57,10 +67,47 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
         private val LOG = Logger.getInstance(CreateWebHookController::class.java.name)
     }
 
-
-    // TODO: Return JSON?
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
-        val user = SessionUser.getUser(request) ?: return errorView("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED, response)
+        val action = request.getParameter("action")
+        if ("add" == action || action == null) {
+            val element = doHandleAddAction(request, response, "add");
+            response.contentType = MediaType.APPLICATION_JSON_VALUE
+            val writer = JsonWriter(OutputStreamWriter(response.outputStream))
+            Gson().toJson(element, writer)
+            writer.flush()
+            return null
+        }
+        if ("add-popup" == action) {
+            val element = doHandleAddAction(request, response, "add-popup");
+            if (element.isJsonObject) {
+                val obj = element.asJsonObject
+                val url = obj.getAsJsonPrimitive("redirect")?.asString
+                if (url != null) {
+                    return ModelAndView(RedirectView(url));
+                }
+                val error = obj.getAsJsonPrimitive("error")?.asString
+                if (error == null) {
+                    val mav = ModelAndView(myResultJspPath)
+                    mav.model.put("json", Gson().toJson(element))
+                }
+            }
+            response.contentType = MediaType.APPLICATION_JSON_VALUE
+            val writer = JsonWriter(OutputStreamWriter(response.outputStream))
+            Gson().toJson(element, writer)
+            writer.flush()
+            return null
+        }
+        if ("continue" == action) {
+            val element = doHandleAddAction(request, response, "continue");
+            val mav = ModelAndView(myResultJspPath)
+            mav.model.put("json", Gson().toJson(element))
+            return mav
+        }
+        return null
+    }
+
+    private fun doHandleAddAction(request: HttpServletRequest, response: HttpServletResponse, action: String): JsonElement {
+        val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
         // Vcs Root Info
         val id: Long
@@ -71,27 +118,27 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
         val inId = request.getParameter("id")
 
         if (inType == null) {
-            return errorView("Required parameter 'type' is missing", HttpServletResponse.SC_BAD_REQUEST, response)
+            return error_json("Required parameter 'type' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
         if (inId == null) {
-            return errorView("Required parameter 'id' is missing", HttpServletResponse.SC_BAD_REQUEST, response)
+            return error_json("Required parameter 'id' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
         try {
             id = inId.toLong()
         } catch(e: NumberFormatException) {
-            return errorView("Incorrect format of parameter 'id', integer number expected", HttpServletResponse.SC_BAD_REQUEST, response)
+            return error_json("Incorrect format of parameter 'id', integer number expected", HttpServletResponse.SC_BAD_REQUEST)
         }
         if ("root" == inType) {
             vcsRootInstance = null
-            vcsRoot = VcsManager.findRootById(id) ?: return errorView("VcsRoot with id '$id' not found", HttpServletResponse.SC_NOT_FOUND, response)
+            vcsRoot = VcsManager.findRootById(id) ?: return error_json("VcsRoot with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
         } else if ("instance" == inType) {
-            vcsRootInstance = VcsManager.findRootInstanceById(id) ?: return errorView("VcsRootInstance with id '$id' not found", HttpServletResponse.SC_NOT_FOUND, response)
+            vcsRootInstance = VcsManager.findRootInstanceById(id) ?: return error_json("VcsRootInstance with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
             vcsRoot = vcsRootInstance.parent
         } else {
-            return errorView("Parameter 'type' have unknown value", HttpServletResponse.SC_BAD_REQUEST, response)
+            return error_json("Parameter 'type' have unknown value", HttpServletResponse.SC_BAD_REQUEST)
         }
 
-        val info: VcsRootGitHubInfo = Util.getGitHubInfo(vcsRootInstance ?: vcsRoot) ?: return simpleView("Not an GitHub VCS")
+        val info: VcsRootGitHubInfo = Util.getGitHubInfo(vcsRootInstance ?: vcsRoot) ?: return error_json("Not an GitHub VCS", 500)
 
         // TODO: check info.server to be github.com or known GitHub Enterprise server
 
@@ -100,7 +147,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
         if (inConnectionId != null) {
             connection = OAuthConnectionsManager.getAvailableConnections(vcsRoot.project).firstOrNull{ it.id == inConnectionId }
             if (connection == null) {
-                return errorView("There no connection with id '$inConnectionId' found in project ${vcsRoot.project.fullName}", HttpServletResponse.SC_NOT_FOUND, response);
+                return error_json("There no connection with id '$inConnectionId' found in project ${vcsRoot.project.fullName}", HttpServletResponse.SC_NOT_FOUND);
             }
         } else {
             connection = null
@@ -108,21 +155,19 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
 
         LOG.info("Trying to create web hook for vcs (id:$id), github info is $info, user is ${user.describe(false)}, connection is ${connection?.id ?: "not specified"}")
 
-        var isSuccess: Boolean = false
-
         val connections: List<OAuthConnectionDescriptor>
         if (connection != null) {
             connections = listOf(connection)
         } else {
-            connections = Util.findConnections(OAuthConnectionsManager, info, vcsRoot.project)
+            connections = Util.findConnections(OAuthConnectionsManager, vcsRoot.project, info.server)
             if (connections.isEmpty()) {
-                return simpleView("No OAuth connectors found, setup them first") //TODO: Add link, good UI.
+                return error_json("No OAuth connectors found, setup them first", 500) //TODO: Add link, good UI.
             }
         }
 
         attempts@
         for (i in 0..2) {
-            val tokens = findExistingTokens(request, info, connections)
+            val tokens = TokensHelper.getExistingTokens(connections, user)
             if (tokens.isEmpty()) {
                 // obtain access token
                 if (connection == null) {
@@ -130,64 +175,93 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                 }
                 LOG.info("No token found will try to obtain one using connection ${connection.id}")
 
-                val returnPath = request.contextPath + PATH + "?type=$inType&id=$id&connectionId=${connection.id}"
-                val scope = "public_repo,repo,repo:status,write:repo_hook"
-
-                val clazz = Class.forName("jetbrains.buildServer.serverSide.oauth.github.AccessTokenRequestBean")
-                val method = clazz.declaredMethods.first { it.name == "create" }
-                method.invoke(null, request, connection, returnPath)
-                return ModelAndView(RedirectView(request.contextPath + "/oauth/github/accessToken.html?action=obtainToken&connectionId=${connection.id}&scope=$scope"))
-
-                // TODO: Get rid ob reflection above (requires dependency on oauth-integration-web.jar)
-                //AccessTokenRequestBean.create(request, connection, returnPath)
-                //return ModelAndView(RedirectView(request.contextPath + GitHubAccessTokenController.PATH + "?action=obtainToken&connectionId=" + connectionId + "&scope=" + "public_repo,repo,repo:status,write:repo_hook"))
+                return redirect_json(url(request.contextPath + "/oauth/github/accessToken.html",
+                        "action" to "obtainToken",
+                        "connectionId" to connection.id,
+                        "projectId" to connection.project.projectId,
+                        "scope" to "write:repo_hook",
+                        "callbackUrl" to url(request.contextPath + PATH, "action" to "continue", "type" to inType, "id" to id, "connectionId" to connection.id
+                        ))
+                )
             }
 
             for (entry in tokens) {
-                val ghc = GitHubClientFactory.createGitHubClient(entry.key.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
+                val ghc: GitHubClientEx = GitHubClientFactory.createGitHubClient(entry.key.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
                 for (token in entry.value) {
                     LOG.info("Trying with token: ${token.oauthLogin}, connector is ${entry.key.id}")
                     ghc.setOAuth2Token(token.token)
 
                     try {
-                        WebHooksManager.doRegisterWebHook(info, ghc)
-                        isSuccess = true
-                        break@attempts
-                    } catch(e: RequestException) {
-                        if (e.status == 401) {
-                            // token expired?
-                            OAuthTokensStorage.removeToken(inConnectionId, token.token)
+                        val result = manager.doRegisterWebHook(info, ghc, token.oauthLogin)
+                        val repoId = info.getRepositoryId().generateId()
+                        when (result) {
+                            WebHooksManager.HookAddOperationResult.INVALID_CREDENTIALS -> {
+                                LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                                OAuthTokensStorage.removeToken(entry.key.id, token.token)
+                            }
+                            WebHooksManager.HookAddOperationResult.NOT_ENOUGH_TOKEN_SCOPE -> {
+                                LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                                // TODO: Update token scope
+                                TokensHelper.markTokenIncorrect(token)
+                                return gh_json("TokenScopeFailure", "Token scope does not cover hooks management", info)
+                            }
+                            WebHooksManager.HookAddOperationResult.ALREADY_EXISTS -> {
+                                return gh_json("AlreadyExists", "Created hook for repository '$repoId'", info)
+                            }
+                            WebHooksManager.HookAddOperationResult.CREATED -> {
+                                return gh_json("Created", "Created hook for repository '$repoId'", info)
+                            }
+                            WebHooksManager.HookAddOperationResult.NO_ACCESS -> {
+                                return gh_json("NoAccess", "No access to repository '$repoId'", info)
+                            }
+                            WebHooksManager.HookAddOperationResult.USER_HAVE_NO_ACCESS -> {
+                                return gh_json("UserNoAccess", "You don't have access to '$repoId'", info);
+                            }
                         }
+                    } catch(e: RequestException) {
+                        LOG.warnAndDebugDetails("Unexpected response from github server", e);
                     } catch(e: IOException) {
+                        LOG.warnAndDebugDetails("IOException instead of response from github server", e);
                     }
                 }
             }
         }
 
-        val modelAndView = ModelAndView(myResultJspPath)
-        modelAndView.model.put("info", info)
-        modelAndView.model.put("isSuccessful", isSuccess)
-        return modelAndView
+        return gh_json("", "", info)
     }
 
-    private fun isSuitableToken(info: VcsRootGitHubInfo, it: OAuthToken): Boolean {
-        return (it.oauthLogin == info.owner && it.scope.contains("write:repo_hook")) || (it.scope.contains("write:repo_hook") && it.scope.contains("admin:org_hook"))
+    protected fun error_json(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int): JsonElement {
+        val obj = JsonObject()
+        obj.addProperty("error", message)
+        obj.addProperty("code", code)
+        return obj
     }
 
-
-    private fun findExistingTokens(request: HttpServletRequest, info: VcsRootGitHubInfo, descriptors: List<OAuthConnectionDescriptor>): Map<OAuthConnectionDescriptor, List<OAuthToken>> {
-        val user = SessionUser.getUser(request)!!
-
-        LOG.info("Found connectors: ${descriptors.map { it.id }} for server ${info.server}")
-        return descriptors.map {
-            it to OAuthTokensStorage.getUserTokens(it.id, user).filter { isSuitableToken(info, it) }
-        }.filter { it.second.isNotEmpty() }.toMap()
+    protected fun redirect_json(url: String): JsonElement {
+        val obj = JsonObject()
+        obj.addProperty("redirect", url)
+        return obj
     }
 
+    private fun url(url: String, vararg params: Pair<String, Any>): String {
+        return url(url, params.toMap({ it -> it.first }, { it -> it.second.toString() }))
+    }
 
-    @Throws()
-    protected fun errorView(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int, response: HttpServletResponse): ModelAndView {
-        response.status = code
-        return SimpleView.createTextView(message)
+    private fun url(url: String, params: Map<String, String>): String {
+        val sb = StringBuilder()
+        sb.append(url)
+        if (!params.isEmpty()) sb.append('?')
+        for (e in params.entries) {
+            sb.append(e.key).append('=').append(WebUtil.encode(e.value)).append('&')
+        }
+        return sb.toString()
+    }
+
+    protected fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonElement {
+        val obj = JsonObject()
+        obj.addProperty("result", result)
+        obj.addProperty("message", message)
+        obj.add("info", Gson().toJsonTree(info))
+        return obj
     }
 }

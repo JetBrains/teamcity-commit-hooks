@@ -6,6 +6,9 @@
 
 <%--@elvariable id="healthStatusItem" type="jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem"--%>
 <%--@elvariable id="pluginResourcesPath" type="java.lang.String"--%>
+<%--@elvariable id="has_connections" type="java.lang.Boolean"--%>
+<%--@elvariable id="has_tokens" type="java.lang.Boolean"--%>
+
 <c:set var="Type" value="${healthStatusItem.additionalData['Type']}"/>
 <c:set var="Id" value="${healthStatusItem.additionalData['Id']}"/>
 
@@ -22,13 +25,23 @@
 
 <c:set var="Identifier" value="${Type}_${Id}"/>
 
-
-<div id='hid_${Identifier}' class="suggestionItem">
+<div id='hid_${Identifier}' class="suggestionItem" data-id="${Id}" data-type="${Type}">
     Found GitHub git VCS root which not using WebHooks:
     <admin:vcsRootName vcsRoot="${VcsRoot}" editingScope="editProject:${VcsRoot.project.externalId}" cameFromUrl="${pageUrl}"/>
     belongs to <admin:projectName project="${VcsRoot.project}"/>
     <div class="suggestionAction">
-        <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addWebHook('${Type}', '${Id}'); return false">Add WebHook</a>
+        <c:choose>
+            <c:when test="${has_connections && has_tokens}">
+                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addWebHook(this, '${Type}', '${Id}', false); return false">Add WebHook</a>
+            </c:when>
+            <c:when test="${has_connections}">
+                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addWebHook(this, '${Type}', '${Id}', true); return false">Add WebHook</a>
+            </c:when>
+            <c:otherwise>
+                <span>There no GitHub OAuth connections found, setup them first</span>
+                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addConnection(this, '${VcsRoot.project.externalId}', '${GitHubInfo.server}'); return false">Add OAuth connection</a>
+            </c:otherwise>
+        </c:choose>
         <%--<forms:button className="btn_mini" onclick="BS.GitHubWebHooks.addWebHook('${Type}', '${Id}'); return false">Add WebHook</forms:button>--%>
     </div>
 </div>
@@ -38,6 +51,16 @@
         if (typeof BS.GitHubWebHooks === 'undefined') {
             $j('#hid_${Identifier}').append("<script type='text/javascript' src='<c:url value="${pluginResourcesPath}gh-webhook.js"/>'/>");
         }
+        if (typeof BS.ServerInfo === 'undefined') {
+            BS.ServerInfo = {
+                url : '${serverSummary.rootURL}'
+            };
+        }
+        if (typeof BS.RequestInfo === 'undefined') {
+            BS.RequestInfo = {
+                context_path : '${pageContext.request.contextPath}'
+            };
+        }
+        BS.GitHubWebHooks.info['${Identifier}'] = {"info":${GitHubInfo.toJson()}};
     })();
-    BS.GitHubWebHooks.info['${Identifier}'] = {"info":${GitHubInfo.toJson()}};
 </script>
