@@ -33,19 +33,19 @@ public class Util {
             return VcsRootGitHubInfo(host, owner, name)
         }
 
-        public fun findConnections(manager: OAuthConnectionsManager, info: VcsRootGitHubInfo, project: SProject): List<OAuthConnectionDescriptor> {
+        public fun findConnections(manager: OAuthConnectionsManager, project: SProject, server: String): List<OAuthConnectionDescriptor> {
             return manager.getAvailableConnections(project)
                     .filter {
                         when (it.oauthProvider) {
                             is GHEOAuthProvider -> {
                                 // Check server url
                                 val url = it.parameters[GitHubConstants.GITHUB_URL_PARAM] ?: return@filter false
-                                if (!isSameUrl(info.server, url)) {
+                                if (!isSameUrl(server, url)) {
                                     return@filter false
                                 }
                             }
                             is GitHubOAuthProvider -> {
-                                if (!isSameUrl(info.server, "github.com")) {
+                                if (!isSameUrl(server, "github.com")) {
                                     return@filter false
                                 }
                             }

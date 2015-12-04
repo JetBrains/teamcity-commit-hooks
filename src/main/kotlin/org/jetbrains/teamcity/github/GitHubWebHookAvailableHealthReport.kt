@@ -46,7 +46,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
 
             // Filter by known servers
             if (info.server != "github.com") {
-                val connections = Util.findConnections(OAuthConnectionsManager, info, rootInstance.parent.project)
+                val connections = Util.findConnections(OAuthConnectionsManager, rootInstance.parent.project, info.server)
                 if (connections.isEmpty()) continue
             }
 
