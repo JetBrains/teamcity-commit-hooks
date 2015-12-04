@@ -3,6 +3,7 @@ package org.jetbrains.teamcity.github
 import jetbrains.buildServer.controllers.vcs.GitHubWebHookListener
 import jetbrains.buildServer.serverSide.WebLinks
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
+import jetbrains.buildServer.util.cache.CacheProvider
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
 import org.eclipse.egit.github.core.client.RequestException
@@ -12,15 +13,14 @@ import java.util.*
 import javax.annotation.concurrent.NotThreadSafe
 
 @NotThreadSafe
-public class WebHooksManager(private val links: WebLinks) {
+public class WebHooksManager(private val links: WebLinks, CacheProvider: CacheProvider) {
     data class HookInfo(val id: Long, val url: String) {
         var lastUsed: Date? = null
     }
 
     class PerServerMap : HashMap<RepositoryId, HookInfo>();
 
-    // TODO: Persist known hooks map between server restarts
-    private val myHooks: MutableMap<String, PerServerMap> = HashMap()
+    private val myCache = CacheProvider.getOrCreateCache("WebHooksCache", PerServerMap::class.java)
 
 
     public enum class HookAddOperationResult {
@@ -43,7 +43,7 @@ public class WebHooksManager(private val links: WebLinks) {
                 // TODO: Investigate ssl option
         ))
 
-        if (findHook(info) != null) {
+        if (getHook(info) != null) {
             return HookAddOperationResult.ALREADY_EXISTS
         }
 
@@ -78,7 +78,7 @@ public class WebHooksManager(private val links: WebLinks) {
             throw e
         }
 
-        if (findHook(info) != null) {
+        if (getHook(info) != null) {
             return HookAddOperationResult.ALREADY_EXISTS
         }
 
@@ -104,13 +104,14 @@ public class WebHooksManager(private val links: WebLinks) {
             throw e
         }
 
-        myHooks.getOrPut(info.server, ::PerServerMap).put(repo, HookInfo(created.id, created.url))
+        save(created, info.server, repo)
         return HookAddOperationResult.CREATED
     }
 
+
     private fun populateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
         for (hook in filtered) {
-            myHooks.getOrPut(server, ::PerServerMap).put(repo, HookInfo(hook.id, hook.url))
+            save(hook, server, repo)
         }
     }
 
@@ -119,17 +120,22 @@ public class WebHooksManager(private val links: WebLinks) {
         return links.rootUrl.removeSuffix("/") + GitHubWebHookListener.PATH;
     }
 
-    fun findHook(info: VcsRootGitHubInfo): Any? {
+    private fun save(created: RepositoryHook, server: String, repo: RepositoryId) {
+        val map = myCache.fetch(server, { PerServerMap() });
+        map.put(repo, HookInfo(created.id, created.url))
+        myCache.write(server, map)
+    }
+
+    fun getHook(info: VcsRootGitHubInfo): HookInfo? {
         // TODO: Populate map in background
-        val map = myHooks[info.server] ?: return null
+        val map = myCache.read(info.server) ?: return null
         val hook = map[info.getRepositoryId()] ?: return null
         return hook
     }
 
     fun updateLastUsed(info: VcsRootGitHubInfo, date: Date) {
         // We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
-        val map = myHooks[info.server] ?: return
-        val hook = map[info.getRepositoryId()] ?: return
+        val hook = getHook(info) ?: return
         val used = hook.lastUsed
         if (used == null || used.before(date)) {
             hook.lastUsed = date

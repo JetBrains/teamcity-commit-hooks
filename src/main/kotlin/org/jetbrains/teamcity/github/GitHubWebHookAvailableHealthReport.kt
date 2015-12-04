@@ -50,7 +50,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                 if (connections.isEmpty()) continue
             }
 
-            val hook = WebHooksManager.findHook(info)
+            val hook = WebHooksManager.getHook(info)
             if (hook != null) continue
 
             if (rootInstance.parent.properties["url"] == rootInstance.properties["url"]) {
