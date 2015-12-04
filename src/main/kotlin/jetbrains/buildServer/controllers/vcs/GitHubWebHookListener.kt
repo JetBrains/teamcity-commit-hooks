@@ -50,6 +50,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
             val payload = GsonUtilsEx.fromJson(request.reader, PingWebHookPayload::class.java)
             LOG.info("Received ping payload from webhook:" + payload.hook_id + " " + payload.hook.url)
             updateLastUsed(Util.getGitHubInfo(payload.repository.gitUrl)!!)
+            response.status = HttpServletResponse.SC_ACCEPTED
         } else if (eventType == "push" ) {
             try {
                 val obj = GsonUtilsEx.fromJson(request.reader, JsonObject::class.java)
