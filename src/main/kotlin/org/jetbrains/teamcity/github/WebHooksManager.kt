@@ -10,9 +10,7 @@ import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import java.io.IOException
 import java.util.*
-import javax.annotation.concurrent.NotThreadSafe
 
-@NotThreadSafe
 public class WebHooksManager(private val links: WebLinks, CacheProvider: CacheProvider) {
     data class HookInfo(val id: Long, val url: String) {
         var lastUsed: Date? = null
@@ -34,7 +32,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
     }
 
     @Throws(IOException::class, RequestException::class)
-    public fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, tokenOwner: String): HookAddOperationResult {
+    public fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx): HookAddOperationResult {
         val repo = info.getRepositoryId()
         val service = RepositoryService(client)
         val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
@@ -62,7 +60,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
                 }
                 403, 404 -> {
                     // No access
-                    // Probably token does not have 'repo_hook' permission, lets check that
+                    // Probably token does not have permissions
                     val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: return HookAddOperationResult.NO_ACCESS // Weird. No header?
                     val pair = TokensHelper.getHooksAccessType(scopes)
                     val accessType = pair.first
@@ -121,16 +119,20 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
     }
 
     private fun save(created: RepositoryHook, server: String, repo: RepositoryId) {
-        val map = myCache.fetch(server, { PerServerMap() });
-        map.put(repo, HookInfo(created.id, created.url))
-        myCache.write(server, map)
+        synchronized(myCache) {
+            val map = myCache.fetch(server, { PerServerMap() });
+            map.put(repo, HookInfo(created.id, created.url))
+            myCache.write(server, map)
+        }
     }
 
     fun getHook(info: VcsRootGitHubInfo): HookInfo? {
         // TODO: Populate map in background
-        val map = myCache.read(info.server) ?: return null
-        val hook = map[info.getRepositoryId()] ?: return null
-        return hook
+        synchronized(myCache) {
+            val map = myCache.read(info.server) ?: return null
+            val hook = map[info.getRepositoryId()] ?: return null
+            return hook
+        }
     }
 
     fun updateLastUsed(info: VcsRootGitHubInfo, date: Date) {

@@ -192,7 +192,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                     ghc.setOAuth2Token(token.token)
 
                     try {
-                        val result = manager.doRegisterWebHook(info, ghc, token.oauthLogin)
+                        val result = manager.doRegisterWebHook(info, ghc)
                         val repoId = info.getRepositoryId().generateId()
                         when (result) {
                             WebHooksManager.HookAddOperationResult.INVALID_CREDENTIALS -> {
