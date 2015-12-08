@@ -7,7 +7,7 @@
     <bean class="jetbrains.buildServer.controllers.vcs.GitHubWebHookListener" init-method="register"/>
     <bean class="org.jetbrains.teamcity.github.controllers.CreateWebHookController" init-method="register"/>
 
-    <bean class="org.jetbrains.teamcity.github.WebHooksManager"/>
+    <bean class="org.jetbrains.teamcity.github.WebHooksManager" init-method="init" destroy-method="destroy"/>
     <bean class="org.jetbrains.teamcity.github.TokensHelper"/>
 
     <bean class="org.jetbrains.teamcity.github.GitHubWebHookAvailablePageExtension" init-method="register"/>

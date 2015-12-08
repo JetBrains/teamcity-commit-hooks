@@ -6,6 +6,7 @@ import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GHEOAuthProvider
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.serverSide.oauth.github.GitHubOAuthProvider
+import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.VcsRoot
 
 public class Util {
@@ -58,6 +59,13 @@ public class Util {
         private fun isSameUrl(host: String, url: String): Boolean {
             // TODO: Improve somehow
             return url.contains(host, true)
+        }
+
+        fun isSuitableVcsRoot(root: VcsRoot): Boolean {
+            if (root.vcsName != "jetbrains.git") return false
+            val url = root.properties["url"] ?: return false
+            if (StringUtil.hasParameterReferences(url)) return false
+            return getGitHubInfo(url) != null
         }
     }
 }

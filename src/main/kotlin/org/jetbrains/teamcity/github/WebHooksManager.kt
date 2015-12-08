@@ -1,9 +1,15 @@
 package org.jetbrains.teamcity.github
 
+import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.vcs.GitHubWebHookListener
 import jetbrains.buildServer.serverSide.WebLinks
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
+import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
+import jetbrains.buildServer.vcs.RepositoryState
+import jetbrains.buildServer.vcs.RepositoryStateListener
+import jetbrains.buildServer.vcs.RepositoryStateListenerAdapter
+import jetbrains.buildServer.vcs.VcsRoot
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
 import org.eclipse.egit.github.core.client.RequestException
@@ -11,9 +17,37 @@ import org.eclipse.egit.github.core.service.RepositoryService
 import java.io.IOException
 import java.util.*
 
-public class WebHooksManager(private val links: WebLinks, CacheProvider: CacheProvider) {
+public class WebHooksManager(private val links: WebLinks, CacheProvider: CacheProvider, private val dispatcher: EventDispatcher<RepositoryStateListener>) {
+
+    val listener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
+        override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {
+            if (!Util.isSuitableVcsRoot(root)) return
+            val info = Util.getGitHubInfo(root) ?: return
+            val hook = getHook(info) ?: return
+            if (!isBranchesInfoUpToDate(hook, newState.branchRevisions, info)) {
+                // Mark hook as outdated, probably incorrectly configured
+                hook.correct = false
+                save(info, hook)
+            }
+        }
+    }
+
+    fun init(): Unit {
+        dispatcher.addListener(listener)
+    }
+
+    fun destroy(): Unit {
+        dispatcher.removeListener(listener)
+    }
+
+    companion object {
+        private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
+    }
+
     data class HookInfo(val id: Long, val url: String) {
+        var correct: Boolean = true
         var lastUsed: Date? = null
+        var lastBranchRevisions: MutableMap<String, String>? = null
     }
 
     class PerServerMap : HashMap<RepositoryId, HookInfo>();
@@ -102,14 +136,14 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
             throw e
         }
 
-        save(created, info.server, repo)
+        addHook(created, info.server, repo)
         return HookAddOperationResult.CREATED
     }
 
 
     private fun populateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
         for (hook in filtered) {
-            save(hook, server, repo)
+            addHook(hook, server, repo)
         }
     }
 
@@ -118,10 +152,18 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         return links.rootUrl.removeSuffix("/") + GitHubWebHookListener.PATH;
     }
 
-    private fun save(created: RepositoryHook, server: String, repo: RepositoryId) {
+    private fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {
+        save(server, repo, HookInfo(created.id, created.url))
+    }
+
+    private fun save(info: VcsRootGitHubInfo, hook: HookInfo) {
+        save(info.server, info.getRepositoryId(), hook)
+    }
+
+    private fun save(server: String, repo: RepositoryId, hook: HookInfo) {
         synchronized(myCache) {
             val map = myCache.fetch(server, { PerServerMap() });
-            map.put(repo, HookInfo(created.id, created.url))
+            map.put(repo, hook)
             myCache.write(server, map)
         }
     }
@@ -141,6 +183,38 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         val used = hook.lastUsed
         if (used == null || used.before(date)) {
             hook.lastUsed = date
+            save(info, hook)
         }
+    }
+
+    fun updateBranchRevisions(info: VcsRootGitHubInfo, map: Map<String, String>) {
+        val hook = getHook(info) ?: return
+        val lbr = hook.lastBranchRevisions ?: HashMap()
+        lbr.putAll(map)
+        hook.lastBranchRevisions = lbr
+        save(info, hook)
+    }
+
+    private fun isBranchesInfoUpToDate(hook: HookInfo, newBranches: Map<String, String>, info: VcsRootGitHubInfo): Boolean {
+        val hookBranches = hook.lastBranchRevisions
+
+        // Maybe we have forgot about revisions (cache cleanup after server restart)
+        if (hookBranches == null) {
+            hook.lastBranchRevisions = HashMap(newBranches)
+            save(info, hook)
+            return true
+        }
+        for ((name, hash) in newBranches.entries) {
+            val old = hookBranches[name]
+            if (old == null) {
+                LOG.warn("Hook $hook have no revision saved for branch $name, but it should be $hash")
+                return false
+            }
+            if (old != hash) {
+                LOG.warn("Hook $hook have incorrect revision saved for branch $name, expected $hash but found $old")
+                return false
+            }
+        }
+        return true
     }
 }
