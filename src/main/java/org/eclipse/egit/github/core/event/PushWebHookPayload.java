@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * 'push' webhook event payload model class.
  */
+@SuppressWarnings("unused")
 public class PushWebHookPayload implements Serializable {
 
     private static final long serialVersionUID = 4018755847566805828L;
