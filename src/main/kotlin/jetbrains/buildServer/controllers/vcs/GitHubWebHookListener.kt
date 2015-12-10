@@ -57,12 +57,22 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(request.reader, PushWebHookPayload::class.java)
                     val url = payload.repository?.gitUrl
-                    LOG.info("Received push payload from webhook for repo ${payload.repository.owner.login}/${payload.repository.name}")
-                    val found = url?.let { findSuitableVcsRootInstances(it) }
-                    if (found != null) {
-                        updateLastUsed(found.first)
-                        doScheduleCheckForPendingChanges(found.second)
+                    LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
+                    if (url == null) {
+                        LOG.warn("Push event payload have no repository url specified")
+                        response.status = HttpServletResponse.SC_BAD_REQUEST
+                        return null
                     }
+                    val info = Util.getGitHubInfo(url)
+                    if (info == null) {
+                        LOG.warn("Cannot determine repository info from url $url")
+                        response.status = HttpServletResponse.SC_SERVICE_UNAVAILABLE
+                        return null
+                    }
+                    updateLastUsed(info)
+                    updateBranches(info, payload)
+                    val foundVcsInstances = findSuitableVcsRootInstances(info)
+                    doScheduleCheckForPendingChanges(foundVcsInstances)
                     response.status = HttpServletResponse.SC_ACCEPTED
                 }
                 else -> {
@@ -81,24 +91,26 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         WebHooksManager.updateLastUsed(info, Date())
     }
 
+    private fun updateBranches(info: VcsRootGitHubInfo, payload: PushWebHookPayload) {
+        WebHooksManager.updateBranchRevisions(info, mapOf(payload.ref to payload.after))
+    }
+
     private fun doScheduleCheckForPendingChanges(roots: List<VcsRootInstance>) {
         // TODO: Or #forceCheckingFor ?
         // TODO: Should use rest api method ?
         VcsModificationChecker.checkForModificationsAsync(roots)
     }
 
-    public fun findSuitableVcsRootInstances(url: String): Pair<VcsRootGitHubInfo, List<VcsRootInstance>>? {
-        val info = Util.getGitHubInfo(url) ?: return null
-        val rootInstances = HashSet<VcsRootInstance>()
+    public fun findSuitableVcsRootInstances(info: VcsRootGitHubInfo): List<VcsRootInstance> {
+        val roots = HashSet<VcsRootInstance>()
         for (bt in ProjectManager.allBuildTypes) {
             if (bt.project.isArchived) continue
-            rootInstances.addAll(bt.vcsRootInstances)
+            roots.addAll(bt.vcsRootInstances)
         }
-        val roots = rootInstances
-        // TODO: Check constants exact value
+        // TODO: Use some constant instead of string
         val gitRoots = roots.filter { it.vcsName == "jetbrains.git" }
-        // TODO: Use better search
-        val found = gitRoots.map { it to Util.getGitHubInfo(it) }.filter { info == it.second }
-        return info to found.map { it.first }
+        // TODO: Use better search (?)
+        val found = gitRoots.filter { info == Util.getGitHubInfo(it) }
+        return found
     }
 }
