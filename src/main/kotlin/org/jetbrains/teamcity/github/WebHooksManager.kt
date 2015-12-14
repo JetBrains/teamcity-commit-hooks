@@ -56,13 +56,13 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
 
 
     public enum class HookAddOperationResult {
-        INVALID_CREDENTIALS,
-        NOT_ENOUGH_TOKEN_SCOPE, // If token is valid but does not have required scope
-        NO_ACCESS,
-        USER_HAVE_NO_ACCESS,
-        REPO_NOT_EXISTS,
-        ALREADY_EXISTS,
-        CREATED,
+        InvalidCredentials,
+        TokenScopeMismatch, // If token is valid but does not have required scope
+        NoAccess,
+        UserHaveNoAccess,
+        RepoDoesNotExists,
+        AlreadyExists,
+        Created,
     }
 
     @Throws(IOException::class, RequestException::class)
@@ -76,7 +76,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         ))
 
         if (getHook(info) != null) {
-            return HookAddOperationResult.ALREADY_EXISTS
+            return HookAddOperationResult.AlreadyExists
         }
 
         // First, check for already existing hooks, otherwise Github will answer with code 422
@@ -90,19 +90,19 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         } catch(e: RequestException) {
             when (e.status) {
                 401 -> {
-                    return HookAddOperationResult.INVALID_CREDENTIALS
+                    return HookAddOperationResult.InvalidCredentials
                 }
                 403, 404 -> {
                     // No access
                     // Probably token does not have permissions
-                    val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: return HookAddOperationResult.NO_ACCESS // Weird. No header?
+                    val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: return HookAddOperationResult.NoAccess // Weird. No header?
                     val pair = TokensHelper.getHooksAccessType(scopes)
                     val accessType = pair.first
                     when (accessType) {
-                        TokensHelper.HookAccessType.NO_ACCESS -> return HookAddOperationResult.NOT_ENOUGH_TOKEN_SCOPE
-                        TokensHelper.HookAccessType.READ -> return HookAddOperationResult.NOT_ENOUGH_TOKEN_SCOPE
+                        TokensHelper.HookAccessType.NO_ACCESS -> return HookAddOperationResult.TokenScopeMismatch
+                        TokensHelper.HookAccessType.READ -> return HookAddOperationResult.TokenScopeMismatch
                         TokensHelper.HookAccessType.WRITE, TokensHelper.HookAccessType.ADMIN -> {
-                            return HookAddOperationResult.USER_HAVE_NO_ACCESS
+                            return HookAddOperationResult.UserHaveNoAccess
                         }
                     }
                 }
@@ -111,7 +111,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         }
 
         if (getHook(info) != null) {
-            return HookAddOperationResult.ALREADY_EXISTS
+            return HookAddOperationResult.AlreadyExists
         }
 
         val created: RepositoryHook
@@ -119,17 +119,17 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
             created = service.createHook(repo, hook)
         } catch(e: RequestException) {
             when (e.status) {
-                401 -> return HookAddOperationResult.INVALID_CREDENTIALS
+                401 -> return HookAddOperationResult.InvalidCredentials
                 403, 404 -> {
                     // ? No access
-                    val pair = TokensHelper.getHooksAccessType(client) ?: return HookAddOperationResult.NO_ACCESS // Weird. No header?
-                    if (pair.first <= TokensHelper.HookAccessType.READ) return HookAddOperationResult.NOT_ENOUGH_TOKEN_SCOPE
-                    return HookAddOperationResult.USER_HAVE_NO_ACCESS
+                    val pair = TokensHelper.getHooksAccessType(client) ?: return HookAddOperationResult.NoAccess // Weird. No header?
+                    if (pair.first <= TokensHelper.HookAccessType.READ) return HookAddOperationResult.TokenScopeMismatch
+                    return HookAddOperationResult.UserHaveNoAccess
                 }
                 422 -> {
                     if (e.error.errors.any { it.resource.equals("hook", true) && it.message.contains("already exists") }) {
                         // Already exists
-                        return HookAddOperationResult.ALREADY_EXISTS
+                        return HookAddOperationResult.AlreadyExists
                     }
                 }
             }
@@ -137,7 +137,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         }
 
         addHook(created, info.server, repo)
-        return HookAddOperationResult.CREATED
+        return HookAddOperationResult.Created
     }
 
 

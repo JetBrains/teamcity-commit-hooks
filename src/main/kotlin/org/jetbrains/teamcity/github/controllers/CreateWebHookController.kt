@@ -85,17 +85,10 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                 if (url != null) {
                     return ModelAndView(RedirectView(url));
                 }
-                val error = obj.getAsJsonPrimitive("error")?.asString
-                if (error == null) {
-                    val mav = ModelAndView(myResultJspPath)
-                    mav.model.put("json", Gson().toJson(element))
-                }
             }
-            response.contentType = MediaType.APPLICATION_JSON_VALUE
-            val writer = JsonWriter(OutputStreamWriter(response.outputStream))
-            Gson().toJson(element, writer)
-            writer.flush()
-            return null
+            val mav = ModelAndView(myResultJspPath)
+            mav.model.put("json", Gson().toJson(element))
+            return mav
         }
         if ("continue" == action) {
             val element = doHandleAddAction(request, response, "continue");
@@ -195,27 +188,27 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                         val result = manager.doRegisterWebHook(info, ghc)
                         val repoId = info.getRepositoryId().generateId()
                         when (result) {
-                            WebHooksManager.HookAddOperationResult.INVALID_CREDENTIALS -> {
+                            WebHooksManager.HookAddOperationResult.InvalidCredentials -> {
                                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
                                 OAuthTokensStorage.removeToken(entry.key.id, token.token)
                             }
-                            WebHooksManager.HookAddOperationResult.NOT_ENOUGH_TOKEN_SCOPE -> {
+                            WebHooksManager.HookAddOperationResult.TokenScopeMismatch -> {
                                 LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
                                 // TODO: Update token scope
                                 TokensHelper.markTokenIncorrect(token)
-                                return gh_json("TokenScopeFailure", "Token scope does not cover hooks management", info)
+                                return gh_json(result.name, "Token scope does not cover hooks management", info)
                             }
-                            WebHooksManager.HookAddOperationResult.ALREADY_EXISTS -> {
-                                return gh_json("AlreadyExists", "Created hook for repository '$repoId'", info)
+                            WebHooksManager.HookAddOperationResult.AlreadyExists -> {
+                                return gh_json(result.name, "Created hook for repository '$repoId'", info)
                             }
-                            WebHooksManager.HookAddOperationResult.CREATED -> {
-                                return gh_json("Created", "Created hook for repository '$repoId'", info)
+                            WebHooksManager.HookAddOperationResult.Created -> {
+                                return gh_json(result.name, "Created hook for repository '$repoId'", info)
                             }
-                            WebHooksManager.HookAddOperationResult.NO_ACCESS -> {
-                                return gh_json("NoAccess", "No access to repository '$repoId'", info)
+                            WebHooksManager.HookAddOperationResult.NoAccess -> {
+                                return gh_json(result.name, "No access to repository '$repoId'", info)
                             }
-                            WebHooksManager.HookAddOperationResult.USER_HAVE_NO_ACCESS -> {
-                                return gh_json("UserNoAccess", "You don't have access to '$repoId'", info);
+                            WebHooksManager.HookAddOperationResult.UserHaveNoAccess -> {
+                                return gh_json(result.name, "You don't have access to '$repoId'", info);
                             }
                         }
                     } catch(e: RequestException) {
