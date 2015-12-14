@@ -61,6 +61,6 @@
                 context_path : '${pageContext.request.contextPath}'
             };
         }
-        BS.GitHubWebHooks.info['${Identifier}'] = {"info":${GitHubInfo.toJson()}};
+        BS.GitHubWebHooks.info['${Identifier}'] = ${GitHubInfo.toJson()};
     })();
 </script>
