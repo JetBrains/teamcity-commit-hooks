@@ -93,3 +93,7 @@ idea {
 }
 
 deployPlugin.dependsOn(build)
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.9'
+}
