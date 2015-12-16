@@ -50,8 +50,7 @@ BS.GitHubWebHooks = {
                     BS.Log.info("Redirect response received");
                     var link = "<a href='#' onclick=\"BS.GitHubWebHooks.addWebHook(this, '" + type + "', '" + id + "', true); return false\">Refresh access token</a>";
 
-                    BS.GitHubWebHooks.showMessage('redirect', 'GitHub authorization needed. ' + link);
-
+                    BS.Util.Messages.show('redirect', 'GitHub authorization needed. ' + link);
                     //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + type + '_' + id);
                     $j(that).append(link);
                     $(that).onclick = function () {
@@ -89,24 +88,26 @@ BS.GitHubWebHooks = {
     },
 
     processResult: function (json, res) {
+        var info = json['info'];
+        var message = json['message'];
+        var repo = info['owner'] + '/' + info['name'];
+        var warning = false;
         if ("AlreadyExists" == res) {
-            BS.GitHubWebHooks.showMessage(res, "WebHook is already there");
         } else if ("Created" == res) {
-            BS.GitHubWebHooks.showMessage(res, "Yay! Successfully created GitHub WebHook");
         } else if ("TokenScopeMismatch" == res) {
-            BS.GitHubWebHooks.showMessage(res, "Token you provided have no access to repository, try again", true);
+            message = "Token you provided have no access to repository, try again";
+            warning = true;
             // TODO: Add link to refresh/request token (via popup window)
-            var info = json['info'];
-            var repo = info['owner'] + '/' + info['name'];
             BS.GitHubWebHooks.forcePopup[repo] = true
         } else if ("NoAccess" == res) {
-            BS.GitHubWebHooks.showMessage(res, "No access to repository", true);
+            warning = true;
         } else if ("UserHaveNoAccess" == res) {
-            BS.GitHubWebHooks.showMessage(res, "You have no access to modify repository hooks", true);
+            warning = true;
         } else {
             BS.Log.warn("Unexpected result: " + res);
             alert("Unexpected result: " + res);
         }
+        BS.Util.Messages.show(res, message, warning ? {verbosity: 'warn'} : {});
     },
 
     callback: function (json) {
@@ -136,18 +137,25 @@ BS.GitHubWebHooks = {
         }
         //window.location.reload(false)
     },
+};
 
-    showMessage: function (type, text, isWarning) {
-        if (typeof isWarning === 'undefined') {
-            isWarning = false
-        }
+BS.Util.Messages = {
+    show: function (group, text) {
+        var options = arguments[2] || {};
+        options = $j.extend({}, options, {
+            verbosity: 'info', // Either 'info' or 'warn'
+            class: 'messages_group_' + group,
+            id: 'message_id_' + group
+        });
+
         BS.Log.info("Message: " + text);
-        var id = "message_tmp_" + type;
-        $j('.gh_wh_message').remove();
-        if ($(id)) {
-            $(id).remove()
-        }
-        var content = '<div class="gh_wh_message successMessage' + (isWarning ? ' attentionComment' : '') + '" id="' + id + '" style="display: none;">' + text + '</div>';
+
+        // Hide previous messages from the same group, id
+        BS.Util.Messages.hide({class: options.class});
+        BS.Util.Messages.hide({id: options.id});
+
+        // TODO: Use node manipulations instead of html code generation (?) Note: message may contain html tags
+        var content = '<div class="' + options.class + ' successMessage' + (options.verbosity == 'warn' ? ' attentionComment' : '') + '" id="' + options.id + '" style="display: none;">' + text + '</div>';
         var place = $('filterForm');
         if (place) {
             place.insert({'after': content});
@@ -155,10 +163,29 @@ BS.GitHubWebHooks = {
             place = $('content');
             place.insert({'top': content});
         }
-        $(id).show();
+        $(options.id).show();
         if (!window._shownMessages) window._shownMessages = {};
-        window._shownMessages[id] = 'info';
+        window._shownMessages[options.id] = options.verbosity;
+
+        // Why?
         BS.MultilineProperties.updateVisible();
+    },
+
+    hide: function (options) {
+        if (options.id) {
+            if ($(options.id)) {
+                if (window._shownMessages && window._shownMessages[id]) {
+                    delete window._shownMessages[id];
+                }
+                $(options.id).remove()
+            }
+        }
+        if (options.class) {
+            $j('.' + options.class).remove();
+        }
+        if (options.group) {
+            $j('.' + 'messages_group_' + options.group).remove();
+        }
     }
 };
 
