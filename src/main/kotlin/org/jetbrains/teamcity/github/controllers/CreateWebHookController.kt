@@ -199,7 +199,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                                 return gh_json(result.name, "Token scope does not cover hooks management", info)
                             }
                             WebHooksManager.HookAddOperationResult.AlreadyExists -> {
-                                return gh_json(result.name, "Created hook for repository '$repoId'", info)
+                                return gh_json(result.name, "Hook for repository '$repoId' already exits, updated info", info)
                             }
                             WebHooksManager.HookAddOperationResult.Created -> {
                                 return gh_json(result.name, "Created hook for repository '$repoId'", info)
