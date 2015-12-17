@@ -2,6 +2,8 @@ package org.jetbrains.teamcity.github
 
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.vcs.GitHubWebHookListener
+import jetbrains.buildServer.serverSide.BuildServerAdapter
+import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.serverSide.WebLinks
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.util.EventDispatcher
@@ -16,10 +18,15 @@ import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import java.io.IOException
 import java.util.*
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.read
+import kotlin.concurrent.write
 
-public class WebHooksManager(private val links: WebLinks, CacheProvider: CacheProvider, private val dispatcher: EventDispatcher<RepositoryStateListener>) {
+public class WebHooksManager(private val links: WebLinks, CacheProvider: CacheProvider,
+                             private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
+                             private val serverEventDispatcher: EventDispatcher<BuildServerListener>) {
 
-    val listener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
+    val repoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {
             if (!Util.isSuitableVcsRoot(root)) return
             val info = Util.getGitHubInfo(root) ?: return
@@ -32,12 +39,20 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         }
     }
 
+    private val serverListener = object : BuildServerAdapter() {
+        override fun serverShutdown() {
+            myCacheLock.write { myCache.flush() }
+        }
+    }
+
     fun init(): Unit {
-        dispatcher.addListener(listener)
+        repoStateEventDispatcher.addListener(repoStateListener)
+        serverEventDispatcher.addListener(serverListener)
     }
 
     fun destroy(): Unit {
-        dispatcher.removeListener(listener)
+        repoStateEventDispatcher.removeListener(repoStateListener)
+        serverEventDispatcher.removeListener(serverListener)
     }
 
     companion object {
@@ -53,6 +68,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
     class PerServerMap : HashMap<RepositoryId, HookInfo>();
 
     private val myCache = CacheProvider.getOrCreateCache("WebHooksCache", PerServerMap::class.java)
+    private val myCacheLock = ReentrantReadWriteLock()
 
 
     public enum class HookAddOperationResult {
@@ -161,7 +177,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
     }
 
     private fun save(server: String, repo: RepositoryId, hook: HookInfo) {
-        synchronized(myCache) {
+        myCacheLock.write {
             val map = myCache.fetch(server, { PerServerMap() });
             map.put(repo, hook)
             myCache.write(server, map)
@@ -170,7 +186,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
 
     fun getHook(info: VcsRootGitHubInfo): HookInfo? {
         // TODO: Populate map in background
-        synchronized(myCache) {
+        myCacheLock.read {
             val map = myCache.read(info.server) ?: return null
             val hook = map[info.getRepositoryId()] ?: return null
             return hook
