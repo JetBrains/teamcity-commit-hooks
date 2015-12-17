@@ -4,7 +4,6 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.serverSide.ProjectManager
-import jetbrains.buildServer.serverSide.SBuildServer
 import jetbrains.buildServer.serverSide.impl.VcsModificationChecker
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.WebControllerManager
@@ -23,8 +22,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
                                    private val ProjectManager: ProjectManager,
                                    private val VcsModificationChecker: VcsModificationChecker,
                                    private val AuthorizationInterceptor: AuthorizationInterceptor,
-                                   private val WebHooksManager: WebHooksManager,
-                                   server: SBuildServer) : BaseController(server) {
+                                   private val WebHooksManager: WebHooksManager) : BaseController() {
 
     companion object {
         val PATH = "/app/hooks/github"
@@ -113,10 +111,6 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
             if (bt.project.isArchived) continue
             roots.addAll(bt.vcsRootInstances)
         }
-        // TODO: Use some constant instead of string
-        val gitRoots = roots.filter { it.vcsName == "jetbrains.git" }
-        // TODO: Use better search (?)
-        val found = gitRoots.filter { info == Util.getGitHubInfo(it) }
-        return found
+        return roots.filter { info == Util.getGitHubInfo(it) }
     }
 }

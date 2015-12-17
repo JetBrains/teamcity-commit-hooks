@@ -53,7 +53,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
             val hook = WebHooksManager.getHook(info)
             if (hook != null) continue
 
-            if (rootInstance.parent.properties["url"] == rootInstance.properties["url"]) {
+            if (rootInstance.parent.properties[Constants.VCS_PROPERTY_GIT_URL] == rootInstance.properties[Constants.VCS_PROPERTY_GIT_URL]) {
                 // Not parametrized url
                 map.putValue(rootInstance.parent, rootInstance);
                 continue
@@ -79,7 +79,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
         for (bt in scope.buildTypes) {
             if (bt.project.isArchived) continue
             for (it in bt.vcsRootInstances) {
-                if (it.vcsName == "jetbrains.git" && it.properties["url"] != null) {
+                if (it.vcsName == Constants.VCS_NAME_GIT && it.properties[Constants.VCS_PROPERTY_GIT_URL] != null) {
                     if (!collector(it)) return;
                 }
             }

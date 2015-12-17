@@ -12,8 +12,8 @@ import jetbrains.buildServer.vcs.VcsRoot
 public class Util {
     companion object {
         public fun getGitHubInfo(root: VcsRoot): VcsRootGitHubInfo? {
-            if (root.vcsName != "jetbrains.git") return null
-            val url = root.properties["url"] ?: return null
+            if (root.vcsName != Constants.VCS_NAME_GIT) return null
+            val url = root.properties[Constants.VCS_PROPERTY_GIT_URL] ?: return null
 
             // Consider checking push_url also
             return getGitHubInfo(url)
@@ -62,8 +62,8 @@ public class Util {
         }
 
         fun isSuitableVcsRoot(root: VcsRoot): Boolean {
-            if (root.vcsName != "jetbrains.git") return false
-            val url = root.properties["url"] ?: return false
+            if (root.vcsName != Constants.VCS_NAME_GIT) return false
+            val url = root.properties[Constants.VCS_PROPERTY_GIT_URL] ?: return false
             if (StringUtil.hasParameterReferences(url)) return false
             return getGitHubInfo(url) != null
         }
