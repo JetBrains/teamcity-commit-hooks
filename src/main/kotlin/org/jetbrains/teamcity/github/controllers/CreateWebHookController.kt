@@ -182,7 +182,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                 val ghc: GitHubClientEx = GitHubClientFactory.createGitHubClient(entry.key.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
                 for (token in entry.value) {
                     LOG.info("Trying with token: ${token.oauthLogin}, connector is ${entry.key.id}")
-                    ghc.setOAuth2Token(token.token)
+                    ghc.setOAuth2Token(token.accessToken)
 
                     try {
                         val result = manager.doRegisterWebHook(info, ghc)
@@ -190,7 +190,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                         when (result) {
                             WebHooksManager.HookAddOperationResult.InvalidCredentials -> {
                                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                                OAuthTokensStorage.removeToken(entry.key.id, token.token)
+                                OAuthTokensStorage.removeToken(entry.key.id, token.accessToken)
                             }
                             WebHooksManager.HookAddOperationResult.TokenScopeMismatch -> {
                                 LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")

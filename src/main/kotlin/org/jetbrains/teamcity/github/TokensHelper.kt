@@ -1,6 +1,5 @@
 package org.jetbrains.teamcity.github
 
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
@@ -40,6 +39,7 @@ public class TokensHelper {
         }
 
         public fun isSuitableToken(token: OAuthToken): Boolean {
+            if (token.isExpired) return false
             val pair = getHooksAccessType(token.scope.split(',', ' ').filter { it.isNotEmpty() })
             return isSuitableAccessType(pair.first)
         }
