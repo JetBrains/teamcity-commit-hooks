@@ -1,7 +1,7 @@
 package org.jetbrains.teamcity.github
 
 import com.intellij.openapi.diagnostic.Logger
-import jetbrains.buildServer.controllers.vcs.GitHubWebHookListener
+import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.serverSide.WebLinks

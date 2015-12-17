@@ -1,4 +1,4 @@
-package jetbrains.buildServer.controllers.vcs
+package org.jetbrains.teamcity.github.controllers
 
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
@@ -50,30 +50,11 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
             when(eventType) {
                 "ping" -> {
                     val payload = GsonUtilsEx.fromJson(request.reader, PingWebHookPayload::class.java)
-                    LOG.info("Received ping payload from webhook:" + payload.hook_id + " " + payload.hook.url)
-                    updateLastUsed(Util.getGitHubInfo(payload.repository.gitUrl)!!)
-                    response.status = HttpServletResponse.SC_ACCEPTED
+                    response.status = doHandlePingEvent(payload)
                 }
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(request.reader, PushWebHookPayload::class.java)
-                    val url = payload.repository?.gitUrl
-                    LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
-                    if (url == null) {
-                        LOG.warn("Push event payload have no repository url specified")
-                        response.status = HttpServletResponse.SC_BAD_REQUEST
-                        return null
-                    }
-                    val info = Util.getGitHubInfo(url)
-                    if (info == null) {
-                        LOG.warn("Cannot determine repository info from url $url")
-                        response.status = HttpServletResponse.SC_SERVICE_UNAVAILABLE
-                        return null
-                    }
-                    updateLastUsed(info)
-                    updateBranches(info, payload)
-                    val foundVcsInstances = findSuitableVcsRootInstances(info)
-                    doScheduleCheckForPendingChanges(foundVcsInstances)
-                    response.status = HttpServletResponse.SC_ACCEPTED
+                    response.status = doHandlePushEvent(payload)
                 }
                 else -> {
                     LOG.info("Received unknown event type: $eventType, ignoring")
@@ -85,6 +66,31 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
             response.status = HttpServletResponse.SC_SERVICE_UNAVAILABLE
         }
         return null;
+    }
+
+    private fun doHandlePingEvent(payload: PingWebHookPayload): Int {
+        LOG.info("Received ping payload from webhook:" + payload.hook_id + " " + payload.hook.url)
+        updateLastUsed(Util.getGitHubInfo(payload.repository.gitUrl)!!)
+        return HttpServletResponse.SC_ACCEPTED
+    }
+
+    private fun doHandlePushEvent(payload: PushWebHookPayload): Int {
+        val url = payload.repository?.gitUrl
+        LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
+        if (url == null) {
+            LOG.warn("Push event payload have no repository url specified")
+            return HttpServletResponse.SC_BAD_REQUEST
+        }
+        val info = Util.getGitHubInfo(url)
+        if (info == null) {
+            LOG.warn("Cannot determine repository info from url '$url'")
+            return HttpServletResponse.SC_SERVICE_UNAVAILABLE
+        }
+        updateLastUsed(info)
+        updateBranches(info, payload)
+        val foundVcsInstances = findSuitableVcsRootInstances(info)
+        doScheduleCheckForPendingChanges(foundVcsInstances)
+        return HttpServletResponse.SC_ACCEPTED
     }
 
     private fun updateLastUsed(info: VcsRootGitHubInfo) {
