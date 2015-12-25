@@ -5,6 +5,7 @@ import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.impl.VcsModificationChecker
+import jetbrains.buildServer.vcs.VcsManager
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import org.eclipse.egit.github.core.client.GsonUtilsEx
@@ -13,8 +14,10 @@ import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.jetbrains.teamcity.github.Util
 import org.jetbrains.teamcity.github.VcsRootGitHubInfo
 import org.jetbrains.teamcity.github.WebHooksManager
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.servlet.ModelAndView
 import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
@@ -30,6 +33,9 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
 
         private val LOG = Logger.getInstance(GitHubWebHookListener::class.java.name)
     }
+
+    @Autowired
+    lateinit var VcsManager: VcsManager
 
     public fun register(): Unit {
         // Looks like GET is not necessary, POST is enough
@@ -67,8 +73,19 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
     }
 
     private fun doHandlePingEvent(payload: PingWebHookPayload): Int {
-        LOG.info("Received ping payload from webhook:" + payload.hook_id + " " + payload.hook.url)
-        updateLastUsed(Util.getGitHubInfo(payload.repository.gitUrl)!!)
+        val url = payload.repository?.gitUrl
+        LOG.info("Received ping payload from webhook:${payload.hook_id}(${payload.hook.url}) for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
+        if (url == null) {
+            LOG.warn("Ping event payload have no repository url specified")
+            return HttpServletResponse.SC_BAD_REQUEST
+        }
+        val info = Util.getGitHubInfo(url)
+        if (info == null) {
+            LOG.warn("Cannot determine repository info from url '$url'")
+            return HttpServletResponse.SC_SERVICE_UNAVAILABLE
+        }
+        updateLastUsed(info)
+        setModificationCheckInterval(info)
         return HttpServletResponse.SC_ACCEPTED
     }
 
@@ -112,5 +129,16 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
             roots.addAll(bt.vcsRootInstances)
         }
         return roots.filter { info == Util.getGitHubInfo(it) }
+    }
+
+    private fun setModificationCheckInterval(info: VcsRootGitHubInfo) {
+        // It's worth to update intervals for all git vcs roots with same url ('info')
+        val roots = VcsManager.allRegisteredVcsRoots.filter { info == Util.Companion.getGitHubInfo(it) }
+        for (root in roots) {
+            val value = TimeUnit.HOURS.toSeconds(12).toInt()
+            if (root.isUseDefaultModificationCheckInterval || root.modificationCheckInterval < value) {
+                root.modificationCheckInterval = value
+            }
+        }
     }
 }
