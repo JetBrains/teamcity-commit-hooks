@@ -198,6 +198,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         val hook = getHook(info) ?: return
         val used = hook.lastUsed
         if (used == null || used.before(date)) {
+            hook.correct = true
             hook.lastUsed = date
             save(info, hook)
         }
@@ -207,6 +208,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         val hook = getHook(info) ?: return
         val lbr = hook.lastBranchRevisions ?: HashMap()
         lbr.putAll(map)
+        hook.correct = true
         hook.lastBranchRevisions = lbr
         save(info, hook)
     }
@@ -233,4 +235,39 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         }
         return true
     }
+
+    fun isHasIncorrectHooks(): Boolean {
+        val keys = myCacheLock.read {
+            myCache.keys
+        }
+        for (key in keys) {
+            myCacheLock.read {
+                val map = myCache.read(key)
+                if (map != null) {
+                    if (map.values.any { !it.correct }) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    fun getIncorrectHooks(): List<Pair<VcsRootGitHubInfo, HookInfo>> {
+        val keys = myCacheLock.read {
+            myCache.keys
+        }
+        val result = ArrayList<Pair<VcsRootGitHubInfo, HookInfo>>()
+        for (key in keys) {
+            myCacheLock.read {
+                val map = myCache.read(key)
+                if (map != null) {
+                    result.addAll(map.entries.filter { !it.value.correct }.map { VcsRootGitHubInfo(key, it.key.owner, it.key.name) to it.value })
+                }
+            }
+        }
+        return result
+    }
+
+
 }
