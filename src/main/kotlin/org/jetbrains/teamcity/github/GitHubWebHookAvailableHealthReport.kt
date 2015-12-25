@@ -1,5 +1,6 @@
 package org.jetbrains.teamcity.github
 
+import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.util.MultiMap
@@ -11,7 +12,34 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                                                 private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
         public val TYPE = "GitHub.WebHookAvailable"
-        public val CATEGORY: ItemCategory = ItemCategory("GH.WebHook", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
+        public val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
+
+        public fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
+            val map = HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>>()
+
+            for (rootInstance in vcsRootInstances) {
+                val info = Util.Companion.getGitHubInfo(rootInstance) ?: continue
+
+                // Ignore roots with unresolved references in url
+                if (info.isHasParameterReferences()) continue
+
+                val value = map.getOrPut(info, { MultiMap() })
+                if (rootInstance.parent.properties[Constants.VCS_PROPERTY_GIT_URL] == rootInstance.properties[Constants.VCS_PROPERTY_GIT_URL]) {
+                    // Not parametrized url
+                    value.putValue(rootInstance.parent, rootInstance);
+                } else {
+                    value.putValue(null, rootInstance)
+                }
+            }
+            return map;
+        }
+
+        fun getProjects(map: MultiMap<SVcsRoot?, VcsRootInstance>): Set<SProject> {
+            val result = HashSet<SProject>()
+            map[null]?.forEach { result.add(it.parent.project) }
+            map.keySet().filterNotNull().forEach { result.add(it.project) }
+            return result
+        }
     }
 
     override fun getType(): String = TYPE
@@ -36,42 +64,33 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
         val gitRootInstances = HashSet<VcsRootInstance>()
         findSuitableRoots(scope, { gitRootInstances.add(it); true })
 
+        val split = split(gitRootInstances)
 
-        val map = MultiMap<SVcsRoot, VcsRootInstance>()
-        for (rootInstance in gitRootInstances) {
-            val info = Util.getGitHubInfo(rootInstance) ?: continue
+        val filtered = split
+                .filterKeys {
+                    WebHooksManager.getHook(it) == null
+                }
+                .filter { entry ->
+                    // Filter by known servers
+                    entry.key.server == "github.com" || getProjects(entry.value).any { project -> Util.findConnections(OAuthConnectionsManager, project, entry.key.server).isNotEmpty() }
+                }
 
-            // Ignore roots with unresolved references in url
-            if (info.isHasParameterReferences()) continue
-
-            // Filter by known servers
-            if (info.server != "github.com") {
-                val connections = Util.findConnections(OAuthConnectionsManager, rootInstance.parent.project, info.server)
-                if (connections.isEmpty()) continue
+        for ((info, map) in filtered) {
+            for ((root, instances) in map.entrySet()) {
+                if (root == null) {
+                    for (rootInstance in instances) {
+                        val item = WebHookHealthItem(info, rootInstance)
+                        resultConsumer.consumeForVcsRoot(rootInstance.parent, item)
+                        resultConsumer.consumeForProject(rootInstance.parent.project, item)
+                        rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
+                    }
+                    continue
+                }
+                val item = WebHookHealthItem(info, root)
+                resultConsumer.consumeForVcsRoot(root, item)
+                resultConsumer.consumeForProject(root.project, item)
+                root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
             }
-
-            val hook = WebHooksManager.getHook(info)
-            if (hook != null) continue
-
-            if (rootInstance.parent.properties[Constants.VCS_PROPERTY_GIT_URL] == rootInstance.properties[Constants.VCS_PROPERTY_GIT_URL]) {
-                // Not parametrized url
-                map.putValue(rootInstance.parent, rootInstance);
-                continue
-            }
-
-            val item = WebHookHealthItem(info, rootInstance)
-            resultConsumer.consumeForVcsRoot(rootInstance.parent, item)
-            resultConsumer.consumeForProject(rootInstance.parent.project, item)
-            rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
-        }
-
-        for (entry in map.entrySet()) {
-            val root = entry.key
-            val info = Util.Companion.getGitHubInfo(root.properties["url"]!!) ?: continue
-            val item = WebHookHealthItem(info, root)
-            resultConsumer.consumeForVcsRoot(root, item)
-            resultConsumer.consumeForProject(root.project, item)
-            root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
         }
     }
 
