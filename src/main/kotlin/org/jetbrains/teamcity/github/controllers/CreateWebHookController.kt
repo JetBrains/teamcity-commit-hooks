@@ -237,7 +237,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
     }
 
     private fun url(url: String, vararg params: Pair<String, Any>): String {
-        return url(url, params.toMap({ it -> it.first }, { it -> it.second.toString() }))
+        return url(url, params.associateBy({ it -> it.first }, { it -> it.second.toString() }))
     }
 
     private fun url(url: String, params: Map<String, String>): String {
