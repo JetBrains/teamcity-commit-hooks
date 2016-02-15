@@ -17,4 +17,7 @@
 
     <bean class="org.jetbrains.teamcity.github.GitHubWebHookOutdatedHealthReport"/>
     <bean class="org.jetbrains.teamcity.github.GitHubWebHookOutdatedPageExtension" init-method="register"/>
+
+    <bean class="org.jetbrains.teamcity.github.controllers.EditProjectWebHooksTab"/>
+    <bean class="org.jetbrains.teamcity.github.controllers.EditProjectWebHooksController"/>
 </beans>
