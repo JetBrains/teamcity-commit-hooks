@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import com.google.gson.stream.JsonWriter
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.BaseController
+import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildServer
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
@@ -53,6 +54,9 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
 
     @Autowired
     lateinit var TokensHelper: TokensHelper
+
+    @Autowired
+    lateinit var ProjectManager: ProjectManager
 
     private val myResultJspPath = descriptor.getPluginResourcesPath("hook-created.jsp")
 
@@ -136,9 +140,14 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
         // TODO: check info.server to be github.com or known GitHub Enterprise server
 
         val inConnectionId = request.getParameter("connectionId")
+        val inConnectionProjectId = request.getParameter("connectionProjectId")
         var connection: OAuthConnectionDescriptor?
-        if (inConnectionId != null) {
-            connection = OAuthConnectionsManager.getAvailableConnections(vcsRoot.project).firstOrNull{ it.id == inConnectionId }
+        if (inConnectionId != null && inConnectionProjectId != null) {
+            val project = ProjectManager.findProjectByExternalId(inConnectionProjectId)
+            if (project == null) {
+                return error_json("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
+            }
+            connection = OAuthConnectionsManager.findConnectionById(project, inConnectionId)
             if (connection == null) {
                 return error_json("There no connection with id '$inConnectionId' found in project ${vcsRoot.project.fullName}", HttpServletResponse.SC_NOT_FOUND);
             }
@@ -158,6 +167,8 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
             }
         }
 
+        var posponedResult: JsonElement? = null
+
         attempts@
         for (i in 0..2) {
             val tokens = TokensHelper.getExistingTokens(connections, user)
@@ -168,12 +179,17 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                 }
                 LOG.info("No token found will try to obtain one using connection ${connection.id}")
 
+                if (action == "continue") {
+                    // Already from "/oauth/github/accessToken.html", cannot do anything else.
+                    posponedResult = error_json("Cannot find token in connection ${connection.connectionDisplayName}.\nEnsure connection configured correctly", HttpServletResponse.SC_NOT_FOUND)
+                    continue@attempts
+                }
                 return redirect_json(url(request.contextPath + "/oauth/github/accessToken.html",
                         "action" to "obtainToken",
                         "connectionId" to connection.id,
                         "projectId" to connection.project.projectId,
                         "scope" to "write:repo_hook",
-                        "callbackUrl" to url(request.contextPath + PATH, "action" to "continue", "type" to inType, "id" to id, "connectionId" to connection.id
+                        "callbackUrl" to url(request.contextPath + PATH, "action" to "continue", "type" to inType, "id" to id, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId
                         ))
                 )
             }
@@ -220,7 +236,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
             }
         }
 
-        return gh_json("", "", info)
+        return posponedResult ?: gh_json("", "", info)
     }
 
     protected fun error_json(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int): JsonElement {

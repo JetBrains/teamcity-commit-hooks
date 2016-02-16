@@ -113,12 +113,13 @@ BS.GitHubWebHooks = {
     callback: function (json) {
         if (json['error']) {
             BS.Log.error("Sad :( Something went wrong: " + json['error']);
+            // Todo: show popup dialog with rich HTML instead of alert
             alert(json['error']);
         } else if (json['result']) {
             var res = json['result'];
             BS.GitHubWebHooks.processResult(json, res);
         } else {
-            BS.Log.error("Unexpected response: " + json.toString())
+            BS.Log.error("Unexpected response: " + JSON.stringify(json))
         }
         BS.GitHubWebHooks.refreshReports();
     },
