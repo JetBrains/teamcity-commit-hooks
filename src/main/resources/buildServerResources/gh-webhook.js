@@ -189,5 +189,14 @@ BS.Util.Messages = {
     }
 };
 
+BS.AdminActions = BS.AdminActions || {};
+BS.AdminActions.toggleVcsRootInstanceUsages = function (link, vcsRootInstanceId) {
+    $j('#instance_' + vcsRootInstanceId + '_usages').toggle();
+    var parent = $j(link).parent().toggleClass("usageHl");
+    $j(link).parent().prev().toggleClass("usageHl");
+    parent.parent().find(".vcsRoot").toggleClass("bold");
+    return false;
+};
+
 
 window.GitHubWebHookCallback = BS.GitHubWebHooks.callback;
