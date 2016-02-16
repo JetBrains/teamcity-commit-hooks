@@ -10,6 +10,9 @@
     /js/bs/systemProblemsMonitor.js
     ${pluginResourcesPath}gh-webhook.js
 </bs:linkScript>
+<bs:linkCSS>
+    ${pluginResourcesPath}webhook.css
+</bs:linkCSS>
 <%--@elvariable id="currentProject" type="jetbrains.buildServer.serverSide.SProject"--%>
 
 <div class="editProjectPage">
@@ -41,7 +44,7 @@
                         <div class="clearfix"></div>
                     </td>
                     <td>${vcsRoot.properties["url"]}</td>
-                    <td>${webhook.status}</td>
+                    <%@include file="webhook-status.jspf"%>
                 </tr>
             </c:forEach>
             <c:if test="${not empty webHooksBean.instances}">
@@ -86,7 +89,7 @@
                             </c:choose>
                         </td>
                         <td>${instance.properties["url"]}</td>
-                        <td>${webhook.status}</td>
+                        <%@include file="webhook-status.jspf"%>
                     </tr>
                     <c:if test="${usages != null && usages.total > 0}">
                         <%-- Root Instance Usages --%>
