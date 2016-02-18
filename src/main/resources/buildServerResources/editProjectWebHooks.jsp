@@ -17,6 +17,27 @@
 <div class="editProjectPage">
     <h2 class="noBorder">GitHub WebHooks</h2>
     <c:set var="cameFromUrl" value="${param['cameFromUrl']}"/>
+
+    <form action="<c:url value='/admin/editProject.html'/>" method="get" id="webHooksFilterForm" onsubmit="BS.Util.show('spinner'); return true;">
+        <div class="actionBar">
+            <span class="nowrap">
+                <label class="firstLabel" for="keyword">Filter: </label>
+                <div class="posRel">
+                    <forms:textField name="keyword" value="${webHooksBean.form.keyword}" size="20"/>
+                    <forms:resetFilter resetHandler="if($('webHooksFilterForm').keyword.value != '') {$('webHooksFilterForm').keyword.value='';$('webHooksFilterForm').submit();}"/>
+                </div>
+            </span>
+            <forms:filterButton/>
+            <span style="margin-left: 20px">
+                <forms:checkbox name="recursive" checked="${webHooksBean.form.recursive}" onclick="$('webHooksFilterForm').submit();"/>
+                <label for="recursive" style="margin: 0;">Show WebHooks from subprojects</label>
+            </span>
+            <span id="spinner" style="display: none"><i class="icon-refresh icon-spin"></i> Refreshing...</span>
+        </div>
+        <input type="hidden" name="projectId" value="${webHooksBean.project.externalId}"/>
+        <input type="hidden" name="tab" value="editProjectWebHooks"/>
+    </form>
+
     <div id="webHooksTable" class="selection noMargin">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
             <tr>
@@ -24,7 +45,7 @@
                 <th class="edit">Status</th>
                 <th class="usages">Usages</th>
             </tr>
-            <c:forEach items="${webHooksBean.hooks}" var="entry">
+            <c:forEach items="${webHooksBean.visibleHooks}" var="entry">
                 <c:set var="uniq_hash" value="${entry.hashCode()}"/>
                 <c:set var="totalUsages" value="${entry.value.totalUsagesCount}"/>
                 <tr>
@@ -66,7 +87,7 @@
                                     <span class="vcsRoot"><admin:vcsRootName editingScope="" cameFromUrl="${cameFromUrl}" vcsRoot="${root}"/></span>
                                     <c:if test="${root.project.projectId != currentProject.projectId}">
                                         belongs to <admin:projectName project="${root.project}"/>
-                                </c:if>
+                                    </c:if>
                                     parametrized in
                                     <c:choose>
                                         <c:when test="${usages == null || usages.total == 0}"><span title="This VCS root is not used">no usages</span></c:when>
@@ -99,7 +120,7 @@
                                                         </li>
                                                     </c:forEach>
                                                 </ul>
-                                        </div>
+                                            </div>
                                         </c:if>
 
                                         <c:if test="${not empty usages.buildTypes}">
@@ -127,27 +148,27 @@
                                         </c:if>
 
                                         <c:if test="${not empty usages.versionedSettings}">
-                                        <div>
                                             <div>
+                                                <div>
                                                 Used in <b>${fn:length(usages.versionedSettings)}</b> project<bs:s val="${fn:length(usages.versionedSettings)}"/> to store settings:
+                                                </div>
+                                                <ul>
+                                                    <c:forEach items="${usages.versionedSettings}" var="proj">
+                                                        <c:set var="canEdit" value="${afn:permissionGrantedForProject(proj, 'EDIT_PROJECT')}"/>
+                                                        <li>
+                                                            <c:choose>
+                                                                <c:when test="${canEdit}">
+                                                                    <admin:editProjectLink projectId="${proj.externalId}" addToUrl="&tab=versionedSettings"><c:out
+                                                                            value="${proj.fullName}"/></admin:editProjectLink>
+                                                                </c:when>
+                                                                <c:otherwise>
+                                                                    <c:out value="${proj.fullName}"/>
+                                                                </c:otherwise>
+                                                            </c:choose>
+                                                        </li>
+                                                    </c:forEach>
+                                                </ul>
                                             </div>
-                                            <ul>
-                                                <c:forEach items="${usages.versionedSettings}" var="proj">
-                                                    <c:set var="canEdit" value="${afn:permissionGrantedForProject(proj, 'EDIT_PROJECT')}"/>
-                                                    <li>
-                                                        <c:choose>
-                                                            <c:when test="${canEdit}">
-                                                                <admin:editProjectLink projectId="${proj.externalId}" addToUrl="&tab=versionedSettings"><c:out
-                                                                        value="${proj.fullName}"/></admin:editProjectLink>
-                                                            </c:when>
-                                                            <c:otherwise>
-                                                                <c:out value="${proj.fullName}"/>
-                                                            </c:otherwise>
-                                                        </c:choose>
-                                                    </li>
-                                                </c:forEach>
-                                            </ul>
-                                        </div>
                                         </c:if>
                                         <c:if test="${empty usages.templates and empty usages.buildTypes}">
                                             <div class="templateUsages"><i>The VCS root is not used in any build configuration or template.</i></div>
@@ -164,4 +185,8 @@
             </c:forEach>
         </l:tableWithHighlighting>
     </div>
+
+    <bs:pager place="bottom"
+              urlPattern="editProject.html?tab=editProjectWebHooks&projectId=${webHooksBean.project.externalId}&page=[page]&keyword=${webHooksBean.form.keyword}&recursive=${webHooksBean.form.recursive}"
+              pager="${webHooksBean.pager}"/>
 </div>

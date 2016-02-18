@@ -44,3 +44,12 @@
 #projectVcsRoots .webHook.bold {
     font-weight: bold;
 }
+
+
+form .recursive {
+    vertical-align: middle;
+}
+
+form #spinner {
+    float: right;
+}

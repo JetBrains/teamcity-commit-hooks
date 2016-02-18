@@ -2,10 +2,12 @@ package org.jetbrains.teamcity.github.controllers
 
 import com.intellij.util.SmartList
 import jetbrains.buildServer.controllers.BaseController
+import jetbrains.buildServer.controllers.FormUtil
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.log.LogUtil
 import jetbrains.buildServer.serverSide.*
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
+import jetbrains.buildServer.util.Pager
 import jetbrains.buildServer.vcs.LVcsRoot
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
@@ -27,6 +29,7 @@ public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescri
     }
 
     init {
+        addCssFile("/css/pager.css")
         addCssFile("/css/admin/projectConfig.css")
         addCssFile("/css/admin/vcsRootsTable.css")
     }
@@ -63,6 +66,11 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
         val project = projectManager.findProjectByExternalId(projectExternalId) ?: return simpleView("Project with id " + LogUtil.quote(projectExternalId) + " does not exist anymore.")
 
         val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager)
+
+        FormUtil.bindFromRequest(request, webHooksBean.form)
+        webHooksBean.applyFilter()
+        webHooksBean.updatePager()
+
         val modelAndView = ModelAndView(jsp)
         modelAndView.model.put("webHooksBean", webHooksBean)
         modelAndView.model.put("pluginResourcesPath", descriptor.pluginResourcesPath)
@@ -72,19 +80,47 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
 
 }
 
-public class ProjectWebHooksBean(val project: SProject, webHooksManager: WebHooksManager, versionedSettingsManager: VersionedSettingsManager) {
-    val hooks: Map<VcsRootGitHubInfo, WebHookDetails>
-    val usages: Map<VcsRootInstance, VcsRootUsages>
-    init {
-        val hooks = HashMap<VcsRootGitHubInfo, WebHookDetails>()
-        val usages = HashMap<VcsRootInstance, VcsRootUsages>()
+public class ProjectWebHooksForm() {
+    var keyword: String? = null
+    var recursive: Boolean = false
+    var page: Int = 0
+}
+
+public class ProjectWebHooksBean(val project: SProject, val webHooksManager: WebHooksManager, val versionedSettingsManager: VersionedSettingsManager) {
+    val hooks: SortedMap<VcsRootGitHubInfo, WebHookDetails> = TreeMap(comparator)
+
+    val form: ProjectWebHooksForm = ProjectWebHooksForm();
+    val pager: Pager = Pager(50)
+
+    companion object {
+        private val comparator = Comparator<org.jetbrains.teamcity.github.VcsRootGitHubInfo> { a, b -> a.toString().compareTo(b.toString(), ignoreCase = true); }
+    }
+
+    fun getNumberOfAvailableWebHooks(): Int {
+        return hooks.size
+    }
+
+    public fun getVisibleHooks(): List<Map.Entry<VcsRootGitHubInfo, WebHookDetails>> {
+        val origin = hooks.entries.toList()
+        return pager.getCurrentPageData(origin)
+    }
+
+    fun applyFilter() {
+        val keyword = form.keyword
+        val keywordFiltering = !keyword.isNullOrBlank()
+
+        val usages: MutableMap<VcsRootInstance, VcsRootUsages> = HashMap()
 
         val allGitVcsInstances = HashSet<VcsRootInstance>()
-        findSuitableRoots(project, recursive = true) {
+        findSuitableRoots(project, recursive = form.recursive) {
             allGitVcsInstances.add(it)
         }
         val split = GitHubWebHookAvailableHealthReport.split(allGitVcsInstances)
         for (entry in split) {
+            if (keyword != null && keywordFiltering) {
+                if (!entry.key.getRepositoryUrl().contains(keyword, true)) continue
+            }
+
             val orphans = HashMap<SVcsRoot, MutableSet<VcsRootInstance>>()
             val roots = SmartList<SVcsRoot>()
 
@@ -103,13 +139,12 @@ public class ProjectWebHooksBean(val project: SProject, webHooksManager: WebHook
             }
             hooks.put(entry.key, WebHookDetails(hook, status, roots, orphans, usages, project, versionedSettingsManager))
         }
-
-        this.hooks = hooks
-        this.usages = usages
     }
 
-    fun getNumberOfAvailableWebHooks(): Int {
-        return hooks.size
+
+    fun updatePager() {
+        pager.setNumberOfRecords(getNumberOfAvailableWebHooks())
+        pager.currentPage = form.page
     }
 }
 
@@ -117,7 +152,7 @@ public class WebHookDetails(val info: WebHooksManager.HookInfo?,
                             val status: WebHooksStatus,
                             val roots: List<SVcsRoot>,
                             val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
-                            val usages: HashMap<VcsRootInstance, VcsRootUsages>,
+                            val usages: Map<VcsRootInstance, VcsRootUsages>,
                             val project: SProject,
                             val versionedSettingsManager: VersionedSettingsManager
 ) {
