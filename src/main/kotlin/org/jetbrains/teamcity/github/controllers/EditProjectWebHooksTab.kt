@@ -222,6 +222,15 @@ public class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyLi
 }
 
 data public class WebHooksStatus(val status: Status, val hook: WebHooksManager.HookInfo?) {
+    fun getAction(): String {
+        return when (status) {
+            Status.NO_INFO -> "Check" // or "Connect"
+            Status.NOT_FOUND -> "Add"
+            Status.OK -> "Delete"
+            Status.WAITING_FOR_SERVER_RESPONSE -> "Check"
+            Status.INCORRECT -> "Add"
+        }
+    }
 }
 
 enum class Status {

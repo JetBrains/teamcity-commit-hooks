@@ -8,6 +8,7 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildServer
+import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
@@ -106,13 +107,9 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
     private fun doHandleAddAction(request: HttpServletRequest, response: HttpServletResponse, action: String): JsonElement {
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
-        // Vcs Root Info
-        val id: Long
-        val vcsRoot: SVcsRoot
-        val vcsRootInstance: VcsRootInstance?
-
         val inType = request.getParameter("type")?.toLowerCase()
         val inId = request.getParameter("id")
+        val inProjectId = request.getParameter("projectId")
 
         if (inType == null) {
             return error_json("Required parameter 'type' is missing", HttpServletResponse.SC_BAD_REQUEST)
@@ -120,48 +117,66 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
         if (inId == null) {
             return error_json("Required parameter 'id' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
-        try {
-            id = inId.toLong()
-        } catch(e: NumberFormatException) {
-            return error_json("Incorrect format of parameter 'id', integer number expected", HttpServletResponse.SC_BAD_REQUEST)
-        }
-        if ("root" == inType) {
-            vcsRootInstance = null
-            vcsRoot = VcsManager.findRootById(id) ?: return error_json("VcsRoot with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
-        } else if ("instance" == inType) {
-            vcsRootInstance = VcsManager.findRootInstanceById(id) ?: return error_json("VcsRootInstance with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
-            vcsRoot = vcsRootInstance.parent
-        } else {
-            return error_json("Parameter 'type' have unknown value", HttpServletResponse.SC_BAD_REQUEST)
-        }
 
-        val info: VcsRootGitHubInfo = Util.getGitHubInfo(vcsRootInstance ?: vcsRoot) ?: return error_json("Not an GitHub VCS", 500)
-
-        // TODO: check info.server to be github.com or known GitHub Enterprise server
+        val info: VcsRootGitHubInfo
+        val project: SProject
 
         val inConnectionId = request.getParameter("connectionId")
-        val inConnectionProjectId = request.getParameter("connectionProjectId")
+        val inConnectionProjectId = request.getParameter("connectionProjectId") ?: inProjectId
         var connection: OAuthConnectionDescriptor?
+
         if (inConnectionId != null && inConnectionProjectId != null) {
-            val project = ProjectManager.findProjectByExternalId(inConnectionProjectId)
-            if (project == null) {
+            val connectionOwnerProject = ProjectManager.findProjectByExternalId(inConnectionProjectId)
+            if (connectionOwnerProject == null) {
                 return error_json("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
             }
-            connection = OAuthConnectionsManager.findConnectionById(project, inConnectionId)
+            connection = OAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
             if (connection == null) {
-                return error_json("There no connection with id '$inConnectionId' found in project ${vcsRoot.project.fullName}", HttpServletResponse.SC_NOT_FOUND);
+                return error_json("There no connection with id '$inConnectionId' found in project ${connectionOwnerProject.fullName}", HttpServletResponse.SC_NOT_FOUND);
             }
         } else {
             connection = null
         }
 
-        LOG.info("Trying to create web hook for vcs (id:$id), github info is $info, user is ${user.describe(false)}, connection is ${connection?.id ?: "not specified"}")
+        if ("repository" == inType) {
+            if (inProjectId.isNullOrEmpty()) {
+                return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST);
+            }
+            project = ProjectManager.findProjectByExternalId(inProjectId) ?: return error_json("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
+            info = Util.getGitHubInfo(inId) ?: return error_json("Not an GitHub VCS", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+            LOG.info("Trying to create web hook for repository '$inId', github info is $info, user is ${user.describe(false)}, connection is ${connection?.id ?: "not specified"}")
+
+        } else {
+            // Vcs Root Info
+            val id: Long
+            val vcsRoot: SVcsRoot
+            val vcsRootInstance: VcsRootInstance?
+            try {
+                id = inId.toLong()
+            } catch(e: NumberFormatException) {
+                return error_json("Incorrect format of parameter 'id', integer number expected", HttpServletResponse.SC_BAD_REQUEST)
+            }
+            if ("root" == inType) {
+                vcsRootInstance = null
+                vcsRoot = VcsManager.findRootById(id) ?: return error_json("VcsRoot with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
+            } else if ("instance" == inType) {
+                vcsRootInstance = VcsManager.findRootInstanceById(id) ?: return error_json("VcsRootInstance with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
+                vcsRoot = vcsRootInstance.parent
+            } else {
+                return error_json("Parameter 'type' have unknown value", HttpServletResponse.SC_BAD_REQUEST)
+            }
+            info = Util.getGitHubInfo(vcsRootInstance ?: vcsRoot) ?: return error_json("Not an GitHub VCS", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+            project = vcsRoot.project
+            LOG.info("Trying to create web hook for vcs (id:$id), github info is $info, user is ${user.describe(false)}, connection is ${connection?.id ?: "not specified"}")
+        }
+
+        // TODO: check info.server to be github.com or known GitHub Enterprise server
 
         val connections: List<OAuthConnectionDescriptor>
         if (connection != null) {
             connections = listOf(connection)
         } else {
-            connections = Util.findConnections(OAuthConnectionsManager, vcsRoot.project, info.server)
+            connections = Util.findConnections(OAuthConnectionsManager, project, info.server)
             if (connections.isEmpty()) {
                 return error_json("No OAuth connectors found, setup them first", 500) //TODO: Add link, good UI.
             }
@@ -184,13 +199,16 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
                     posponedResult = error_json("Cannot find token in connection ${connection.connectionDisplayName}.\nEnsure connection configured correctly", HttpServletResponse.SC_NOT_FOUND)
                     continue@attempts
                 }
+                val params = linkedMapOf("action" to "continue", "type" to inType, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
+                if (inProjectId != null) {
+                    params.put("projectId", inProjectId)
+                }
                 return redirect_json(url(request.contextPath + "/oauth/github/accessToken.html",
                         "action" to "obtainToken",
                         "connectionId" to connection.id,
                         "projectId" to connection.project.projectId,
                         "scope" to "write:repo_hook",
-                        "callbackUrl" to url(request.contextPath + PATH, "action" to "continue", "type" to inType, "id" to id, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId
-                        ))
+                        "callbackUrl" to url(request.contextPath + PATH, params))
                 )
             }
 

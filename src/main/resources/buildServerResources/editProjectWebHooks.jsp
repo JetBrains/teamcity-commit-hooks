@@ -21,7 +21,7 @@
     <div id="webHooksTable" class="selection noMargin">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
             <tr>
-                <th>Url</th>
+                <th colspan="2">Repository</th>
                 <th class="edit">Status</th>
                 <th class="usages">Usages</th>
             </tr>
@@ -30,9 +30,12 @@
                 <c:set var="totalUsages" value="${entry.value.totalUsagesCount}"/>
                 <tr>
                     <td><div><span class="webHook"><a href="${entry.key.repositoryUrl}">${entry.key}</a></span></div></td>
+                        <%--@elvariable id="webhook" type="org.jetbrains.teamcity.github.controllers.WebHooksStatus"--%>
+                    <c:set var="webhook" value="${entry.value.status}"/>
+                    <td class="edit"><a href="#"
+                                        onclick="BS.GitHubWebHooks.doAction(this, '${entry.key}','${currentProject.externalId}', '${webhook.action}'); return false;">${webhook.action}</a>
+                    </td>
                     <td class="edit">
-                            <%--@elvariable id="webhook" type="org.jetbrains.teamcity.github.controllers.WebHooksStatus"--%>
-                        <c:set var="webhook" value="${entry.value.status}"/>
                         <%@include file="webhook-status.jspf" %>
                     </td>
                     <td>
@@ -157,6 +160,7 @@
                                 </c:if>
                             </c:forEach>
                         </td>
+                        <td></td>
                         <td></td>
                         <td></td>
                     </tr>

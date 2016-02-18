@@ -1,7 +1,7 @@
 BS.GitHubWebHooks = {
     info: {},
     forcePopup: {},
-    addWebHook: function (element, type, id, popup) {
+    addWebHook: function (element, type, id, popup, projectId) {
         if (document.location.href.indexOf(BS.ServerInfo.url) == -1) {
             if (confirm("Request cannot be processed because browser URL does not correspond to URL specified in TeamCity server configuration: " + BS.ServerInfo.url + ".\n\n" +
                     "Click Ok to redirect to correct URL or click Cancel to leave URL as is.")) {
@@ -27,20 +27,28 @@ BS.GitHubWebHooks = {
         }
 
         if (popup) {
-            BS.Util.popupWindow(window.base_uri + '/oauth/github/add-webhook.html?action=add-popup&id=' + id + '&type=' + type, 'add_webhook_' + type + '_' + id);
+            var url = window.base_uri + '/oauth/github/add-webhook.html?action=add-popup&id=' + id + '&type=' + type;
+            if (projectId !== undefined) {
+                url = url + "&projectId=" + projectId
+            }
+            BS.Util.popupWindow(url, 'add_webhook_' + type + '_' + id);
             return
         }
 
         var that = element;
 
         BS.ProgressPopup.showProgress(element, "Adding WebHook", {shift: {x: -65, y: 20}, zIndex: 100});
+        var parameters = {
+            "action": "add",
+            "type": type,
+            "id": id,
+        };
+        if (projectId !== undefined) {
+            parameters["projectId"] = projectId
+        }
         BS.ajaxRequest(window.base_uri + "/oauth/github/add-webhook.html", {
             method: "post",
-            parameters: {
-                "action": "add",
-                "type": type,
-                "id": id
-            },
+            parameters: parameters,
             onComplete: function (transport) {
                 //progress.hide();
                 BS.ProgressPopup.hidePopup(0, true);
@@ -137,6 +145,21 @@ BS.GitHubWebHooks = {
             BS.Hider.hideDiv(popup.attr('data-popup'));
         }
         //window.location.reload(false)
+    },
+
+    doAction: function (element, repository, projectId, name) {
+        if (name == "Add") {
+            BS.GitHubWebHooks.addWebHook(element, "repository", repository, true, projectId)
+        } else if (name == "Delete") {
+            // TODO: Implement
+            BS.GitHubWebHooks.deleteWebHook(element, "repository", repository, true)
+        } else if (name == "Check") {
+            // TODO: Implement
+            BS.GitHubWebHooks.checkWebHook(element, "repository", repository, true)
+        } else if (name == "Connect") {
+            BS.GitHubWebHooks.addConnection(this, projectId, repository)
+        }
+        return false;
     },
 };
 
