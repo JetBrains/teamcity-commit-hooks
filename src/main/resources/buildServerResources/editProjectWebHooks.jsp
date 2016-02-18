@@ -16,7 +16,6 @@
 
 <div class="editProjectPage">
     <h2 class="noBorder">GitHub WebHooks</h2>
-    <c:set value="<%=jetbrains.buildServer.serverSide.systemProblems.StandardSystemProblemTypes.VCS_CONFIGURATION%>" var="problemType"/>
     <c:set var="cameFromUrl" value="${param['cameFromUrl']}"/>
     <div id="webHooksTable" class="selection noMargin">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
@@ -121,9 +120,6 @@
                             <c:otherwise><c:out value="${btSettings.fullName}"/></c:otherwise>
                         </c:choose>
                       </span>
-
-                                                                <%--<bs:systemProblemCountLabel problemsCount="${problemsCountInfo.countPerBuildType[btSettings]}"--%>
-                                                                <%--onclick="BS.SystemProblemsPopup.showDetails('${btSettings.buildTypeId}', '${problemType}', '${root.id}', true, this); return false;"/>--%>
                                                         </li>
                                                     </c:forEach>
                                                 </ul>
