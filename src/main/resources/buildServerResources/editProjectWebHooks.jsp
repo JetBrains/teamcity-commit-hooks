@@ -42,6 +42,7 @@
                 </tr>
                 <c:if test="${totalUsages > 0}">
                     <tr id="webhook_${uniq_hash}_usages" class="usages usageHl" style="display: none">
+                        <!--Do not use colspan because Chrome fails to compute border-top-style-->
                         <td>
                             <c:forEach items="${entry.value.roots}" var="root">
                                 <%--@elvariable id="root" type="jetbrains.buildServer.vcs.SVcsRoot"--%>
