@@ -23,7 +23,7 @@ public class Util {
             return parseGitRepoUrl(url)
         }
 
-        public val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)(\\.git)?$".toPattern()
+        public val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
 
         public fun parseGitRepoUrl(url: String): VcsRootGitHubInfo? {
             val matcher = GITHUB_REPO_URL_PATTERN.matcher(url)

@@ -17,6 +17,9 @@ class UtilTest {
 
         doSuccessUrlParsingTest("http://teamcity-github-enterprise.labs.intellij.net/Vlad/test-repo-1", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test-repo-1")
         doSuccessUrlParsingTest("git@teamcity-github-enterprise.labs.intellij.net:Vlad/test-repo-1.git", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test-repo-1")
+
+        doSuccessUrlParsingTest("github.com/VladRassokhin/intellij-hcl", "github.com", "VladRassokhin", "intellij-hcl")
+        doSuccessUrlParsingTest("github.com/VladRassokhin/intellij-hcl.git", "github.com", "VladRassokhin", "intellij-hcl")
     }
 
     private fun doSuccessUrlParsingTest(url: String, server: String, owner: String, name: String) {
