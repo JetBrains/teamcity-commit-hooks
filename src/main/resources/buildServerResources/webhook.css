@@ -40,3 +40,7 @@
     background-color: darkorange;
     /*color: lightgray;*/
 }
+
+#projectVcsRoots .webHook.bold {
+    font-weight: bold;
+}

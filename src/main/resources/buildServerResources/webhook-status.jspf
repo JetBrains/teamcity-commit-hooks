@@ -1,20 +1,20 @@
 <c:choose>
     <c:when test="${webhook.status == 'NO_INFO'}">
-        <td><div class="webhook-status no-info">No information</div></td>
+        <div class="webhook-status no-info">No information</div>
     </c:when>
     <c:when test="${webhook.status == 'NOT_FOUND'}">
-        <td><div class="webhook-status not-found" title="Not found">Not found</div></td>
+        <div class="webhook-status not-found" title="Not found">Not found</div>
     </c:when>
     <c:when test="${webhook.status == 'OK'}">
-        <td><div class="webhook-status good">OK</div></td>
+        <div class="webhook-status good">OK</div>
     </c:when>
     <c:when test="${webhook.status == 'WAITING_FOR_SERVER_RESPONSE'}">
-        <td><div class="webhook-status pending">Waiting for ping event</div></td>
+        <div class="webhook-status pending">Waiting for ping event</div>
     </c:when>
     <c:when test="${webhook.status == 'INCORRECT'}">
-        <td><div class="webhook-status error">Incorrect</div></td>
+        <div class="webhook-status error">Incorrect</div>
     </c:when>
     <c:otherwise>
-        <td>${webhook.status}</td>
+        ${webhook.status}
     </c:otherwise>
 </c:choose>

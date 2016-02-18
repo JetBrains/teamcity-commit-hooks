@@ -6,6 +6,7 @@ import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.log.LogUtil
 import jetbrains.buildServer.serverSide.*
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
+import jetbrains.buildServer.vcs.LVcsRoot
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PagePlaces
@@ -13,6 +14,7 @@ import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import org.jetbrains.teamcity.github.Constants
 import org.jetbrains.teamcity.github.GitHubWebHookAvailableHealthReport
+import org.jetbrains.teamcity.github.VcsRootGitHubInfo
 import org.jetbrains.teamcity.github.WebHooksManager
 import org.springframework.web.servlet.ModelAndView
 import java.util.*
@@ -71,40 +73,37 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
 }
 
 public class ProjectWebHooksBean(val project: SProject, webHooksManager: WebHooksManager, versionedSettingsManager: VersionedSettingsManager) {
-    val instances: Map<SVcsRoot, Map<VcsRootInstance, WebHooksStatus>>
-    val roots: Map<SVcsRoot, WebHooksStatus>
-    val hooks: List<WebHooksManager.HookInfo>
-    val usages: Map<VcsRootInstance, VcsRootInstanceUsagesBean>
-
+    val hooks: Map<VcsRootGitHubInfo, WebHookDetails>
+    val usages: Map<VcsRootInstance, VcsRootUsages>
     init {
-        val instances = HashMap<SVcsRoot, MutableMap<VcsRootInstance, WebHooksStatus>>()
-        val roots = HashMap<SVcsRoot, WebHooksStatus>()
-        val hooks = ArrayList<WebHooksManager.HookInfo>()
-        val usages = HashMap<VcsRootInstance, VcsRootInstanceUsagesBean>()
+        val hooks = HashMap<VcsRootGitHubInfo, WebHookDetails>()
+        val usages = HashMap<VcsRootInstance, VcsRootUsages>()
 
         val allGitVcsInstances = HashSet<VcsRootInstance>()
-        findSuitableRoots(project) {
+        findSuitableRoots(project, recursive = true) {
             allGitVcsInstances.add(it)
         }
         val split = GitHubWebHookAvailableHealthReport.split(allGitVcsInstances)
         for (entry in split) {
+            val orphans = HashMap<SVcsRoot, MutableSet<VcsRootInstance>>()
+            val roots = SmartList<SVcsRoot>()
+
             val hook = webHooksManager.getHook(entry.key)
-            hook?.let { hooks.add(it) }
             val status = getHookStatus(hook)
-            for (root in entry.value.keySet()) {
+            for ((root, instances) in entry.value.entrySet()) {
                 if (root != null) {
-                    roots.put(root, status)
+                    roots.add(root)
+                } else {
+                    for (orphan in instances) {
+                        orphans.getOrPut(orphan.parent) { HashSet() }.add(orphan)
+                        val bean = VcsRootUsagesBean(orphan, project, versionedSettingsManager)
+                        usages[orphan] = bean
+                    }
                 }
             }
-            val orphans = entry.value[null]
-            for (orphan in orphans) {
-                instances.getOrPut(orphan.parent) { HashMap() }.put(orphan, status)
-                usages[orphan] = VcsRootInstanceUsagesBean(orphan, project, versionedSettingsManager)
-            }
+            hooks.put(entry.key, WebHookDetails(hook, status, roots, orphans, usages, project, versionedSettingsManager))
         }
 
-        this.instances = instances
-        this.roots = roots
         this.hooks = hooks
         this.usages = usages
     }
@@ -112,26 +111,113 @@ public class ProjectWebHooksBean(val project: SProject, webHooksManager: WebHook
     fun getNumberOfAvailableWebHooks(): Int {
         return hooks.size
     }
-
-
 }
 
-public class VcsRootInstanceUsagesBean(val instance: VcsRootInstance, val project: SProject, val VersionedSettingsManager: VersionedSettingsManager) {
-    val total: Int by lazy { templates.size + buildTypes.size + versionedSettings.size }
+public class WebHookDetails(val info: WebHooksManager.HookInfo?,
+                            val status: WebHooksStatus,
+                            val roots: List<SVcsRoot>,
+                            val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
+                            val usages: HashMap<VcsRootInstance, VcsRootUsages>,
+                            val project: SProject,
+                            val versionedSettingsManager: VersionedSettingsManager
+) {
+    val totalUsagesCount: Int by lazy { getTotalUsages().total }
+    fun getVcsRootUsages(root: SVcsRoot): VcsRootUsages? {
+        if (roots.contains(root)) {
+            return VcsRootUsagesBean(root, project, versionedSettingsManager)
+        }
+        val instances = instances[root] ?: return null
+        val combined = VcsRootUsagesBeanCombined()
+        for (instance in instances) {
+            usages[instance]?.let { combined.add(it) }
+        }
+        return combined
+    }
 
-    val templates: List<BuildTypeTemplate> by lazy {
-        SmartList<BuildTypeTemplate>()
-        // TODO: Implement
+    fun getTotalUsages(): VcsRootUsages {
+        val combined = VcsRootUsagesBeanCombined()
+        for (instances in instances.values) {
+            for (instance in instances) {
+                usages[instance]?.let { combined.add(it) }
+            }
+        }
+        for (root in roots) {
+            getVcsRootUsages(root)?.let { combined.add(it) }
+        }
+        return combined
     }
-    val buildTypes: List<SBuildType> by lazy {
+}
+
+interface VcsRootUsages {
+    val total: Int
+    val templates: Collection<BuildTypeTemplate>
+    val buildTypes: Collection<SBuildType>
+    val versionedSettings: Collection<SProject>
+}
+
+public class VcsRootUsagesBean(val root: LVcsRoot, val project: SProject, val VersionedSettingsManager: VersionedSettingsManager) : VcsRootUsages {
+    override val total: Int by lazy { templates.size + buildTypes.size + versionedSettings.size }
+
+    override val templates: List<BuildTypeTemplate> by lazy {
+        // TODO: Implement for VcsRootInstance
+        val templates = project.ownBuildTypeTemplates
+        templates.filter { it.containsVcsRoot(root.id) }
+    }
+    override val buildTypes: List<SBuildType> by lazy {
         val list = SmartList<SBuildType>()
-        list.addAll(instance.usages.keys)
+        if (root is VcsRootInstance) {
+            list.addAll(root.usages.keys)
+        } else if (root is SVcsRoot) {
+            list.addAll(root.usages.keys)
+        }
         list
     }
-    val versionedSettings: List<SProject> by lazy {
+    override val versionedSettings: List<SProject> by lazy {
         val list = SmartList<SProject>()
-        list.addAll(VersionedSettingsManager.getProjectsBySettingsRootInstance(instance))
+        if (root is VcsRootInstance) {
+            list.addAll(VersionedSettingsManager.getProjectsBySettingsRootInstance(root))
+        } else if (root is SVcsRoot) {
+            list.addAll(VersionedSettingsManager.getProjectsBySettingsRoot(root))
+        }
         list
+    }
+}
+
+public class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyList()) : VcsRootUsages {
+    override val total: Int get() {
+        return templates.size + buildTypes.size + versionedSettings.size
+    }
+
+    override val templates: MutableSet<BuildTypeTemplate> by lazy {
+        val list = HashSet<BuildTypeTemplate>()
+        for (usage in usages) {
+            list.addAll(usage.templates)
+        }
+        list
+    }
+    override val buildTypes: MutableSet<SBuildType> by lazy {
+        val list = HashSet<SBuildType>()
+        for (usage in usages) {
+            list.addAll(usage.buildTypes)
+        }
+        list
+    }
+    override val versionedSettings: MutableSet<SProject> by lazy {
+        val list = HashSet<SProject>()
+        for (usage in usages) {
+            list.addAll(usage.versionedSettings)
+        }
+        list
+    }
+
+    fun add(usages: VcsRootUsages) {
+        this.templates.addAll(usages.templates)
+        this.buildTypes.addAll(usages.buildTypes)
+        this.versionedSettings.addAll(usages.versionedSettings)
+    }
+
+    override fun toString(): String {
+        return "VcsRootUsagesBeanCombined{total=$total}"
     }
 }
 

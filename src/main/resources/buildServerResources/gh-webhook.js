@@ -194,8 +194,14 @@ BS.AdminActions = BS.AdminActions || {};
 BS.AdminActions.toggleVcsRootInstanceUsages = function (link, vcsRootInstanceId) {
     $j('#instance_' + vcsRootInstanceId + '_usages').toggle();
     var parent = $j(link).parent().toggleClass("usageHl");
-    $j(link).parent().prev().toggleClass("usageHl");
     parent.parent().find(".vcsRoot").toggleClass("bold");
+    return false;
+};
+
+BS.AdminActions.toggleWebHookUsages = function (link, id) {
+    $j('#webhook_' + id + '_usages').toggle();
+    var parent = $j(link).parent().toggleClass("usageHl");
+    parent.parent().find(".webHook").toggleClass("bold");
     return false;
 };
 

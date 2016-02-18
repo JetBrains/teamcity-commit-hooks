@@ -22,4 +22,29 @@ public data class VcsRootGitHubInfo(val server: String, val owner: String, val n
     public fun isHasParameterReferences(): Boolean {
         return StringUtil.hasParameterReferences(server) || StringUtil.hasParameterReferences(owner) || StringUtil.hasParameterReferences(name);
     }
+
+    override fun toString(): String {
+        val builder = StringBuilder()
+        builder.append(server)
+        if (!builder.endsWith('/')) {
+            builder.append('/')
+        }
+        builder.append(owner)
+        builder.append('/')
+        builder.append(name)
+        return builder.toString()
+    }
+
+    public fun getRepositoryUrl(): String {
+        val builder = StringBuilder()
+        builder.append("https://")
+        builder.append(server)
+        if (!builder.endsWith('/')) {
+            builder.append('/')
+        }
+        builder.append(owner)
+        builder.append('/')
+        builder.append(name)
+        return builder.toString()
+    }
 }
