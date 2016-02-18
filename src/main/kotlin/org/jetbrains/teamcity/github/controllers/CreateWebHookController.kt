@@ -220,7 +220,7 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
 
                     try {
                         val result = manager.doRegisterWebHook(info, ghc)
-                        val repoId = info.getRepositoryId().generateId()
+                        val repoId = info.toString()
                         when (result) {
                             WebHooksManager.HookAddOperationResult.InvalidCredentials -> {
                                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
