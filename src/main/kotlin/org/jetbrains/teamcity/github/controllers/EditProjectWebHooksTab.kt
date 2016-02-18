@@ -1,6 +1,7 @@
 package org.jetbrains.teamcity.github.controllers
 
 import com.intellij.util.SmartList
+import jetbrains.buildServer.Used
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.controllers.FormUtil
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
@@ -100,6 +101,7 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
         return hooks.size
     }
 
+    @Used("jps")
     public fun getVisibleHooks(): List<Map.Entry<VcsRootGitHubInfo, WebHookDetails>> {
         val origin = hooks.entries.toList()
         return pager.getCurrentPageData(origin)
@@ -149,14 +151,16 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
 }
 
 public class WebHookDetails(val info: WebHooksManager.HookInfo?,
-                            val status: WebHooksStatus,
+                            @Used("jps") val status: WebHooksStatus,
                             val roots: List<SVcsRoot>,
                             val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
                             val usages: Map<VcsRootInstance, VcsRootUsages>,
                             val project: SProject,
                             val versionedSettingsManager: VersionedSettingsManager
 ) {
+    @Used("jps")
     val totalUsagesCount: Int by lazy { getTotalUsages().total }
+
     fun getVcsRootUsages(root: SVcsRoot): VcsRootUsages? {
         if (roots.contains(root)) {
             return VcsRootUsagesBean(root, project, versionedSettingsManager)
@@ -257,6 +261,7 @@ public class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyLi
 }
 
 data public class WebHooksStatus(val status: Status, val hook: WebHooksManager.HookInfo?) {
+    @Used("jps")
     fun getAction(): String {
         return when (status) {
             Status.NO_INFO -> "Check" // or "Connect"
