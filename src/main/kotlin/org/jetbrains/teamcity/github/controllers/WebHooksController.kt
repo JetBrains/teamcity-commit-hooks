@@ -15,6 +15,7 @@ import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
+import jetbrains.buildServer.util.PropertiesUtil
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsManager
 import jetbrains.buildServer.vcs.VcsRootInstance
@@ -31,13 +32,12 @@ import org.jetbrains.teamcity.github.WebHooksManager
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
-import org.springframework.web.servlet.view.RedirectView
 import java.io.IOException
 import java.io.OutputStreamWriter
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-public class CreateWebHookController(private val descriptor: PluginDescriptor, server: SBuildServer) : BaseController(server) {
+public class WebHooksController(private val descriptor: PluginDescriptor, server: SBuildServer) : BaseController(server) {
 
     @Autowired
     lateinit var VcsManager: VcsManager
@@ -67,44 +67,53 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
     }
 
     companion object {
-        public val PATH = "/oauth/github/add-webhook.html"
+        public val PATH = "/oauth/github/webhooks.html"
 
-        private val LOG = Logger.getInstance(CreateWebHookController::class.java.name)
+        private val LOG = Logger.getInstance(WebHooksController::class.java.name)
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
         val action = request.getParameter("action")
+        val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
+        val element: JsonElement
         if ("add" == action || action == null) {
-            val element = doHandleAddAction(request, response, "add");
-            response.contentType = MediaType.APPLICATION_JSON_VALUE
-            val writer = JsonWriter(OutputStreamWriter(response.outputStream))
-            Gson().toJson(element, writer)
-            writer.flush()
+            element = doHandleAddAction(request, response, action, popup);
+            if (!popup) {
+                response.contentType = MediaType.APPLICATION_JSON_VALUE
+                val writer = JsonWriter(OutputStreamWriter(response.outputStream))
+                Gson().toJson(element, writer)
+                writer.flush()
+                return null
+            } else {
+                if (element.isJsonObject) {
+                    val obj = element.asJsonObject
+                    val url = obj.getAsJsonPrimitive("redirect")?.asString
+                    if (url != null) {
+                        return redirectTo(url, response)
+                    }
+                }
+                return callbackPage(element)
+            }
+        } else if ("check" == action) {
+            element = doHandleCheckAction(request, response, action, popup);
+        } else if ("delete" == action) {
+            element = doHandleDeleteAction(request, response, action, popup);
+        } else if ("continue" == action) {
+            element = doHandleAddAction(request, response, action, popup);
+        } else {
+            LOG.warn("Unknown action '$action'")
             return null
         }
-        if ("add-popup" == action) {
-            val element = doHandleAddAction(request, response, "add-popup");
-            if (element.isJsonObject) {
-                val obj = element.asJsonObject
-                val url = obj.getAsJsonPrimitive("redirect")?.asString
-                if (url != null) {
-                    return ModelAndView(RedirectView(url));
-                }
-            }
-            val mav = ModelAndView(myResultJspPath)
-            mav.model.put("json", Gson().toJson(element))
-            return mav
-        }
-        if ("continue" == action) {
-            val element = doHandleAddAction(request, response, "continue");
-            val mav = ModelAndView(myResultJspPath)
-            mav.model.put("json", Gson().toJson(element))
-            return mav
-        }
-        return null
+        return callbackPage(element)
     }
 
-    private fun doHandleAddAction(request: HttpServletRequest, response: HttpServletResponse, action: String): JsonElement {
+    private fun callbackPage(element: JsonElement): ModelAndView {
+        val mav = ModelAndView(myResultJspPath)
+        mav.model.put("json", Gson().toJson(element))
+        return mav
+    }
+
+    private fun doHandleAddAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
         val inType = request.getParameter("type")?.toLowerCase()
@@ -255,6 +264,15 @@ public class CreateWebHookController(private val descriptor: PluginDescriptor, s
         }
 
         return posponedResult ?: gh_json("", "", info)
+    }
+
+
+    private fun doHandleCheckAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
+        TODO("Implement")
+    }
+
+    private fun doHandleDeleteAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
+        TODO("Implement")
     }
 
     protected fun error_json(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int): JsonElement {

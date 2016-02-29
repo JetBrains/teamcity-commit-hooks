@@ -1,7 +1,7 @@
 BS.GitHubWebHooks = {
     info: {},
     forcePopup: {},
-    addWebHook: function (element, type, id, popup, projectId) {
+    checkLocation: function () {
         if (document.location.href.indexOf(BS.ServerInfo.url) == -1) {
             if (confirm("Request cannot be processed because browser URL does not correspond to URL specified in TeamCity server configuration: " + BS.ServerInfo.url + ".\n\n" +
                     "Click Ok to redirect to correct URL or click Cancel to leave URL as is.")) {
@@ -12,8 +12,12 @@ BS.GitHubWebHooks = {
                 }
                 document.location.href = BS.ServerInfo.url + pathWithoutContext + document.location.search + document.location.hash;
             }
-            return;
+            return false;
         }
+        return true;
+    },
+    addWebHook: function (element, type, id, popup, projectId) {
+        if (!BS.GitHubWebHooks.checkLocation()) return;
         BS.Log.info("From arguments: " + id + ' ' + type);
 
         //var progress = $$("# .progress").show();
@@ -27,7 +31,7 @@ BS.GitHubWebHooks = {
         }
 
         if (popup) {
-            var url = window.base_uri + '/oauth/github/add-webhook.html?action=add-popup&id=' + id + '&type=' + type;
+            var url = window.base_uri + '/oauth/github/webhooks.html?action=add&popup=true&id=' + id + '&type=' + type;
             if (projectId !== undefined) {
                 url = url + "&projectId=" + projectId
             }
@@ -46,7 +50,7 @@ BS.GitHubWebHooks = {
         if (projectId !== undefined) {
             parameters["projectId"] = projectId
         }
-        BS.ajaxRequest(window.base_uri + "/oauth/github/add-webhook.html", {
+        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
             method: "post",
             parameters: parameters,
             onComplete: function (transport) {
