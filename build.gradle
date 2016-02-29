@@ -8,7 +8,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.8'
+        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.8.2'
         classpath group: 'org.jetbrains.kotlin', name: 'kotlin-gradle-plugin', version: "${kotlinVersion}"
     }
 }
@@ -43,13 +43,13 @@ configurations {
 }
 
 dependencies {
-    teamcity('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
+    provided('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
         transitive = false
     }
-    teamcity(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${teamcityVersion}")
-    teamcity(group: 'org.jetbrains.teamcity', name: 'oauth', version: "${teamcityVersion}")
-    teamcity(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${teamcityVersion}")
-//    teamcity(group: 'org.jetbrains.teamcity.plugins', name: 'git', version: "${teamcityVersion}")
+    provided(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${teamcityVersion}")
+    provided(group: 'org.jetbrains.teamcity', name: 'oauth', version: "${teamcityVersion}")
+    provided(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${teamcityVersion}")
+//    provided(group: 'org.jetbrains.teamcity.plugins', name: 'git', version: "${teamcityVersion}")
     compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
 
     testCompile 'org.assertj:assertj-core:2.2.0'
