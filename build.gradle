@@ -6,9 +6,6 @@ buildscript {
         maven {
             url "https://plugins.gradle.org/m2/"
         }
-        maven {
-            url "https://dl.bintray.com/kotlin/kotlin-eap"
-        }
     }
     dependencies {
         classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.8'
@@ -39,9 +36,6 @@ project.plugins.withType(JavaPlugin) {
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url "https://dl.bintray.com/kotlin/kotlin-eap"
-    }
     maven { url "http://repository.jetbrains.com/teamcity" }
 }
 
