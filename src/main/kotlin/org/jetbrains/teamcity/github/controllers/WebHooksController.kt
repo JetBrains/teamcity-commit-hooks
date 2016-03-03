@@ -76,24 +76,12 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         val action = request.getParameter("action")
         val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
         val element: JsonElement
+        var direct: Boolean = false
+        if (!popup) {
+            direct = true
+        }
         if ("add" == action || action == null) {
             element = doHandleAddAction(request, response, action, popup);
-            if (!popup) {
-                response.contentType = MediaType.APPLICATION_JSON_VALUE
-                val writer = JsonWriter(OutputStreamWriter(response.outputStream))
-                Gson().toJson(element, writer)
-                writer.flush()
-                return null
-            } else {
-                if (element.isJsonObject) {
-                    val obj = element.asJsonObject
-                    val url = obj.getAsJsonPrimitive("redirect")?.asString
-                    if (url != null) {
-                        return redirectTo(url, response)
-                    }
-                }
-                return callbackPage(element)
-            }
         } else if ("check" == action) {
             element = doHandleCheckAction(request, response, action, popup);
         } else if ("delete" == action) {
@@ -103,6 +91,23 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         } else {
             LOG.warn("Unknown action '$action'")
             return null
+        }
+        if (element is JsonObject) {
+            element.addProperty("action", action)
+        }
+        if (direct) {
+            response.contentType = MediaType.APPLICATION_JSON_VALUE
+            val writer = JsonWriter(OutputStreamWriter(response.outputStream))
+            Gson().toJson(element, writer)
+            writer.flush()
+            return null
+        } else if (popup) {
+            if (element is JsonObject) {
+                val url = element.getAsJsonPrimitive("redirect")?.asString
+                if (url != null) {
+                    return redirectTo(url, response)
+                }
+            }
         }
         return callbackPage(element)
     }
@@ -191,7 +196,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             }
         }
 
-        var posponedResult: JsonElement? = null
+        var postponedResult: JsonElement? = null
 
         attempts@
         for (i in 0..2) {
@@ -205,7 +210,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
                 if (action == "continue") {
                     // Already from "/oauth/github/accessToken.html", cannot do anything else.
-                    posponedResult = error_json("Cannot find token in connection ${connection.connectionDisplayName}.\nEnsure connection configured correctly", HttpServletResponse.SC_NOT_FOUND)
+                    postponedResult = error_json("Cannot find token in connection ${connection.connectionDisplayName}.\nEnsure connection configured correctly", HttpServletResponse.SC_NOT_FOUND)
                     continue@attempts
                 }
                 val params = linkedMapOf("action" to "continue", "type" to inType, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
@@ -263,7 +268,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             }
         }
 
-        return posponedResult ?: gh_json("", "", info)
+        return postponedResult ?: gh_json("", "", info)
     }
 
 
