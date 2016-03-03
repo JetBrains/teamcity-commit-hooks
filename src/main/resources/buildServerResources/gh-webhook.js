@@ -1,6 +1,50 @@
 BS.GitHubWebHooks = {
     info: {},
     forcePopup: {},
+    actions: {
+        add: {
+            id: "add",
+            name: "Add",
+            progress: "Adding WebHook",
+            success: function (json, resource) {
+                var info = json['info'];
+                var message = json['message'];
+                var repo = info['owner'] + '/' + info['name'];
+                var warning = false;
+                if ("AlreadyExists" == resource) {
+                } else if ("Created" == resource) {
+                } else if ("TokenScopeMismatch" == resource) {
+                    message = "Token you provided have no access to repository, try again";
+                    warning = true;
+                    // TODO: Add link to refresh/request token (via popup window)
+                    BS.GitHubWebHooks.forcePopup[repo] = true
+                } else if ("NoAccess" == resource) {
+                    warning = true;
+                } else if ("UserHaveNoAccess" == resource) {
+                    warning = true;
+                } else {
+                    BS.Log.warn("Unexpected result: " + resource);
+                    alert("Unexpected result: " + resource);
+                }
+                BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+            }
+        },
+        check: {
+            id: "check",
+            name: "Check",
+            progress: "Checking WebHook"
+        },
+        delete: {
+            id: "delete",
+            name: "Delete",
+            progress: "Deleting WebHook"
+        },
+        connect: {
+            id: "connect",
+            name: "Connect",
+            progress: "????CONNECT????"
+        }
+    },
     checkLocation: function () {
         if (document.location.href.indexOf(BS.ServerInfo.url) == -1) {
             if (confirm("Request cannot be processed because browser URL does not correspond to URL specified in TeamCity server configuration: " + BS.ServerInfo.url + ".\n\n" +
@@ -16,7 +60,7 @@ BS.GitHubWebHooks = {
         }
         return true;
     },
-    addWebHook: function (element, type, id, popup, projectId) {
+    doWebHookAction: function (action, element, type, id, popup, projectId) {
         if (!BS.GitHubWebHooks.checkLocation()) return;
         BS.Log.info("From arguments: " + id + ' ' + type);
 
@@ -31,25 +75,28 @@ BS.GitHubWebHooks = {
         }
 
         if (popup) {
-            var url = window.base_uri + '/oauth/github/webhooks.html?action=add&popup=true&id=' + id + '&type=' + type;
+            var url = window.base_uri + '/oauth/github/webhooks.html?action=' + action.id + '&popup=true&id=' + id + '&type=' + type;
             if (projectId !== undefined) {
                 url = url + "&projectId=" + projectId
             }
-            BS.Util.popupWindow(url, 'add_webhook_' + type + '_' + id);
+            BS.Util.popupWindow(url, 'webhook_' + action.id + '_' + type + '_' + id);
             return
         }
 
         var that = element;
 
-        BS.ProgressPopup.showProgress(element, "Adding WebHook", {shift: {x: -65, y: 20}, zIndex: 100});
+        // TODO: Proper message
+        BS.ProgressPopup.showProgress(element, action.progress, {shift: {x: -65, y: 20}, zIndex: 100});
         var parameters = {
-            "action": "add",
+            "action": action.id,
             "type": type,
             "id": id,
+            "popup": popup,
         };
         if (projectId !== undefined) {
             parameters["projectId"] = projectId
         }
+        //noinspection JSUnusedGlobalSymbols
         BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
             method: "post",
             parameters: parameters,
@@ -60,16 +107,17 @@ BS.GitHubWebHooks = {
                 var json = transport.responseJSON;
                 if (json['redirect']) {
                     BS.Log.info("Redirect response received");
-                    var link = "<a href='#' onclick=\"BS.GitHubWebHooks.addWebHook(this, '" + type + "', '" + id + "', true); return false\">Refresh access token</a>";
-
+                    var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doWebHookAction('" + action.id + "', this, '" + type + "', '" + id + "', true); return false\">Refresh access token and " + action.name + " WebHook</a>";
                     BS.Util.Messages.show('redirect', 'GitHub authorization needed. ' + link);
                     //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + type + '_' + id);
                     $j(that).append(link);
                     $(that).onclick = function () {
-                        BS.GitHubWebHooks.addWebHook(that, '${Type}', '${Id}', true);
+                        BS.GitHubWebHooks.doWebHookAction(action, that, type, id, true, projectId);
                         return false
                     };
-                    $(that).innerHTML = "Refresh token and add WebHook"
+                    BS.Log.info($(that).onclick);
+                    $(that).innerHTML = "Refresh token and add WebHook";
+                    BS.Log.info($(that).innerHTML);
                 } else if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);
                     alert(json['error']);
@@ -95,31 +143,24 @@ BS.GitHubWebHooks = {
         });
     },
 
+    addWebHook: function (element, type, id, popup, projectId) {
+        return BS.GitHubWebHooks.doWebHookAction("add", element, type, id, popup, projectId)
+    },
+
     addConnection: function (element, projectId, serverUrl) {
         document.location.href = window.base_uri + "/admin/editProject.html?projectId=" + projectId + "&tab=oauthConnections#"
     },
 
     processResult: function (json, res) {
-        var info = json['info'];
-        var message = json['message'];
-        var repo = info['owner'] + '/' + info['name'];
-        var warning = false;
-        if ("AlreadyExists" == res) {
-        } else if ("Created" == res) {
-        } else if ("TokenScopeMismatch" == res) {
-            message = "Token you provided have no access to repository, try again";
-            warning = true;
-            // TODO: Add link to refresh/request token (via popup window)
-            BS.GitHubWebHooks.forcePopup[repo] = true
-        } else if ("NoAccess" == res) {
-            warning = true;
-        } else if ("UserHaveNoAccess" == res) {
-            warning = true;
-        } else {
-            BS.Log.warn("Unexpected result: " + res);
-            alert("Unexpected result: " + res);
+        var action = BS.GitHubWebHooks.actions[json['action']];
+        if (action) {
+            if (action.success) {
+                return action.success(json, res)
+            }
+            BS.Log.warn("Unknown action type: " + json['action']);
+            return "There no 'success' function defined for action '" + action.id + "'"
         }
-        BS.Util.Messages.show(res, message, warning ? {verbosity: 'warn'} : {});
+        BS.Log.warn("Unknown action type: " + json['action']);
     },
 
     callback: function (json) {
@@ -152,17 +193,17 @@ BS.GitHubWebHooks = {
     },
 
     doAction: function (element, repository, projectId, name) {
+        var action;
         if (name == "Add") {
-            BS.GitHubWebHooks.addWebHook(element, "repository", repository, true, projectId)
+            action = BS.GitHubWebHooks.actions.add;
         } else if (name == "Delete") {
-            // TODO: Implement
-            BS.GitHubWebHooks.deleteWebHook(element, "repository", repository, true)
+            action = BS.GitHubWebHooks.actions.delete;
         } else if (name == "Check") {
-            // TODO: Implement
-            BS.GitHubWebHooks.checkWebHook(element, "repository", repository, true)
+            action = BS.GitHubWebHooks.actions.check;
         } else if (name == "Connect") {
-            BS.GitHubWebHooks.addConnection(this, projectId, repository)
+            action = BS.GitHubWebHooks.actions.connect;
         }
+        BS.GitHubWebHooks.doWebHookAction(action, element, "repository", repository, true, projectId);
         return false;
     },
 };
