@@ -31,11 +31,8 @@
     belongs to <admin:projectName project="${VcsRoot.project}"/>
     <div class="suggestionAction">
         <c:choose>
-            <c:when test="${has_connections && has_tokens}">
-                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addWebHook(this, '${Type}', '${Id}', false); return false">Add WebHook</a>
-            </c:when>
             <c:when test="${has_connections}">
-                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addWebHook(this, '${Type}', '${Id}', true); return false">Add WebHook</a>
+                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.doAction('add', this, '${GitHubInfo}', '${VcsRoot.project.externalId}', ${not has_tokens}); return false">Add WebHook</a>
             </c:when>
             <c:otherwise>
                 <span>There no GitHub OAuth connections found, setup them first</span>

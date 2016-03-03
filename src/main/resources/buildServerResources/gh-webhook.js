@@ -107,7 +107,7 @@ BS.GitHubWebHooks = {
                 var json = transport.responseJSON;
                 if (json['redirect']) {
                     BS.Log.info("Redirect response received");
-                    var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doWebHookAction('" + action.id + "', this, '" + type + "', '" + id + "', true); return false\">Refresh access token and " + action.name + " WebHook</a>";
+                    var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doAction('" + action.id + "', this, '" + id + "','" + projectId + "', true); return false\">Refresh access token and " + action.name + " WebHook</a>";
                     BS.Util.Messages.show('redirect', 'GitHub authorization needed. ' + link);
                     //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + type + '_' + id);
                     $j(that).append(link);
@@ -116,7 +116,8 @@ BS.GitHubWebHooks = {
                         return false
                     };
                     BS.Log.info($(that).onclick);
-                    $(that).innerHTML = "Refresh token and add WebHook";
+                    // FIXME: Investigate why text not changed
+                    $j(that).text("Refresh token and add WebHook");
                     BS.Log.info($(that).innerHTML);
                 } else if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);
@@ -141,10 +142,6 @@ BS.GitHubWebHooks = {
                 BS.GitHubWebHooks.refreshReports();
             }
         });
-    },
-
-    addWebHook: function (element, type, id, popup, projectId) {
-        return BS.GitHubWebHooks.doWebHookAction("add", element, type, id, popup, projectId)
     },
 
     addConnection: function (element, projectId, serverUrl) {
@@ -192,18 +189,19 @@ BS.GitHubWebHooks = {
         //window.location.reload(false)
     },
 
-    doAction: function (element, repository, projectId, name) {
-        var action;
-        if (name == "Add") {
-            action = BS.GitHubWebHooks.actions.add;
-        } else if (name == "Delete") {
-            action = BS.GitHubWebHooks.actions.delete;
-        } else if (name == "Check") {
-            action = BS.GitHubWebHooks.actions.check;
-        } else if (name == "Connect") {
-            action = BS.GitHubWebHooks.actions.connect;
+    doAction: function (name, element, repository, projectId, popup) {
+        var action = BS.GitHubWebHooks.actions[name.toLowerCase()];
+        if (!action) {
+            BS.Log.error("Unknown action: " + name);
+            return false;
         }
-        BS.GitHubWebHooks.doWebHookAction(action, element, "repository", repository, true, projectId);
+        var p;
+        if (popup === undefined) {
+            p = true
+        } else {
+            p = popup
+        }
+        BS.GitHubWebHooks.doWebHookAction(action, element, "repository", repository, p, projectId);
         return false;
     },
 };
