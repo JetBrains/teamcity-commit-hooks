@@ -73,7 +73,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
-        val action = request.getParameter("action")
+        var action = request.getParameter("action")
         val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
         val element: JsonElement
         var direct: Boolean = false
@@ -87,6 +87,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         } else if ("delete" == action) {
             element = doHandleDeleteAction(request, response, action, popup);
         } else if ("continue" == action) {
+            action = request.getParameter("original_action") ?: "add"
             element = doHandleAddAction(request, response, action, popup);
         } else {
             LOG.warn("Unknown action '$action'")
@@ -213,7 +214,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                     postponedResult = error_json("Cannot find token in connection ${connection.connectionDisplayName}.\nEnsure connection configured correctly", HttpServletResponse.SC_NOT_FOUND)
                     continue@attempts
                 }
-                val params = linkedMapOf("action" to "continue", "type" to inType, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
+                val params = linkedMapOf("action" to "continue", "original_action" to action, "popup" to popup, "type" to inType, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
                 if (inProjectId != null) {
                     params.put("projectId", inProjectId)
                 }
@@ -297,12 +298,12 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         return url(url, params.associateBy({ it -> it.first }, { it -> it.second.toString() }))
     }
 
-    private fun url(url: String, params: Map<String, String>): String {
+    private fun url(url: String, params: Map<String, Any>): String {
         val sb = StringBuilder()
         sb.append(url)
         if (!params.isEmpty()) sb.append('?')
         for (e in params.entries) {
-            sb.append(e.key).append('=').append(WebUtil.encode(e.value)).append('&')
+            sb.append(e.key).append('=').append(WebUtil.encode(e.value.toString())).append('&')
         }
         return sb.toString()
     }
