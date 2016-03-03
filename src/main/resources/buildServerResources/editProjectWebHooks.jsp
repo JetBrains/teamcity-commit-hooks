@@ -39,6 +39,7 @@
     </form>
 
     <div id="webHooksTable" class="selection noMargin">
+        <c:if test="${not empty webHooksBean.visibleHooks}">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
             <tr>
                 <th colspan="2">Repository</th>
@@ -184,6 +185,7 @@
                 </c:if>
             </c:forEach>
         </l:tableWithHighlighting>
+        </c:if>
     </div>
 
     <bs:pager place="bottom"
