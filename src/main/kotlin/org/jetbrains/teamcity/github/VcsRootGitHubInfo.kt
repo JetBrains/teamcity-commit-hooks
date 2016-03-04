@@ -47,4 +47,8 @@ public data class VcsRootGitHubInfo(val server: String, val owner: String, val n
         builder.append(name)
         return builder.toString()
     }
+
+    public fun getIdentifier(): String {
+        return toString().replace("/", "_")
+    }
 }

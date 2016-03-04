@@ -66,10 +66,9 @@ BS.GitHubWebHooks = {
 
         //var progress = $$("# .progress").show();
 
-        var info = BS.GitHubWebHooks.info[type + '_' + id];
+        var info = BS.GitHubWebHooks.info[id];
         if (info) {
-            var repo = info['owner'] + '/' + info['name'];
-            if (BS.GitHubWebHooks.forcePopup[repo]) {
+            if (BS.GitHubWebHooks.forcePopup[info['server']]) {
                 popup = true
             }
         }
