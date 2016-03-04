@@ -40,30 +40,30 @@ import javax.servlet.http.HttpServletResponse
 public class WebHooksController(private val descriptor: PluginDescriptor, server: SBuildServer) : BaseController(server) {
 
     @Autowired
-    lateinit var VcsManager: VcsManager
+    lateinit var myVcsManager: VcsManager
 
     @Autowired
-    lateinit var WebControllerManager: WebControllerManager
+    lateinit var myWebControllerManager: WebControllerManager
 
     @Autowired
-    lateinit var OAuthConnectionsManager: OAuthConnectionsManager
+    lateinit var myOAuthConnectionsManager: OAuthConnectionsManager
     @Autowired
-    lateinit var OAuthTokensStorage: OAuthTokensStorage
+    lateinit var myOAuthTokensStorage: OAuthTokensStorage
 
     @Autowired
-    lateinit var manager: WebHooksManager
+    lateinit var myWebHooksManager: WebHooksManager
 
     @Autowired
-    lateinit var TokensHelper: TokensHelper
+    lateinit var myTokensHelper: TokensHelper
 
     @Autowired
-    lateinit var ProjectManager: ProjectManager
+    lateinit var myProjectManager: ProjectManager
 
     private val myResultJspPath = descriptor.getPluginResourcesPath("hook-created.jsp")
 
 
     public fun register(): Unit {
-        WebControllerManager.registerController(PATH, this)
+        myWebControllerManager.registerController(PATH, this)
     }
 
     companion object {
@@ -143,11 +143,11 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         var connection: OAuthConnectionDescriptor?
 
         if (inConnectionId != null && inConnectionProjectId != null) {
-            val connectionOwnerProject = ProjectManager.findProjectByExternalId(inConnectionProjectId)
+            val connectionOwnerProject = myProjectManager.findProjectByExternalId(inConnectionProjectId)
             if (connectionOwnerProject == null) {
                 return error_json("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
             }
-            connection = OAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
+            connection = myOAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
             if (connection == null) {
                 return error_json("There no connection with id '$inConnectionId' found in project ${connectionOwnerProject.fullName}", HttpServletResponse.SC_NOT_FOUND);
             }
@@ -159,7 +159,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             if (inProjectId.isNullOrEmpty()) {
                 return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST);
             }
-            project = ProjectManager.findProjectByExternalId(inProjectId) ?: return error_json("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
+            project = myProjectManager.findProjectByExternalId(inProjectId) ?: return error_json("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
             info = Util.getGitHubInfo(inId) ?: return error_json("Not an GitHub VCS", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
             LOG.info("Trying to create web hook for repository '$inId', github info is $info, user is ${user.describe(false)}, connection is ${connection?.id ?: "not specified"}")
 
@@ -175,9 +175,9 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             }
             if ("root" == inType) {
                 vcsRootInstance = null
-                vcsRoot = VcsManager.findRootById(id) ?: return error_json("VcsRoot with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
+                vcsRoot = myVcsManager.findRootById(id) ?: return error_json("VcsRoot with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
             } else if ("instance" == inType) {
-                vcsRootInstance = VcsManager.findRootInstanceById(id) ?: return error_json("VcsRootInstance with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
+                vcsRootInstance = myVcsManager.findRootInstanceById(id) ?: return error_json("VcsRootInstance with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
                 vcsRoot = vcsRootInstance.parent
             } else {
                 return error_json("Parameter 'type' have unknown value", HttpServletResponse.SC_BAD_REQUEST)
@@ -193,7 +193,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         if (connection != null) {
             connections = listOf(connection)
         } else {
-            connections = Util.findConnections(OAuthConnectionsManager, project, info.server)
+            connections = Util.findConnections(myOAuthConnectionsManager, project, info.server)
             if (connections.isEmpty()) {
                 return error_json("No OAuth connectors found, setup them first", 500) //TODO: Add link, good UI.
             }
@@ -203,7 +203,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
         attempts@
         for (i in 0..2) {
-            val tokens = TokensHelper.getExistingTokens(connections, user)
+            val tokens = myTokensHelper.getExistingTokens(connections, user)
             if (tokens.isEmpty()) {
                 // obtain access token
                 if (connection == null) {
@@ -236,17 +236,17 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                     ghc.setOAuth2Token(token.accessToken)
 
                     try {
-                        val result = manager.doRegisterWebHook(info, ghc)
+                        val result = myWebHooksManager.doRegisterWebHook(info, ghc)
                         val repoId = info.toString()
                         when (result) {
                             WebHooksManager.HookAddOperationResult.InvalidCredentials -> {
                                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                                OAuthTokensStorage.removeToken(entry.key.id, token.accessToken)
+                                myOAuthTokensStorage.removeToken(entry.key.id, token.accessToken)
                             }
                             WebHooksManager.HookAddOperationResult.TokenScopeMismatch -> {
                                 LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
                                 // TODO: Update token scope
-                                TokensHelper.markTokenIncorrect(token)
+                                myTokensHelper.markTokenIncorrect(token)
                                 return gh_json(result.name, "Token scope does not cover hooks management", info)
                             }
                             WebHooksManager.HookAddOperationResult.AlreadyExists -> {
@@ -278,7 +278,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     private fun doHandleCheckAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
         TODO("Implement")
     }
-    
+
     private fun doHandleCheckAllAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
         TODO("Implement")
     }
