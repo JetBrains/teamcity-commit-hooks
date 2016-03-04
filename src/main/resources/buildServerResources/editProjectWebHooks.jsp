@@ -22,13 +22,11 @@
         <div class="actionBar">
             <span class="nowrap">
                 <label class="firstLabel" for="keyword">Filter: </label>
-                <div class="posRel">
-                    <forms:textField name="keyword" value="${webHooksBean.form.keyword}" size="20"/>
-                    <forms:resetFilter resetHandler="if($('webHooksFilterForm').keyword.value != '') {$('webHooksFilterForm').keyword.value='';$('webHooksFilterForm').submit();}"/>
-                </div>
+                <forms:textField name="keyword" value="${webHooksBean.form.keyword}" size="20"/>
             </span>
             <forms:filterButton/>
-            <span style="margin-left: 20px">
+            <forms:resetFilter resetHandler="if($('webHooksFilterForm').keyword.value != '') {$('webHooksFilterForm').keyword.value='';$('webHooksFilterForm').submit();}"/>
+         <span style="margin-left: 20px">
                 <forms:checkbox name="recursive" checked="${webHooksBean.form.recursive}" onclick="$('webHooksFilterForm').submit();"/>
                 <label for="recursive" style="margin: 0;">Show WebHooks from subprojects</label>
             </span>
