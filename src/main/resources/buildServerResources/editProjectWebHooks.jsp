@@ -40,7 +40,8 @@
         <c:if test="${not empty webHooksBean.visibleHooks}">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
             <tr>
-                <th colspan="2">Repository</th>
+                <th>Repository</th>
+                <th class="edit"><a href="#" onclick="BS.GitHubWebHooks.checkAll(this, '${webHooksBean.project.externalId}')">Check All</a></th>
                 <th class="edit">Status</th>
                 <th class="usages">Usages</th>
             </tr>

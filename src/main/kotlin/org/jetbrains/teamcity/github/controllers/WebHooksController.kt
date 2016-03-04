@@ -89,6 +89,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         } else if ("continue" == action) {
             action = request.getParameter("original_action") ?: "add"
             element = doHandleAddAction(request, response, action, popup);
+        } else if ("check-all" == action) {
+            element = doHandleCheckAllAction(request, response, action, popup);
         } else {
             LOG.warn("Unknown action '$action'")
             return null
@@ -274,6 +276,10 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
 
     private fun doHandleCheckAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
+        TODO("Implement")
+    }
+    
+    private fun doHandleCheckAllAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
         TODO("Implement")
     }
 

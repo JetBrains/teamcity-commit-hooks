@@ -203,6 +203,39 @@ BS.GitHubWebHooks = {
         BS.GitHubWebHooks.doWebHookAction(action, element, "repository", repository, p, projectId);
         return false;
     },
+    checkAll: function (element, projectId) {
+        var parameters = {
+            "action": 'check-all'
+        };
+        if (projectId) {
+            parameters["projectId"] = projectId
+        }
+        BS.ProgressPopup.showProgress(element, "Rechecking all webhooks", {shift: {x: -65, y: 20}, zIndex: 100});
+        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
+            method: "post",
+            parameters: parameters,
+            onComplete: function (transport) {
+                BS.ProgressPopup.hidePopup(0, true);
+                if (transport.status != 200) {
+                    BS.Log.error("Check all responded with " + transport.status);
+                    alert("Check all responded with " + transport.status);
+                    return
+                }
+                var json = transport.responseJSON;
+                if (json['error']) {
+                    BS.Log.error("Sad :( Something went wrong: " + json['error']);
+                    alert(json['error']);
+                } else if (json['result']) {
+                    var res = json['result'];
+                    // TODO: Incremental update
+                    window.location.reload()
+                } else {
+                    BS.Log.error("Unexpected response: " + json.toString())
+                }
+                BS.GitHubWebHooks.refreshReports();
+            }
+        })
+    }
 };
 
 BS.Util.Messages = {
