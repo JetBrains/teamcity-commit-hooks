@@ -11,6 +11,7 @@ import jetbrains.buildServer.serverSide.SBuildServer
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
+import jetbrains.buildServer.serverSide.oauth.OAuthToken
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
@@ -81,14 +82,14 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         }
         try {
             if ("add" == action || action == null) {
-                element = doHandleAddAction(request, response, action, popup)
+                element = doHandleAction(request, action, popup)
             } else if ("check" == action) {
-                element = doHandleCheckAction(request, response, action, popup)
+                element = doHandleAction(request, action, popup)
             } else if ("delete" == action) {
-                element = doHandleDeleteAction(request, response, action, popup)
+                element = doHandleAction(request, action, popup)
             } else if ("continue" == action) {
+                element = doHandleAction(request, action, popup)
                 action = request.getParameter("original_action") ?: "add"
-                element = doHandleAddAction(request, response, action, popup)
             } else if ("check-all" == action) {
                 element = doHandleCheckAllAction(request, response, action, popup)
             } else {
@@ -125,7 +126,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     @Throws(RequestException::class)
-    private fun doHandleAddAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
+    private fun doHandleAction(request: HttpServletRequest, action: String, popup: Boolean): JsonElement {
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
         val inType = request.getParameter("type")?.toLowerCase() ?: return error_json("Required parameter 'type' is missing", HttpServletResponse.SC_BAD_REQUEST)
@@ -194,39 +195,21 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 for (token in entry.value) {
                     LOG.info("Trying with token: ${token.oauthLogin}, connector is ${entry.key.id}")
                     ghc.setOAuth2Token(token.accessToken)
+                    val element: JsonElement?
 
-                    try {
-                        val result = myWebHooksManager.doRegisterWebHook(info, ghc)
-                        val repoId = info.toString()
-                        when (result) {
-                            WebHooksManager.HookAddOperationResult.InvalidCredentials -> {
-                                LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                                myOAuthTokensStorage.removeToken(entry.key.id, token.accessToken)
-                            }
-                            WebHooksManager.HookAddOperationResult.TokenScopeMismatch -> {
-                                LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
-                                // TODO: Update token scope
-                                myTokensHelper.markTokenIncorrect(token)
-                                return gh_json(result.name, "Token scope does not cover hooks management", info)
-                            }
-                            WebHooksManager.HookAddOperationResult.AlreadyExists -> {
-                                return gh_json(result.name, "Hook for repository '$repoId' already exits, updated info", info)
-                            }
-                            WebHooksManager.HookAddOperationResult.Created -> {
-                                return gh_json(result.name, "Created hook for repository '$repoId'", info)
-                            }
-                            WebHooksManager.HookAddOperationResult.NoAccess -> {
-                                return gh_json(result.name, "No access to repository '$repoId'", info)
-                            }
-                            WebHooksManager.HookAddOperationResult.UserHaveNoAccess -> {
-                                return gh_json(result.name, "You don't have access to '$repoId'", info)
-                            }
-                        }
-                    } catch(e: RequestException) {
-                        LOG.warnAndDebugDetails("Unexpected response from github server", e)
-                    } catch(e: IOException) {
-                        LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+                    if ("add" == action) {
+                        element = doAddWebHook(entry.key, token, ghc, info)
+                    } else if ("check" == action) {
+                        element = doCheckWebHook(entry.key, token, ghc, info)
+                    } else if ("delete" == action) {
+                        element = doDeleteWebHook(entry.key, token, ghc, info)
+                    } else if ("continue" == action) {
+                        element = doAddWebHook(entry.key, token, ghc, info)
+                    } else {
+                        element = null
                     }
+
+                    if (element != null) return element
                 }
             }
         }
@@ -234,16 +217,118 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         return postponedResult ?: gh_json("", "", info)
     }
 
+    private fun doAddWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        try {
+            val result = myWebHooksManager.doRegisterWebHook(info, ghc)
+            val repoId = info.toString()
+            when (result) {
+                WebHooksManager.HookAddOperationResult.InvalidCredentials -> {
+                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                }
+                WebHooksManager.HookAddOperationResult.TokenScopeMismatch -> {
+                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                    // TODO: Update token scope
+                    myTokensHelper.markTokenIncorrect(token)
+                    return gh_json(result.name, "Token scope does not cover hooks management", info)
+                }
+                WebHooksManager.HookAddOperationResult.NoAccess -> {
+                    return gh_json(result.name, "No access to repository '$repoId'", info)
+                }
+                WebHooksManager.HookAddOperationResult.UserHaveNoAccess -> {
+                    return gh_json(result.name, "You don't have access to '$repoId'", info)
+                }
+                WebHooksManager.HookAddOperationResult.AlreadyExists -> {
+                    return gh_json(result.name, "Hook for repository '$repoId' already exits, updated info", info)
+                }
+                WebHooksManager.HookAddOperationResult.Created -> {
+                    return gh_json(result.name, "Created hook for repository '$repoId'", info)
+                }
+            }
+        } catch(e: RequestException) {
+            LOG.warnAndDebugDetails("Unexpected response from github server", e)
+        } catch(e: IOException) {
+            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+        }
+        return null
+    }
 
-    private fun doHandleCheckAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
-        TODO("Implement")
+
+    private fun doCheckWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        try {
+            val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
+            val repoId = info.toString()
+            when (result) {
+                WebHooksManager.HooksGetOperationResult.InvalidCredentials -> {
+                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                }
+                WebHooksManager.HooksGetOperationResult.TokenScopeMismatch -> {
+                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                    // TODO: Update token scope
+                    myTokensHelper.markTokenIncorrect(token)
+                    return gh_json(result.name, "Token scope does not cover hooks management", info)
+                }
+                WebHooksManager.HooksGetOperationResult.UserHaveNoAccess -> {
+                    return gh_json(result.name, "You don't have access to '$repoId'", info)
+                }
+                WebHooksManager.HooksGetOperationResult.NoAccess -> {
+                    return gh_json(result.name, "No access to repository '$repoId'", info)
+                }
+                WebHooksManager.HooksGetOperationResult.Ok -> {
+                    val hook = myWebHooksManager.getHook(info)
+                    if (hook != null) {
+                        return gh_json(result.name, "Updated hook info for repository '$repoId'", info)
+                    } else {
+                        return gh_json(result.name, "No hook found for repository '$repoId'", info)
+                    }
+                }
+            }
+        } catch(e: RequestException) {
+            LOG.warnAndDebugDetails("Unexpected response from github server", e)
+        } catch(e: IOException) {
+            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+        }
+        return null
+    }
+
+    private fun doDeleteWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        try {
+            val result = myWebHooksManager.doUnRegisterWebHook(info, ghc)
+            val repoId = info.toString()
+            when (result) {
+                WebHooksManager.HookDeleteOperationResult.InvalidCredentials -> {
+                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                }
+                WebHooksManager.HookDeleteOperationResult.TokenScopeMismatch -> {
+                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                    // TODO: Update token scope
+                    myTokensHelper.markTokenIncorrect(token)
+                    return gh_json(result.name, "Token scope does not cover hooks management", info)
+                }
+                WebHooksManager.HookDeleteOperationResult.UserHaveNoAccess -> {
+                    return gh_json(result.name, "You don't have access to '$repoId'", info)
+                }
+                WebHooksManager.HookDeleteOperationResult.NoAccess -> {
+                    return gh_json(result.name, "No access to repository '$repoId'", info)
+                }
+                WebHooksManager.HookDeleteOperationResult.NeverExisted -> {
+                    return gh_json(result.name, "Hook for repository '$repoId' never existed", info)
+                }
+                WebHooksManager.HookDeleteOperationResult.Removed -> {
+                    return gh_json(result.name, "Removed hook for repository '$repoId'", info)
+                }
+            }
+        } catch(e: RequestException) {
+            LOG.warnAndDebugDetails("Unexpected response from github server", e)
+        } catch(e: IOException) {
+            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+        }
+        return null
     }
 
     private fun doHandleCheckAllAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
-        TODO("Implement")
-    }
-
-    private fun doHandleDeleteAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
         TODO("Implement")
     }
 
