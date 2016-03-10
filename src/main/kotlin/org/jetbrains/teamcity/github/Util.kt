@@ -37,23 +37,27 @@ public class Util {
         public fun findConnections(manager: OAuthConnectionsManager, project: SProject, server: String): List<OAuthConnectionDescriptor> {
             return manager.getAvailableConnections(project)
                     .filter {
-                        when (it.oauthProvider) {
-                            is GHEOAuthProvider -> {
-                                // Check server url
-                                val url = it.parameters[GitHubConstants.GITHUB_URL_PARAM] ?: return@filter false
-                                if (!isSameUrl(server, url)) {
-                                    return@filter false
-                                }
-                            }
-                            is GitHubOAuthProvider -> {
-                                if (!isSameUrl(server, "github.com")) {
-                                    return@filter false
-                                }
-                            }
-                            else -> return@filter false
-                        }
-                        return@filter it.parameters[GitHubConstants.CLIENT_ID_PARAM] != null && it.parameters[GitHubConstants.CLIENT_SECRET_PARAM] != null
+                        it != null && isConnectionToServer(it, server)
                     }
+        }
+
+        public fun isConnectionToServer(connection: OAuthConnectionDescriptor, server: String): Boolean {
+            when (connection.oauthProvider) {
+                is GHEOAuthProvider -> {
+                    // Check server url
+                    val url = connection.parameters[GitHubConstants.GITHUB_URL_PARAM] ?: return false
+                    if (!isSameUrl(server, url)) {
+                        return false
+                    }
+                }
+                is GitHubOAuthProvider -> {
+                    if (!isSameUrl(server, "github.com")) {
+                        return false
+                    }
+                }
+                else -> return false
+            }
+            return connection.parameters[GitHubConstants.CLIENT_ID_PARAM] != null && connection.parameters[GitHubConstants.CLIENT_SECRET_PARAM] != null
         }
 
         private fun isSameUrl(host: String, url: String): Boolean {

@@ -16,14 +16,10 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.util.PropertiesUtil
-import jetbrains.buildServer.vcs.SVcsRoot
-import jetbrains.buildServer.vcs.VcsManager
-import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
-import org.eclipse.egit.github.core.client.RequestException
 import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.TokensHelper
 import org.jetbrains.teamcity.github.Util
@@ -40,13 +36,11 @@ import javax.servlet.http.HttpServletResponse
 public class WebHooksController(private val descriptor: PluginDescriptor, server: SBuildServer) : BaseController(server) {
 
     @Autowired
-    lateinit var myVcsManager: VcsManager
-
-    @Autowired
     lateinit var myWebControllerManager: WebControllerManager
 
     @Autowired
     lateinit var myOAuthConnectionsManager: OAuthConnectionsManager
+
     @Autowired
     lateinit var myOAuthTokensStorage: OAuthTokensStorage
 
@@ -70,6 +64,11 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         public val PATH = "/oauth/github/webhooks.html"
 
         private val LOG = Logger.getInstance(WebHooksController::class.java.name)
+
+        class RequestException private constructor(val element: JsonElement) : Exception() {
+            constructor(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int) : this(error_json(message, code)) {
+            }
+        }
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
@@ -80,20 +79,24 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         if (!popup) {
             direct = true
         }
-        if ("add" == action || action == null) {
-            element = doHandleAddAction(request, response, action, popup);
-        } else if ("check" == action) {
-            element = doHandleCheckAction(request, response, action, popup);
-        } else if ("delete" == action) {
-            element = doHandleDeleteAction(request, response, action, popup);
-        } else if ("continue" == action) {
-            action = request.getParameter("original_action") ?: "add"
-            element = doHandleAddAction(request, response, action, popup);
-        } else if ("check-all" == action) {
-            element = doHandleCheckAllAction(request, response, action, popup);
-        } else {
-            LOG.warn("Unknown action '$action'")
-            return null
+        try {
+            if ("add" == action || action == null) {
+                element = doHandleAddAction(request, response, action, popup)
+            } else if ("check" == action) {
+                element = doHandleCheckAction(request, response, action, popup)
+            } else if ("delete" == action) {
+                element = doHandleDeleteAction(request, response, action, popup)
+            } else if ("continue" == action) {
+                action = request.getParameter("original_action") ?: "add"
+                element = doHandleAddAction(request, response, action, popup)
+            } else if ("check-all" == action) {
+                element = doHandleCheckAllAction(request, response, action, popup)
+            } else {
+                LOG.warn("Unknown action '$action'")
+                return null
+            }
+        } catch(e: RequestException) {
+            element = e.element
         }
         if (element is JsonObject) {
             element.addProperty("action", action)
@@ -121,73 +124,31 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         return mav
     }
 
+    @Throws(RequestException::class)
     private fun doHandleAddAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
-        val inType = request.getParameter("type")?.toLowerCase()
-        val inId = request.getParameter("id")
+        val inType = request.getParameter("type")?.toLowerCase() ?: return error_json("Required parameter 'type' is missing", HttpServletResponse.SC_BAD_REQUEST)
+        val inId = request.getParameter("id") ?: return error_json("Required parameter 'id' is missing", HttpServletResponse.SC_BAD_REQUEST)
         val inProjectId = request.getParameter("projectId")
 
-        if (inType == null) {
-            return error_json("Required parameter 'type' is missing", HttpServletResponse.SC_BAD_REQUEST)
-        }
-        if (inId == null) {
-            return error_json("Required parameter 'id' is missing", HttpServletResponse.SC_BAD_REQUEST)
-        }
+        var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
 
         val info: VcsRootGitHubInfo
         val project: SProject
 
-        val inConnectionId = request.getParameter("connectionId")
-        val inConnectionProjectId = request.getParameter("connectionProjectId") ?: inProjectId
-        var connection: OAuthConnectionDescriptor?
-
-        if (inConnectionId != null && inConnectionProjectId != null) {
-            val connectionOwnerProject = myProjectManager.findProjectByExternalId(inConnectionProjectId)
-            if (connectionOwnerProject == null) {
-                return error_json("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
-            }
-            connection = myOAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
-            if (connection == null) {
-                return error_json("There no connection with id '$inConnectionId' found in project ${connectionOwnerProject.fullName}", HttpServletResponse.SC_NOT_FOUND);
-            }
-        } else {
-            connection = null
-        }
-
         if ("repository" == inType) {
-            if (inProjectId.isNullOrEmpty()) {
-                return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST);
-            }
-            project = myProjectManager.findProjectByExternalId(inProjectId) ?: return error_json("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
-            info = Util.getGitHubInfo(inId) ?: return error_json("Not an GitHub VCS", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-            LOG.info("Trying to create web hook for repository '$inId', github info is $info, user is ${user.describe(false)}, connection is ${connection?.id ?: "not specified"}")
-
+            val pair = getRepositoryInfo(inProjectId, inId)
+            project = pair.first
+            info = pair.second
+            LOG.info("Trying to create web hook for repository with id '$inId', repository info is '$info', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
         } else {
-            // Vcs Root Info
-            val id: Long
-            val vcsRoot: SVcsRoot
-            val vcsRootInstance: VcsRootInstance?
-            try {
-                id = inId.toLong()
-            } catch(e: NumberFormatException) {
-                return error_json("Incorrect format of parameter 'id', integer number expected", HttpServletResponse.SC_BAD_REQUEST)
-            }
-            if ("root" == inType) {
-                vcsRootInstance = null
-                vcsRoot = myVcsManager.findRootById(id) ?: return error_json("VcsRoot with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
-            } else if ("instance" == inType) {
-                vcsRootInstance = myVcsManager.findRootInstanceById(id) ?: return error_json("VcsRootInstance with id '$id' not found", HttpServletResponse.SC_NOT_FOUND)
-                vcsRoot = vcsRootInstance.parent
-            } else {
-                return error_json("Parameter 'type' have unknown value", HttpServletResponse.SC_BAD_REQUEST)
-            }
-            info = Util.getGitHubInfo(vcsRootInstance ?: vcsRoot) ?: return error_json("Not an GitHub VCS", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-            project = vcsRoot.project
-            LOG.info("Trying to create web hook for vcs (id:$id), github info is $info, user is ${user.describe(false)}, connection is ${connection?.id ?: "not specified"}")
+            return error_json("Parameter 'type' have unknown value", HttpServletResponse.SC_BAD_REQUEST)
         }
 
-        // TODO: check info.server to be github.com or known GitHub Enterprise server
+        if (connection != null && !Util.isConnectionToServer(connection, info.server)) {
+            return error_json("OAuth connection '${connection.connectionDisplayName}' server doesn't match repository server '${info.server}'", HttpServletResponse.SC_BAD_REQUEST)
+        }
 
         val connections: List<OAuthConnectionDescriptor>
         if (connection != null) {
@@ -195,8 +156,10 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         } else {
             connections = Util.findConnections(myOAuthConnectionsManager, project, info.server)
             if (connections.isEmpty()) {
-                return error_json("No OAuth connectors found, setup them first", 500) //TODO: Add link, good UI.
+                return error_json("No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, configure it first", HttpServletResponse.SC_NOT_FOUND) //TODO: Add link, good UI.
             }
+            // Let's use connection from most nested project. (connections sorted in reverse project hierarchy order)
+            connection = connections.first()
         }
 
         var postponedResult: JsonElement? = null
@@ -206,9 +169,6 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             val tokens = myTokensHelper.getExistingTokens(connections, user)
             if (tokens.isEmpty()) {
                 // obtain access token
-                if (connection == null) {
-                    connection = connections.first() //FIXME
-                }
                 LOG.info("No token found will try to obtain one using connection ${connection.id}")
 
                 if (action == "continue") {
@@ -259,13 +219,13 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                                 return gh_json(result.name, "No access to repository '$repoId'", info)
                             }
                             WebHooksManager.HookAddOperationResult.UserHaveNoAccess -> {
-                                return gh_json(result.name, "You don't have access to '$repoId'", info);
+                                return gh_json(result.name, "You don't have access to '$repoId'", info)
                             }
                         }
                     } catch(e: RequestException) {
-                        LOG.warnAndDebugDetails("Unexpected response from github server", e);
+                        LOG.warnAndDebugDetails("Unexpected response from github server", e)
                     } catch(e: IOException) {
-                        LOG.warnAndDebugDetails("IOException instead of response from github server", e);
+                        LOG.warnAndDebugDetails("IOException instead of response from github server", e)
                     }
                 }
             }
@@ -287,38 +247,69 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         TODO("Implement")
     }
 
-    protected fun error_json(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int): JsonElement {
-        val obj = JsonObject()
-        obj.addProperty("error", message)
-        obj.addProperty("code", code)
-        return obj
-    }
-
-    protected fun redirect_json(url: String): JsonElement {
-        val obj = JsonObject()
-        obj.addProperty("redirect", url)
-        return obj
-    }
-
-    private fun url(url: String, vararg params: Pair<String, Any>): String {
-        return url(url, params.associateBy({ it -> it.first }, { it -> it.second.toString() }))
-    }
-
-    private fun url(url: String, params: Map<String, Any>): String {
-        val sb = StringBuilder()
-        sb.append(url)
-        if (!params.isEmpty()) sb.append('?')
-        for (e in params.entries) {
-            sb.append(e.key).append('=').append(WebUtil.encode(e.value.toString())).append('&')
+    @Throws(RequestException::class)
+    private fun getConnection(request: HttpServletRequest, inProjectId: String?): OAuthConnectionDescriptor? {
+        val inConnectionId = request.getParameter("connectionId")
+        val inConnectionProjectId = request.getParameter("connectionProjectId") ?: inProjectId
+        if (inConnectionId == null || inConnectionProjectId == null) {
+            return null
         }
-        return sb.toString()
+        val connectionOwnerProject = myProjectManager.findProjectByExternalId(inConnectionProjectId)
+        @Suppress("IfNullToElvis")
+        if (connectionOwnerProject == null) {
+            throw RequestException("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
+        }
+        val connection = myOAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
+        @Suppress("IfNullToElvis")
+        if (connection == null) {
+            throw RequestException("There no connection with id '$inConnectionId' found in project ${connectionOwnerProject.fullName}", HttpServletResponse.SC_NOT_FOUND)
+        }
+        return connection
     }
 
-    protected fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonElement {
-        val obj = JsonObject()
-        obj.addProperty("result", result)
-        obj.addProperty("message", message)
-        obj.add("info", Gson().toJsonTree(info))
-        return obj
+    @Throws(RequestException::class)
+    fun getRepositoryInfo(inProjectId: String?, inId: String): Pair<SProject, VcsRootGitHubInfo> {
+        if (inProjectId.isNullOrEmpty()) {
+            throw RequestException("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
+        }
+        var project = myProjectManager.findProjectByExternalId(inProjectId) ?: throw RequestException("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
+        var info = Util.Companion.getGitHubInfo(inId) ?: throw RequestException("Not an GitHub VCS", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+        return project to info
     }
+
+}
+
+fun error_json(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int): JsonElement {
+    val obj = JsonObject()
+    obj.addProperty("error", message)
+    obj.addProperty("code", code)
+    return obj
+}
+
+fun redirect_json(url: String): JsonElement {
+    val obj = JsonObject()
+    obj.addProperty("redirect", url)
+    return obj
+}
+
+private fun url(url: String, vararg params: Pair<String, Any>): String {
+    return url(url, params.associateBy({ it -> it.first }, { it -> it.second.toString() }))
+}
+
+private fun url(url: String, params: Map<String, Any>): String {
+    val sb = StringBuilder()
+    sb.append(url)
+    if (!params.isEmpty()) sb.append('?')
+    for (e in params.entries) {
+        sb.append(e.key).append('=').append(WebUtil.encode(e.value.toString())).append('&')
+    }
+    return sb.toString()
+}
+
+fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonElement {
+    val obj = JsonObject()
+    obj.addProperty("result", result)
+    obj.addProperty("message", message)
+    obj.add("info", Gson().toJsonTree(info))
+    return obj
 }
