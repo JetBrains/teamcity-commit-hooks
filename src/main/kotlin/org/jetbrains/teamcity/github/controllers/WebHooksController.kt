@@ -22,10 +22,7 @@ import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
 import org.intellij.lang.annotations.MagicConstant
-import org.jetbrains.teamcity.github.TokensHelper
-import org.jetbrains.teamcity.github.Util
-import org.jetbrains.teamcity.github.VcsRootGitHubInfo
-import org.jetbrains.teamcity.github.WebHooksManager
+import org.jetbrains.teamcity.github.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
@@ -218,31 +215,34 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     private fun doAddWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val repoId = info.toString()
         try {
             val result = myWebHooksManager.doRegisterWebHook(info, ghc)
-            val repoId = info.toString()
             when (result) {
-                WebHooksManager.HookAddOperationResult.InvalidCredentials -> {
-                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
-                }
-                WebHooksManager.HookAddOperationResult.TokenScopeMismatch -> {
-                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
-                    // TODO: Update token scope
-                    myTokensHelper.markTokenIncorrect(token)
-                    return gh_json(result.name, "Token scope does not cover hooks management", info)
-                }
-                WebHooksManager.HookAddOperationResult.NoAccess -> {
-                    return gh_json(result.name, "No access to repository '$repoId'", info)
-                }
-                WebHooksManager.HookAddOperationResult.UserHaveNoAccess -> {
-                    return gh_json(result.name, "You don't have access to '$repoId'", info)
-                }
                 WebHooksManager.HookAddOperationResult.AlreadyExists -> {
                     return gh_json(result.name, "Hook for repository '$repoId' already exits, updated info", info)
                 }
                 WebHooksManager.HookAddOperationResult.Created -> {
                     return gh_json(result.name, "Created hook for repository '$repoId'", info)
+                }
+            }
+        } catch(e: GitHubAccessException) {
+            when (e.type) {
+                GitHubAccessException.Type.InvalidCredentials -> {
+                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                }
+                GitHubAccessException.Type.TokenScopeMismatch -> {
+                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                    // TODO: Update token scope
+                    myTokensHelper.markTokenIncorrect(token)
+                    return gh_json(e.type.name, "Token scope does not cover hooks management", info)
+                }
+                GitHubAccessException.Type.NoAccess -> {
+                    return gh_json(e.type.name, "No access to repository '$repoId'", info)
+                }
+                GitHubAccessException.Type.UserHaveNoAccess -> {
+                    return gh_json(e.type.name, "You don't have access to '$repoId'", info)
                 }
             }
         } catch(e: RequestException) {
@@ -255,26 +255,10 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
 
     private fun doCheckWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val repoId = info.toString()
         try {
             val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
-            val repoId = info.toString()
             when (result) {
-                WebHooksManager.HooksGetOperationResult.InvalidCredentials -> {
-                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
-                }
-                WebHooksManager.HooksGetOperationResult.TokenScopeMismatch -> {
-                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
-                    // TODO: Update token scope
-                    myTokensHelper.markTokenIncorrect(token)
-                    return gh_json(result.name, "Token scope does not cover hooks management", info)
-                }
-                WebHooksManager.HooksGetOperationResult.UserHaveNoAccess -> {
-                    return gh_json(result.name, "You don't have access to '$repoId'", info)
-                }
-                WebHooksManager.HooksGetOperationResult.NoAccess -> {
-                    return gh_json(result.name, "No access to repository '$repoId'", info)
-                }
                 WebHooksManager.HooksGetOperationResult.Ok -> {
                     val hook = myWebHooksManager.getHook(info)
                     if (hook != null) {
@@ -282,6 +266,25 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                     } else {
                         return gh_json(result.name, "No hook found for repository '$repoId'", info)
                     }
+                }
+            }
+        } catch(e: GitHubAccessException) {
+            when (e.type) {
+                GitHubAccessException.Type.InvalidCredentials -> {
+                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                }
+                GitHubAccessException.Type.TokenScopeMismatch -> {
+                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                    // TODO: Update token scope
+                    myTokensHelper.markTokenIncorrect(token)
+                    return gh_json(e.type.name, "Token scope does not cover hooks management", info)
+                }
+                GitHubAccessException.Type.UserHaveNoAccess -> {
+                    return gh_json(e.type.name, "You don't have access to '$repoId'", info)
+                }
+                GitHubAccessException.Type.NoAccess -> {
+                    return gh_json(e.type.name, "No access to repository '$repoId'", info)
                 }
             }
         } catch(e: RequestException) {
@@ -293,31 +296,34 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     private fun doDeleteWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val repoId = info.toString()
         try {
             val result = myWebHooksManager.doUnRegisterWebHook(info, ghc)
-            val repoId = info.toString()
             when (result) {
-                WebHooksManager.HookDeleteOperationResult.InvalidCredentials -> {
-                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
-                }
-                WebHooksManager.HookDeleteOperationResult.TokenScopeMismatch -> {
-                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
-                    // TODO: Update token scope
-                    myTokensHelper.markTokenIncorrect(token)
-                    return gh_json(result.name, "Token scope does not cover hooks management", info)
-                }
-                WebHooksManager.HookDeleteOperationResult.UserHaveNoAccess -> {
-                    return gh_json(result.name, "You don't have access to '$repoId'", info)
-                }
-                WebHooksManager.HookDeleteOperationResult.NoAccess -> {
-                    return gh_json(result.name, "No access to repository '$repoId'", info)
-                }
                 WebHooksManager.HookDeleteOperationResult.NeverExisted -> {
                     return gh_json(result.name, "Hook for repository '$repoId' never existed", info)
                 }
                 WebHooksManager.HookDeleteOperationResult.Removed -> {
                     return gh_json(result.name, "Removed hook for repository '$repoId'", info)
+                }
+            }
+        } catch(e: GitHubAccessException) {
+            when (e.type) {
+                GitHubAccessException.Type.InvalidCredentials -> {
+                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                }
+                GitHubAccessException.Type.TokenScopeMismatch -> {
+                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                    // TODO: Update token scope
+                    myTokensHelper.markTokenIncorrect(token)
+                    return gh_json(e.type.name, "Token scope does not cover hooks management", info)
+                }
+                GitHubAccessException.Type.UserHaveNoAccess -> {
+                    return gh_json(e.type.name, "You don't have access to '$repoId'", info)
+                }
+                GitHubAccessException.Type.NoAccess -> {
+                    return gh_json(e.type.name, "No access to repository '$repoId'", info)
                 }
             }
         } catch(e: RequestException) {
