@@ -1,12 +1,9 @@
 package org.jetbrains.teamcity.github
 
 import com.intellij.openapi.diagnostic.Logger
-import jetbrains.buildServer.serverSide.BuildServerAdapter
-import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.serverSide.WebLinks
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.util.EventDispatcher
-import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.vcs.RepositoryState
 import jetbrains.buildServer.vcs.RepositoryStateListener
 import jetbrains.buildServer.vcs.RepositoryStateListenerAdapter
@@ -18,15 +15,12 @@ import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import java.io.IOException
 import java.util.*
-import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.concurrent.read
-import kotlin.concurrent.write
 
-public class WebHooksManager(private val links: WebLinks, CacheProvider: CacheProvider,
+public class WebHooksManager(private val links: WebLinks,
                              private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
-                             private val serverEventDispatcher: EventDispatcher<BuildServerListener>) {
+                             private val myStorage: WebHooksStorage) {
 
-    val repoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
+    private val myRepoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {
             if (!Util.isSuitableVcsRoot(root)) return
             val info = Util.getGitHubInfo(root) ?: return
@@ -39,37 +33,17 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         }
     }
 
-    private val serverListener = object : BuildServerAdapter() {
-        override fun serverShutdown() {
-            myCacheLock.write { myCache.flush() }
-        }
-    }
-
     fun init(): Unit {
-        repoStateEventDispatcher.addListener(repoStateListener)
-        serverEventDispatcher.addListener(serverListener)
+        repoStateEventDispatcher.addListener(myRepoStateListener)
     }
 
     fun destroy(): Unit {
-        repoStateEventDispatcher.removeListener(repoStateListener)
-        serverEventDispatcher.removeListener(serverListener)
+        repoStateEventDispatcher.removeListener(myRepoStateListener)
     }
 
     companion object {
         private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
     }
-
-    data class HookInfo(val id: Long, val url: String) {
-        var correct: Boolean = true
-        var lastUsed: Date? = null
-        var lastBranchRevisions: MutableMap<String, String>? = null
-    }
-
-    class PerServerMap : HashMap<RepositoryId, HookInfo>();
-
-    private val myCache = CacheProvider.getOrCreateCache("WebHooksCache", PerServerMap::class.java)
-    private val myCacheLock = ReentrantReadWriteLock()
-
 
     public enum class HookAddOperationResult {
         InvalidCredentials,
@@ -244,28 +218,19 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
     }
 
     private fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {
-        save(server, repo, HookInfo(created.id, created.url))
+        save(server, repo, WebHooksStorage.HookInfo(created.id, created.url))
     }
 
-    private fun save(info: VcsRootGitHubInfo, hook: HookInfo) {
-        save(info.server, info.getRepositoryId(), hook)
+    private fun save(info: VcsRootGitHubInfo, hook: WebHooksStorage.HookInfo) {
+        myStorage.storeHook(info, hook)
     }
 
-    private fun save(server: String, repo: RepositoryId, hook: HookInfo) {
-        myCacheLock.write {
-            val map = myCache.fetch(server, { PerServerMap() });
-            map.put(repo, hook)
-            myCache.write(server, map)
-        }
+    private fun save(server: String, repo: RepositoryId, hook: WebHooksStorage.HookInfo) {
+        myStorage.storeHook(server, repo, hook)
     }
 
-    fun getHook(info: VcsRootGitHubInfo): HookInfo? {
-        // TODO: Populate map in background
-        myCacheLock.read {
-            val map = myCache.read(info.server) ?: return null
-            val hook = map[info.getRepositoryId()] ?: return null
-            return hook
-        }
+    fun getHook(info: VcsRootGitHubInfo): WebHooksStorage.HookInfo? {
+        return myStorage.getHook(info)
     }
 
     fun updateLastUsed(info: VcsRootGitHubInfo, date: Date) {
@@ -288,7 +253,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         save(info, hook)
     }
 
-    private fun isBranchesInfoUpToDate(hook: HookInfo, newBranches: Map<String, String>, info: VcsRootGitHubInfo): Boolean {
+    private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>, info: VcsRootGitHubInfo): Boolean {
         val hookBranches = hook.lastBranchRevisions
 
         // Maybe we have forgot about revisions (cache cleanup after server restart)
@@ -311,38 +276,7 @@ public class WebHooksManager(private val links: WebLinks, CacheProvider: CachePr
         return true
     }
 
-    fun isHasIncorrectHooks(): Boolean {
-        val keys = myCacheLock.read {
-            myCache.keys
-        }
-        for (key in keys) {
-            myCacheLock.read {
-                val map = myCache.read(key)
-                if (map != null) {
-                    if (map.values.any { !it.correct }) {
-                        return true
-                    }
-                }
-            }
-        }
-        return false
-    }
-
-    fun getIncorrectHooks(): List<Pair<VcsRootGitHubInfo, HookInfo>> {
-        val keys = myCacheLock.read {
-            myCache.keys
-        }
-        val result = ArrayList<Pair<VcsRootGitHubInfo, HookInfo>>()
-        for (key in keys) {
-            myCacheLock.read {
-                val map = myCache.read(key)
-                if (map != null) {
-                    result.addAll(map.entries.filter { !it.value.correct }.map { VcsRootGitHubInfo(key, it.key.owner, it.key.name) to it.value })
-                }
-            }
-        }
-        return result
-    }
-
+    fun isHasIncorrectHooks() = myStorage.isHasIncorrectHooks()
+    fun getIncorrectHooks() = myStorage.getIncorrectHooks()
 
 }

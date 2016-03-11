@@ -15,10 +15,7 @@ import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
-import org.jetbrains.teamcity.github.Constants
-import org.jetbrains.teamcity.github.GitHubWebHookAvailableHealthReport
-import org.jetbrains.teamcity.github.VcsRootGitHubInfo
-import org.jetbrains.teamcity.github.WebHooksManager
+import org.jetbrains.teamcity.github.*
 import org.springframework.web.servlet.ModelAndView
 import java.util.*
 import javax.servlet.http.HttpServletRequest
@@ -150,7 +147,7 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
     }
 }
 
-public class WebHookDetails(val info: WebHooksManager.HookInfo?,
+public class WebHookDetails(val info: WebHooksStorage.HookInfo?,
                             @Used("jps") val status: WebHooksStatus,
                             val roots: List<SVcsRoot>,
                             val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
@@ -260,7 +257,7 @@ public class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyLi
     }
 }
 
-data public class WebHooksStatus(val status: Status, val hook: WebHooksManager.HookInfo?) {
+data public class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo?) {
     @Used("jps")
     fun getAction(): String {
         return when (status) {
@@ -281,7 +278,7 @@ enum class Status {
     INCORRECT
 }
 
-private fun getHookStatus(hook: WebHooksManager.HookInfo?): WebHooksStatus {
+private fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
     if (hook == null) {
         return WebHooksStatus(Status.NOT_FOUND, hook)
     }
