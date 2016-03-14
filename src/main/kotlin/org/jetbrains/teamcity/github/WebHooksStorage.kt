@@ -1,9 +1,11 @@
 package org.jetbrains.teamcity.github
 
+import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
+import jetbrains.buildServer.util.cache.SCacheImpl
 import org.eclipse.egit.github.core.RepositoryId
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -12,6 +14,10 @@ import kotlin.concurrent.write
 
 public class WebHooksStorage(private val myCacheProvider: CacheProvider,
                              private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
+    companion object {
+        private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
+    }
+
     data class HookInfo(val id: Long, val url: String) {
         var correct: Boolean = true
         var lastUsed: Date? = null
@@ -25,8 +31,17 @@ public class WebHooksStorage(private val myCacheProvider: CacheProvider,
     private val myCacheLock = ReentrantReadWriteLock()
 
     private val myServerListener = object : BuildServerAdapter() {
+
         override fun serverShutdown() {
-            myCacheLock.write { myCache.flush() }
+            myCacheLock.write {
+                if (myCache is SCacheImpl) {
+                    if (!myCache.isAlive) {
+                        LOG.warn("Cache ${myCache.name} is not alive")
+                        return
+                    }
+                }
+                myCache.flush()
+            }
         }
     }
 
