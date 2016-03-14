@@ -45,99 +45,13 @@ public class WebHooksManager(private val links: WebLinks,
         private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
     }
 
-    public enum class HookAddOperationResult {
-        AlreadyExists,
-        Created,
-    }
-
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx): HookAddOperationResult {
-        val repo = info.getRepositoryId()
-        val service = RepositoryService(client)
-        val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
-                "url" to getCallbackUrl(),
-                "content_type" to "json"
-                // TODO: Investigate ssl option
-        ))
-
-        if (getHook(info) != null) {
-            return HookAddOperationResult.AlreadyExists
-        }
-
-        // First, check for already existing hooks, otherwise Github will answer with code 422
-        // If we cannot get hooks, we cannot add new one
-        doGetAllRepoHooks(info, client, service)
-
-        if (getHook(info) != null) {
-            return HookAddOperationResult.AlreadyExists
-        }
-
-        val created: RepositoryHook
-        try {
-            created = service.createHook(repo, hook)
-        } catch(e: RequestException) {
-            when (e.status) {
-                401 -> throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
-                403, 404 -> {
-                    // ? No access
-                    val pair = TokensHelper.getHooksAccessType(client) ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess)// Weird. No header?
-                    if (pair.first <= TokensHelper.HookAccessType.READ) throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
-                    throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
-                }
-                422 -> {
-                    if (e.error.errors.any { it.resource.equals("hook", true) && it.message.contains("already exists") }) {
-                        // Already exists
-                        return HookAddOperationResult.AlreadyExists
-                    }
-                }
-            }
-            throw e
-        }
-
-        addHook(created, info.server, repo)
-        return HookAddOperationResult.Created
-    }
-
     public enum class HooksGetOperationResult {
         Ok
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doGetAllWebHooks(info: VcsRootGitHubInfo, client: GitHubClientEx): HooksGetOperationResult {
-        val service = RepositoryService(client)
-        return doGetAllRepoHooks(info, client, service)
-    }
-
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    private fun doGetAllRepoHooks(info: VcsRootGitHubInfo, client: GitHubClientEx, service: RepositoryService): HooksGetOperationResult {
-        val repo = info.getRepositoryId()
-        try {
-            val hooks = service.getHooks(repo)
-            val filtered = hooks.filter { it.name == "web" && it.config["url"] == getCallbackUrl() && it.config["content_type"] == "json" }
-            if (filtered.isNotEmpty()) {
-                populateHooks(info.server, repo, filtered);
-            }
-        } catch(e: RequestException) {
-            when (e.status) {
-                401 -> {
-                    throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
-                }
-                403, 404 -> {
-                    // No access
-                    // Probably token does not have permissions
-                    val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess) // Weird. No header?
-                    val pair = TokensHelper.getHooksAccessType(scopes)
-                    val accessType = pair.first
-                    when (accessType) {
-                        TokensHelper.HookAccessType.NO_ACCESS -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
-                        TokensHelper.HookAccessType.READ -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
-                        TokensHelper.HookAccessType.WRITE, TokensHelper.HookAccessType.ADMIN -> throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
-                    }
-                }
-            }
-            throw e
-        }
-        return HooksGetOperationResult.Ok
+    public enum class HookAddOperationResult {
+        AlreadyExists,
+        Created,
     }
 
     public enum class HookDeleteOperationResult {
@@ -145,41 +59,147 @@ public class WebHooksManager(private val links: WebLinks,
         NeverExisted,
     }
 
+    interface Operation<ORT : Enum<ORT>> {
+        @Throws(GitHubAccessException::class)
+        public fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): ORT
+    }
+
+    val GetAllWebHooks = object : Operation<HooksGetOperationResult> {
+        @Throws(GitHubAccessException::class)
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HooksGetOperationResult {
+            val service = RepositoryService(client)
+            val repo = info.getRepositoryId()
+            try {
+                val hooks = service.getHooks(repo)
+                val filtered = hooks.filter { it.name == "web" && it.config["url"] == getCallbackUrl() && it.config["content_type"] == "json" }
+                if (filtered.isNotEmpty()) {
+                    populateHooks(info.server, repo, filtered);
+                }
+            } catch(e: RequestException) {
+                when (e.status) {
+                    401 -> {
+                        throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
+                    }
+                    403, 404 -> {
+                        // No access
+                        // Probably token does not have permissions
+                        val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess) // Weird. No header?
+                        val pair = TokensHelper.getHooksAccessType(scopes)
+                        val accessType = pair.first
+                        when (accessType) {
+                            TokensHelper.HookAccessType.NO_ACCESS -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
+                            TokensHelper.HookAccessType.READ -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
+                            TokensHelper.HookAccessType.WRITE, TokensHelper.HookAccessType.ADMIN -> throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
+                        }
+                    }
+                }
+                throw e
+            }
+            return HooksGetOperationResult.Ok
+        }
+    }
+
+    val CreateWebHook = object : Operation<HookAddOperationResult> {
+        @Throws(GitHubAccessException::class)
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HookAddOperationResult {
+            val repo = info.getRepositoryId()
+            val service = RepositoryService(client)
+            val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
+                    "url" to getCallbackUrl(),
+                    "content_type" to "json"
+                    // TODO: Investigate ssl option
+            ))
+
+            if (getHook(info) != null) {
+                return HookAddOperationResult.AlreadyExists
+            }
+
+            // First, check for already existing hooks, otherwise Github will answer with code 422
+            // If we cannot get hooks, we cannot add new one
+            // TODO: Consider handling GitHubAccessException
+            GetAllWebHooks.doRun(info, client)
+
+            if (getHook(info) != null) {
+                return HookAddOperationResult.AlreadyExists
+            }
+
+            val created: RepositoryHook
+            try {
+                created = service.createHook(repo, hook)
+            } catch(e: RequestException) {
+                when (e.status) {
+                    401 -> throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
+                    403, 404 -> {
+                        // ? No access
+                        val pair = TokensHelper.getHooksAccessType(client) ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess)// Weird. No header?
+                        if (pair.first <= TokensHelper.HookAccessType.READ) throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
+                        throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
+                    }
+                    422 -> {
+                        if (e.error.errors.any { it.resource.equals("hook", true) && it.message.contains("already exists") }) {
+                            // Already exists
+                            return HookAddOperationResult.AlreadyExists
+                        }
+                    }
+                }
+                throw e
+            }
+
+            addHook(created, info.server, repo)
+            return HookAddOperationResult.Created
+
+        }
+    }
+
+    val DeleteWebHook = object : Operation<HookDeleteOperationResult> {
+        @Throws(GitHubAccessException::class)
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HookDeleteOperationResult {
+            val repo = info.getRepositoryId()
+            val service = RepositoryService(client)
+
+            var hook = getHook(info)
+
+            if (hook != null) {
+                try {
+                    service.deleteHook(repo, hook.id.toInt())
+                } catch(e: RequestException) {
+                    // TODO: Check result code
+                }
+                return HookDeleteOperationResult.Removed
+            }
+
+            // TODO: Consider handling GitHubAccessException
+            GetAllWebHooks.doRun(info, client)
+
+            hook = getHook(info)
+
+            if (hook != null) {
+                try {
+                    service.deleteHook(repo, hook.id.toInt())
+                } catch(e: RequestException) {
+                    // TODO: Check result code
+                }
+                return HookDeleteOperationResult.Removed
+            }
+
+            return HookDeleteOperationResult.NeverExisted
+        }
+    }
+
+
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
+    public fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx): HookAddOperationResult {
+        return CreateWebHook.doRun(info, client)
+    }
+
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
+    public fun doGetAllWebHooks(info: VcsRootGitHubInfo, client: GitHubClientEx): HooksGetOperationResult {
+        return GetAllWebHooks.doRun(info, client)
+    }
+
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     public fun doUnRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx): HookDeleteOperationResult {
-        val repo = info.getRepositoryId()
-        val service = RepositoryService(client)
-
-        var hook = getHook(info)
-
-        if (hook != null) {
-            try {
-                service.deleteHook(repo, hook.id.toInt())
-            } catch(e: RequestException) {
-                // TODO: Check result code
-            }
-            return HookDeleteOperationResult.Removed
-        }
-
-        try {
-            doGetAllRepoHooks(info, client, service)
-        } catch(e: GitHubAccessException) {
-            // TODO: Consider handling
-            throw e
-        }
-
-        hook = getHook(info)
-
-        if (hook != null) {
-            try {
-                service.deleteHook(repo, hook.id.toInt())
-            } catch(e: RequestException) {
-                // TODO: Check result code
-            }
-            return HookDeleteOperationResult.Removed
-        }
-
-        return HookDeleteOperationResult.NeverExisted
+        return DeleteWebHook.doRun(info, client)
     }
 
 
