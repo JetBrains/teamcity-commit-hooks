@@ -55,14 +55,14 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
     override fun canReportItemsFor(scope: HealthStatusScope): Boolean {
         if (!scope.isItemWithSeverityAccepted(CATEGORY.severity)) return false
         var found = false
-        findSuitableRoots(scope) { found = true; false }
+        Util.findSuitableRoots(scope) { found = true; false }
         return found
     }
 
 
     override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
         val gitRootInstances = HashSet<VcsRootInstance>()
-        findSuitableRoots(scope, { gitRootInstances.add(it); true })
+        Util.findSuitableRoots(scope, { gitRootInstances.add(it); true })
 
         val split = split(gitRootInstances)
 
@@ -90,17 +90,6 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                 resultConsumer.consumeForVcsRoot(root, item)
                 resultConsumer.consumeForProject(root.project, item)
                 root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
-            }
-        }
-    }
-
-    private fun findSuitableRoots(scope: HealthStatusScope, collector: (VcsRootInstance) -> Boolean): Unit {
-        for (bt in scope.buildTypes) {
-            if (bt.project.isArchived) continue
-            for (it in bt.vcsRootInstances) {
-                if (it.vcsName == Constants.VCS_NAME_GIT && it.properties[Constants.VCS_PROPERTY_GIT_URL] != null) {
-                    if (!collector(it)) return;
-                }
             }
         }
     }

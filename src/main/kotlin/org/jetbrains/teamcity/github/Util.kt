@@ -1,6 +1,8 @@
 package org.jetbrains.teamcity.github
 
+import jetbrains.buildServer.serverSide.SBuildType
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.healthStatus.HealthStatusScope
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GHEOAuthProvider
@@ -8,6 +10,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.serverSide.oauth.github.GitHubOAuthProvider
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.VcsRoot
+import jetbrains.buildServer.vcs.VcsRootInstance
 
 public class Util {
     companion object {
@@ -70,6 +73,26 @@ public class Util {
             val url = root.properties[Constants.VCS_PROPERTY_GIT_URL] ?: return false
             if (StringUtil.hasParameterReferences(url)) return false
             return getGitHubInfo(url) != null
+        }
+
+        fun findSuitableRoots(scope: HealthStatusScope, collector: (VcsRootInstance) -> Boolean) {
+            findSuitableRoots(scope.buildTypes, false, collector);
+        }
+
+        fun findSuitableRoots(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
+            val list = if (recursive) project.buildTypes else project.ownBuildTypes
+            findSuitableRoots(list, archived, collector)
+        }
+
+        fun findSuitableRoots(buildTypes: Collection<SBuildType>, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
+            for (bt in buildTypes) {
+                if (!archived && bt.project.isArchived) continue
+                for (it in bt.vcsRootInstances) {
+                    if (it.vcsName == Constants.VCS_NAME_GIT && it.properties[Constants.VCS_PROPERTY_GIT_URL] != null) {
+                        if (!collector(it)) return;
+                    }
+                }
+            }
         }
     }
 }

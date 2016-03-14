@@ -111,7 +111,7 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
         val usages: MutableMap<VcsRootInstance, VcsRootUsages> = HashMap()
 
         val allGitVcsInstances = HashSet<VcsRootInstance>()
-        findSuitableRoots(project, recursive = form.recursive) {
+        Util.findSuitableRoots(project, recursive = form.recursive) {
             allGitVcsInstances.add(it)
         }
         val split = GitHubWebHookAvailableHealthReport.split(allGitVcsInstances)
@@ -289,15 +289,4 @@ private fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
         return WebHooksStatus(Status.WAITING_FOR_SERVER_RESPONSE, hook)
     }
     return WebHooksStatus(Status.OK, hook)
-}
-
-private fun findSuitableRoots(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean): Unit {
-    for (bt in if (recursive) project.buildTypes else project.ownBuildTypes) {
-        if (!archived && bt.project.isArchived) continue
-        for (it in bt.vcsRootInstances) {
-            if (it.vcsName == Constants.VCS_NAME_GIT && it.properties[Constants.VCS_PROPERTY_GIT_URL] != null) {
-                if (!collector(it)) return;
-            }
-        }
-    }
 }
