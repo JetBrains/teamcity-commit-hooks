@@ -113,6 +113,7 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
         val allGitVcsInstances = HashSet<VcsRootInstance>()
         Util.findSuitableRoots(project, recursive = form.recursive) {
             allGitVcsInstances.add(it)
+            true
         }
         val split = GitHubWebHookAvailableHealthReport.split(allGitVcsInstances)
         for (entry in split) {
