@@ -279,7 +279,7 @@ enum class Status {
     INCORRECT
 }
 
-private fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
+fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
     if (hook == null) {
         return WebHooksStatus(Status.NOT_FOUND, hook)
     }

@@ -27,8 +27,9 @@ public class WebHooksManager(private val links: WebLinks,
             val hook = getHook(info) ?: return
             if (!isBranchesInfoUpToDate(hook, newState.branchRevisions, info)) {
                 // Mark hook as outdated, probably incorrectly configured
-                hook.correct = false
-                save(info, hook)
+                myStorage.update(info) {
+                    it.correct = false
+                }
             }
         }
     }
@@ -46,6 +47,11 @@ public class WebHooksManager(private val links: WebLinks,
     }
 
     public enum class HooksGetOperationResult {
+        Ok
+    }
+
+    public enum class HookTestOperationResult {
+        NotFound,
         Ok
     }
 
@@ -96,6 +102,29 @@ public class WebHooksManager(private val links: WebLinks,
                 throw e
             }
             return HooksGetOperationResult.Ok
+        }
+    }
+
+    val TestWebHook = object : Operation<HookTestOperationResult> {
+        @Throws(GitHubAccessException::class)
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HookTestOperationResult {
+            val service = RepositoryService(client)
+            val hook = getHook(info) ?: return HookTestOperationResult.NotFound
+            try {
+                service.testHook(info.getRepositoryId(), hook.id.toInt())
+            } catch(e: RequestException) {
+                when (e.status) {
+                    401 -> throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
+                    403, 404 -> {
+                        // ? No access
+                        val pair = TokensHelper.getHooksAccessType(client) ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess)// Weird. No header?
+                        if (pair.first <= TokensHelper.HookAccessType.READ) throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
+                        throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
+                    }
+                }
+                throw e
+            }
+            return HookTestOperationResult.Ok
         }
     }
 
@@ -205,7 +234,13 @@ public class WebHooksManager(private val links: WebLinks,
 
     private fun populateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
         for (hook in filtered) {
-            addHook(hook, server, repo)
+            val info = myStorage.getHook(server, repo)
+            if (info != null) {
+                assert(info.id == hook.id)
+                assert(info.url == hook.url)
+            } else {
+                addHook(hook, server, repo)
+            }
         }
     }
 
@@ -215,15 +250,7 @@ public class WebHooksManager(private val links: WebLinks,
     }
 
     private fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {
-        save(server, repo, WebHooksStorage.HookInfo(created.id, created.url))
-    }
-
-    private fun save(info: VcsRootGitHubInfo, hook: WebHooksStorage.HookInfo) {
-        myStorage.storeHook(info, hook)
-    }
-
-    private fun save(server: String, repo: RepositoryId, hook: WebHooksStorage.HookInfo) {
-        myStorage.storeHook(server, repo, hook)
+        myStorage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url) })
     }
 
     fun getHook(info: VcsRootGitHubInfo): WebHooksStorage.HookInfo? {
@@ -235,19 +262,25 @@ public class WebHooksManager(private val links: WebLinks,
         val hook = getHook(info) ?: return
         val used = hook.lastUsed
         if (used == null || used.before(date)) {
-            hook.correct = true
-            hook.lastUsed = date
-            save(info, hook)
+            myStorage.update(info) {
+                @Suppress("NAME_SHADOWING")
+                val used = it.lastUsed
+                if (used == null || used.before(date)) {
+                    it.correct = true
+                    it.lastUsed = date
+                }
+            }
         }
     }
 
     fun updateBranchRevisions(info: VcsRootGitHubInfo, map: Map<String, String>) {
         val hook = getHook(info) ?: return
-        val lbr = hook.lastBranchRevisions ?: HashMap()
-        lbr.putAll(map)
-        hook.correct = true
-        hook.lastBranchRevisions = lbr
-        save(info, hook)
+        myStorage.update(info) {
+            it.correct = true
+            val lbr = hook.lastBranchRevisions ?: HashMap()
+            lbr.putAll(map)
+            it.lastBranchRevisions = lbr
+        }
     }
 
     private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>, info: VcsRootGitHubInfo): Boolean {
@@ -255,8 +288,9 @@ public class WebHooksManager(private val links: WebLinks,
 
         // Maybe we have forgot about revisions (cache cleanup after server restart)
         if (hookBranches == null) {
-            hook.lastBranchRevisions = HashMap(newBranches)
-            save(info, hook)
+            myStorage.update(info) {
+                it.lastBranchRevisions = HashMap(newBranches)
+            }
             return true
         }
         for ((name, hash) in newBranches.entries) {
