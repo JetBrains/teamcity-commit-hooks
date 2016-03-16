@@ -261,6 +261,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             when (result) {
                 WebHooksManager.HooksGetOperationResult.Ok -> {
                     val hook = myWebHooksManager.getHook(info)
+                    // Ensure test message was sent
+                    myWebHooksManager.TestWebHook.doRun(info, ghc)
                     if (hook != null) {
                         return gh_json(result.name, "Updated hook info for repository '$repoId'", info)
                     } else {
