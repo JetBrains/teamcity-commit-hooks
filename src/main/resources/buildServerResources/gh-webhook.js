@@ -61,7 +61,31 @@ BS.GitHubWebHooks = {
         delete: {
             id: "delete",
             name: "Delete",
-            progress: "Deleting WebHook"
+            progress: "Deleting WebHook",
+            success: function (json, resource) {
+                // TODO: Deduplicate all 'success' functions
+                var info = json['info'];
+                var message = json['message'];
+                var repo = info['owner'] + '/' + info['name'];
+                var server = info['server'];
+                var warning = false;
+                if ("Deleted" == resource) {
+                } else if ("NeverExisted" == resource) {
+                } else if ("TokenScopeMismatch" == resource) {
+                    message = "Token you provided have no access to repository '" + repo + "', try again";
+                    warning = true;
+                    // TODO: Add link to refresh/request token (via popup window)
+                    BS.GitHubWebHooks.forcePopup[server] = true
+                } else if ("NoAccess" == resource) {
+                    warning = true;
+                } else if ("UserHaveNoAccess" == resource) {
+                    warning = true;
+                } else {
+                    BS.Log.warn("Unexpected result: " + resource);
+                    alert("Unexpected result: " + resource);
+                }
+                BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+            }
         },
         connect: {
             id: "connect",

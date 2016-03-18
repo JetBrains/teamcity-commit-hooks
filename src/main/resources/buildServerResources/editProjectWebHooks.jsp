@@ -58,8 +58,10 @@
                     </div></td>
                         <%--@elvariable id="webhook" type="org.jetbrains.teamcity.github.controllers.WebHooksStatus"--%>
                     <c:set var="webhook" value="${entry.value.status}"/>
-                    <td class="edit"><a href="#"
-                                        onclick="BS.GitHubWebHooks.doAction('${webhook.action}', this, '${entry.key}','${currentProject.externalId}'); return false;">${webhook.action}</a>
+                    <td class="edit">
+                        <c:forEach items="${webhook.actions}" var="action">
+                            <div><a href="#" onclick="BS.GitHubWebHooks.doAction('${action}', this, '${entry.key}','${currentProject.externalId}'); return false;">${action}</a> </div>
+                        </c:forEach>
                     </td>
                     <td class="edit">
                         <%@include file="webhook-status.jspf" %>

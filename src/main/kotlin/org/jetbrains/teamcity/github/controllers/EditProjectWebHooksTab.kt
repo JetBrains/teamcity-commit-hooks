@@ -285,13 +285,13 @@ public class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyLi
 
 data public class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo?) {
     @Used("jps")
-    fun getAction(): String {
+    fun getActions(): List<String> {
         return when (status) {
-            Status.NO_INFO -> "Check" // or "Connect"
-            Status.NOT_FOUND -> "Add"
-            Status.OK -> "Delete"
-            Status.WAITING_FOR_SERVER_RESPONSE -> "Check"
-            Status.INCORRECT -> "Add"
+            Status.NO_INFO -> listOf("Check") // or "Connect"
+            Status.NOT_FOUND -> listOf("Add", "Check")
+            Status.OK -> listOf("Delete", "Check")
+            Status.WAITING_FOR_SERVER_RESPONSE -> listOf("Check", "Delete")
+            Status.INCORRECT -> listOf("Add", "Check")
         }
     }
 }
