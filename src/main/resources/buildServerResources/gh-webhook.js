@@ -10,14 +10,15 @@ BS.GitHubWebHooks = {
                 var info = json['info'];
                 var message = json['message'];
                 var repo = info['owner'] + '/' + info['name'];
+                var server = info['server'];
                 var warning = false;
                 if ("AlreadyExists" == resource) {
                 } else if ("Created" == resource) {
                 } else if ("TokenScopeMismatch" == resource) {
-                    message = "Token you provided have no access to repository, try again";
+                    message = "Token you provided have no access to repository '" + repo + "', try again";
                     warning = true;
                     // TODO: Add link to refresh/request token (via popup window)
-                    BS.GitHubWebHooks.forcePopup[repo] = true
+                    BS.GitHubWebHooks.forcePopup[server] = true
                 } else if ("NoAccess" == resource) {
                     warning = true;
                 } else if ("UserHaveNoAccess" == resource) {
@@ -32,7 +33,30 @@ BS.GitHubWebHooks = {
         check: {
             id: "check",
             name: "Check",
-            progress: "Checking WebHook"
+            progress: "Checking WebHook",
+            success: function (json, resource) {
+                // TODO: Deduplicate all 'success' functions
+                var info = json['info'];
+                var message = json['message'];
+                var repo = info['owner'] + '/' + info['name'];
+                var server = info['server'];
+                var warning = false;
+                if ("Ok" == resource) {
+                } else if ("TokenScopeMismatch" == resource) {
+                    message = "Token you provided have no access to repository '" + repo + "', try again";
+                    warning = true;
+                    // TODO: Add link to refresh/request token (via popup window)
+                    BS.GitHubWebHooks.forcePopup[server] = true
+                } else if ("NoAccess" == resource) {
+                    warning = true;
+                } else if ("UserHaveNoAccess" == resource) {
+                    warning = true;
+                } else {
+                    BS.Log.warn("Unexpected result: " + resource);
+                    alert("Unexpected result: " + resource);
+                }
+                BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+            }
         },
         delete: {
             id: "delete",
@@ -66,11 +90,16 @@ BS.GitHubWebHooks = {
 
         //var progress = $$("# .progress").show();
 
+        // Enforce popup for server if needed
+        var server = undefined;
         var info = BS.GitHubWebHooks.info[id];
         if (info) {
-            if (BS.GitHubWebHooks.forcePopup[info['server']]) {
-                popup = true
-            }
+            server = info['server'];
+        } else if (type == "repository") {
+            server = BS.GitHubWebHooks.getServerUrl(id);
+        }
+        if (server && BS.GitHubWebHooks.forcePopup[server]) {
+            popup = true
         }
 
         if (popup) {
@@ -153,7 +182,7 @@ BS.GitHubWebHooks = {
             if (action.success) {
                 return action.success(json, res)
             }
-            BS.Log.warn("Unknown action type: " + json['action']);
+            BS.Log.warn("There no 'success' function defined for action '" + action.id + "'");
             return "There no 'success' function defined for action '" + action.id + "'"
         }
         BS.Log.warn("Unknown action type: " + json['action']);
@@ -188,6 +217,11 @@ BS.GitHubWebHooks = {
         //window.location.reload(false)
     },
 
+    getServerUrl: function (repository) {
+        var s = String(repository);
+        return s.substring(0, s.lastIndexOf("/", s.lastIndexOf("/") - 1));
+    },
+
     doAction: function (name, element, repository, projectId, popup) {
         var action = BS.GitHubWebHooks.actions[name.toLowerCase()];
         if (!action) {
@@ -196,7 +230,9 @@ BS.GitHubWebHooks = {
         }
         var p;
         if (popup === undefined) {
-            p = true
+            var fp = BS.GitHubWebHooks.forcePopup[BS.GitHubWebHooks.getServerUrl(repository)];
+            if (fp === undefined) fp = true;
+            p = fp
         } else {
             p = popup
         }

@@ -8,6 +8,7 @@ import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.log.LogUtil
 import jetbrains.buildServer.serverSide.*
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
+import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.Pager
 import jetbrains.buildServer.vcs.LVcsRoot
 import jetbrains.buildServer.vcs.SVcsRoot
@@ -15,13 +16,17 @@ import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
+import jetbrains.buildServer.web.util.SessionUser
 import org.jetbrains.teamcity.github.*
 import org.springframework.web.servlet.ModelAndView
 import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor, val webHooksManager: WebHooksManager, val versionedSettingsManager: VersionedSettingsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
+public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
+                                    val webHooksManager: WebHooksManager,
+                                    val versionedSettingsManager: VersionedSettingsManager,
+                                    val tokensHelper: TokensHelper) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
         val TAB_TITLE_PREFIX = "GitHub WebHooks"
     }
@@ -34,8 +39,11 @@ public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescri
 
     override fun getTabTitle(request: HttpServletRequest): String {
         val project = getProject(request) ?: return super.getTabTitle(request)
+        val user = SessionUser.getUser(request) ?: return super.getTabTitle(request)
 
-        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager)
+        // TODO: Do not calculate full data, just estimate webhooks count
+        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user)
+        webHooksBean.applyFilter()
 
         val num = webHooksBean.getNumberOfAvailableWebHooks()
         if (num > 0) {
@@ -51,7 +59,8 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
                                            val descriptor: PluginDescriptor,
                                            val webHooksManager: WebHooksManager,
                                            val projectManager: ProjectManager,
-                                           val versionedSettingsManager: VersionedSettingsManager) : BaseController(server) {
+                                           val versionedSettingsManager: VersionedSettingsManager,
+                                           val tokensHelper: TokensHelper) : BaseController(server) {
     private val jsp = descriptor.getPluginResourcesPath("editProjectWebHooks.jsp")
 
     init {
@@ -62,8 +71,9 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
         val projectExternalId = request.getParameter("projectId")
         val project = projectManager.findProjectByExternalId(projectExternalId) ?: return simpleView("Project with id " + LogUtil.quote(projectExternalId) + " does not exist anymore.")
+        val user = SessionUser.getUser(request) ?: return simpleView("Session User not found.")
 
-        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager)
+        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user)
 
         FormUtil.bindFromRequest(request, webHooksBean.form)
         webHooksBean.applyFilter()
@@ -84,7 +94,9 @@ public class ProjectWebHooksForm() {
     var page: Int = 0
 }
 
-public class ProjectWebHooksBean(val project: SProject, val webHooksManager: WebHooksManager, val versionedSettingsManager: VersionedSettingsManager) {
+public class ProjectWebHooksBean(val project: SProject, val webHooksManager: WebHooksManager, val versionedSettingsManager: VersionedSettingsManager,
+                                 val helper: TokensHelper,
+                                 val user: SUser) {
     val hooks: SortedMap<VcsRootGitHubInfo, WebHookDetails> = TreeMap(comparator)
 
     val form: ProjectWebHooksForm = ProjectWebHooksForm();
@@ -139,6 +151,19 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
             }
             hooks.put(entry.key, WebHookDetails(hook, status, roots, orphans, usages, project, versionedSettingsManager))
         }
+    }
+
+    @Used("jps")
+    fun getEnforcePopupData(): Map<String, Boolean> {
+        val map = HashMap<String, Boolean>()
+        val hooks = getVisibleHooks()
+        val servers = hooks.map { it.key.server }.toHashSet()
+        for (server in servers) {
+            val connections = helper.getConnections(project, server)
+            val tokens = helper.getExistingTokens(connections, user)
+            map.put(server, !connections.isNotEmpty() || !tokens.isNotEmpty());
+        }
+        return map
     }
 
 

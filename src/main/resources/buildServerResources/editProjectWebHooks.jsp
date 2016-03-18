@@ -193,6 +193,16 @@
         </c:if>
     </div>
 
+    <script type="text/javascript">
+        (function () {
+            <c:forEach items="${webHooksBean.enforcePopupData}" var="entry">
+            if (BS.GitHubWebHooks.forcePopup['${entry.key}'] === undefined || BS.GitHubWebHooks.forcePopup['${entry.key}'] == false) {
+                BS.GitHubWebHooks.forcePopup['${entry.key}'] = ${entry.value};
+            }
+            </c:forEach>
+        })();
+    </script>
+
     <bs:pager place="bottom"
               urlPattern="editProject.html?tab=editProjectWebHooks&projectId=${webHooksBean.project.externalId}&page=[page]&keyword=${webHooksBean.form.keyword}&recursive=${webHooksBean.form.recursive}"
               pager="${webHooksBean.pager}"/>
