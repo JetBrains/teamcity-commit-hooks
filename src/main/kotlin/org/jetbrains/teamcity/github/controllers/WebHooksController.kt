@@ -181,8 +181,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 return redirect_json(url(request.contextPath + "/oauth/github/accessToken.html",
                         "action" to "obtainToken",
                         "connectionId" to connection.id,
-                        "projectId" to connection.project.projectId,
-                        "scope" to "write:repo_hook",
+                        "projectId" to connection.project.externalId,
+                        "scope" to "admin:repo_hook",
                         "callbackUrl" to url(request.contextPath + PATH, params))
                 )
             }
