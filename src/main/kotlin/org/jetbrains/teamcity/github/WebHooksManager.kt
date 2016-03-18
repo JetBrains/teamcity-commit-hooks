@@ -194,6 +194,7 @@ public class WebHooksManager(private val links: WebLinks,
                 } catch(e: RequestException) {
                     // TODO: Check result code
                 }
+                myStorage.delete(info.server, repo)
                 return HookDeleteOperationResult.Removed
             }
 
@@ -208,6 +209,7 @@ public class WebHooksManager(private val links: WebLinks,
                 } catch(e: RequestException) {
                     // TODO: Check result code
                 }
+                myStorage.delete(info.server, repo)
                 return HookDeleteOperationResult.Removed
             }
 
