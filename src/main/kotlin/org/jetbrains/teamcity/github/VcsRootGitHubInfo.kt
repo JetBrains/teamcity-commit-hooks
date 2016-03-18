@@ -37,7 +37,9 @@ public data class VcsRootGitHubInfo(val server: String, val owner: String, val n
 
     public fun getRepositoryUrl(): String {
         val builder = StringBuilder()
-        builder.append("https://")
+        // TODO: Uncomment next line. It's workaround for our non-https GHE server
+        //builder.append("https:")
+        builder.append("//")
         builder.append(server)
         if (!builder.endsWith('/')) {
             builder.append('/')
