@@ -49,7 +49,12 @@
                 <c:set var="uniq_hash" value="${entry.hashCode()}"/>
                 <c:set var="totalUsages" value="${entry.value.totalUsagesCount}"/>
                 <tr>
-                    <td><div><span class="webHook"><a href="${entry.key.repositoryUrl}">${entry.key}</a></span></div></td>
+                    <td><div>
+                        <span class="webHook"><a href="${entry.key.repositoryUrl}">${entry.key}</a></span>
+                        <c:if test="${entry.value.info != null}">
+                            <span style="float: right"><a href="${entry.key.repositoryUrl}/settings/hooks/${entry.value.info.id}">View on GitHub</a></span>
+                        </c:if>
+                    </div></td>
                         <%--@elvariable id="webhook" type="org.jetbrains.teamcity.github.controllers.WebHooksStatus"--%>
                     <c:set var="webhook" value="${entry.value.status}"/>
                     <td class="edit"><a href="#"
