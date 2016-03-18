@@ -21,7 +21,7 @@ public class WebHooksStorage(private val myCacheProvider: CacheProvider,
     }
 
     data class HookInfo(val id: Long,
-                        val url: String,
+                        val url: String, // API URL
                         var correct: Boolean = true,
                         var lastUsed: Date? = null,
                         var lastBranchRevisions: MutableMap<String, String>? = null) : Serializable {
