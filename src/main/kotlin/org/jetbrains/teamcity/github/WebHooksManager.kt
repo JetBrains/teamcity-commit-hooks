@@ -78,9 +78,7 @@ public class WebHooksManager(private val links: WebLinks,
             try {
                 val hooks = service.getHooks(repo)
                 val filtered = hooks.filter { it.name == "web" && it.config["url"] == getCallbackUrl() && it.config["content_type"] == "json" }
-                if (filtered.isNotEmpty()) {
-                    populateHooks(info.server, repo, filtered);
-                }
+                updateHooks(info.server, repo, filtered);
             } catch(e: RequestException) {
                 when (e.status) {
                     401 -> {
@@ -242,15 +240,20 @@ public class WebHooksManager(private val links: WebLinks,
     }
 
 
-    private fun populateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
+    private fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
+        // TODO: Support more than one hook in storage, report that as misconfiguration
         for (hook in filtered) {
             val info = myStorage.getHook(server, repo)
-            if (info != null) {
-                assert(info.id == hook.id)
-                assert(info.url == hook.url)
-            } else {
+            if (info == null) {
+                addHook(hook, server, repo)
+            } else if (info.id != hook.id || info.url != hook.url) {
+                myStorage.delete(server, repo)
                 addHook(hook, server, repo)
             }
+        }
+        if (filtered.isEmpty()) {
+            // Remove old hooks
+            myStorage.delete(server, repo)
         }
     }
 
