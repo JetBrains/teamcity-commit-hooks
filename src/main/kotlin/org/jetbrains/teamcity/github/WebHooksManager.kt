@@ -189,12 +189,7 @@ public class WebHooksManager(private val links: WebLinks,
             var hook = getHook(info)
 
             if (hook != null) {
-                try {
-                    service.deleteHook(repo, hook.id.toInt())
-                } catch(e: RequestException) {
-                    // TODO: Check result code
-                }
-                myStorage.delete(info.server, repo)
+                delete(client, hook, info, repo, service)
                 return HookDeleteOperationResult.Removed
             }
 
@@ -204,16 +199,29 @@ public class WebHooksManager(private val links: WebLinks,
             hook = getHook(info)
 
             if (hook != null) {
-                try {
-                    service.deleteHook(repo, hook.id.toInt())
-                } catch(e: RequestException) {
-                    // TODO: Check result code
-                }
-                myStorage.delete(info.server, repo)
+                delete(client, hook, info, repo, service)
                 return HookDeleteOperationResult.Removed
             }
 
             return HookDeleteOperationResult.NeverExisted
+        }
+
+        private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: VcsRootGitHubInfo, repo: RepositoryId, service: RepositoryService) {
+            try {
+                service.deleteHook(repo, hook.id.toInt())
+            } catch(e: RequestException) {
+                when (e.status) {
+                    403, 404 -> {
+                        // ? No access
+                        // "X-Accepted-OAuth-Scopes" -> "admin:repo_hook, public_repo, repo"
+                        val pair = TokensHelper.getHooksAccessType(client) ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess)// Weird. No header?
+                        if (pair.first < TokensHelper.HookAccessType.ADMIN) throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch, "Required scope 'admin:repo_hook', 'public_repo' or 'repo'")
+                        throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
+                    }
+                }
+                throw e
+            }
+            myStorage.delete(info.server, repo)
         }
     }
 
