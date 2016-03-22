@@ -372,14 +372,13 @@ BS.GitHubWebHooks = {};
             repositories = [data_holder.attr('data-repository')];
         }
         if (repositories.length < 1) return;
-        var parameters = {
-            'action': 'get-info',
-            'repository': repositories
-        };
-        BS.ProgressPopup.showProgress(element, "Fetching webhook(s) info", {shift: {x: -65, y: 20}, zIndex: 100});
+        BS.ProgressPopup.showProgress(element, "Refreshing webhook" + (repositories.length > 1 ? 's' : ''), {shift: {x: -65, y: 20}, zIndex: 100});
         BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
             method: 'get',
-            parameters: parameters,
+            parameters: {
+                'action': 'get-info',
+                'repository': repositories
+            },
             onComplete: function (transport) {
                 BS.ProgressPopup.hidePopup(0, true);
                 if (transport.status != 200) {
