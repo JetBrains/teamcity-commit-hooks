@@ -401,6 +401,15 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         return project to info
     }
 
+
+    fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonElement {
+        val obj = JsonObject()
+        obj.addProperty("result", result)
+        obj.addProperty("message", message)
+        obj.add("info", Gson().toJsonTree(info))
+        obj.add("data", WebHooksController.getRepositoryInfo(info, myWebHooksManager))
+        return obj
+    }
 }
 
 fun error_json(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int): JsonElement {
@@ -428,12 +437,4 @@ private fun url(url: String, params: Map<String, Any>): String {
         sb.append(e.key).append('=').append(WebUtil.encode(e.value.toString())).append('&')
     }
     return sb.toString()
-}
-
-fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonElement {
-    val obj = JsonObject()
-    obj.addProperty("result", result)
-    obj.addProperty("message", message)
-    obj.add("info", Gson().toJsonTree(info))
-    return obj
 }
