@@ -1,6 +1,7 @@
 package org.jetbrains.teamcity.github.controllers
 
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.stream.JsonWriter
@@ -89,6 +90,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 action = request.getParameter("original_action") ?: "add"
             } else if ("check-all" == action) {
                 element = doHandleCheckAllAction(request, response, action, popup)
+            } else if ("get-info" == action) {
+                element = doHandleGetInfoAction(request, response)
             } else {
                 LOG.warn("Unknown action '$action'")
                 return null
@@ -338,6 +341,30 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
     private fun doHandleCheckAllAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
         TODO("Implement")
+    }
+
+    private fun doHandleGetInfoAction(request: HttpServletRequest, response: HttpServletResponse): JsonElement {
+        val inRepositories = request.getParameterValues("repository") ?: return error_json("Missing required parameter 'repository'", HttpServletResponse.SC_BAD_REQUEST)
+        val array = JsonArray()
+        for (inRepository in inRepositories) {
+            val element = JsonObject()
+            element.addProperty("repository", inRepository)
+            val info = Util.getGitHubInfo(inRepository)
+            val hook = info?.let { myWebHooksManager.getHook(it) }
+            val status = getHookStatus(hook)
+            val actions = status.getActions()
+            if (info == null) {
+                element.addProperty("error", "not an github repository url")
+            }
+            element.add("info", Gson().toJsonTree(info))
+            element.add("hook", Gson().toJsonTree(hook))
+            element.add("status", Gson().toJsonTree(status.status))
+            element.add("actions", Gson().toJsonTree(actions))
+            array.add(element)
+        }
+        val result = JsonObject()
+        result.add("result", array)
+        return result
     }
 
     @Throws(RequestException::class)

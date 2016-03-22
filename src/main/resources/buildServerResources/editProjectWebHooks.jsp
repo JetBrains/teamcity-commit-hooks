@@ -49,7 +49,7 @@
             <c:forEach items="${webHooksBean.visibleHooks}" var="entry">
                 <c:set var="uniq_hash" value="${entry.hashCode()}"/>
                 <c:set var="totalUsages" value="${entry.value.totalUsagesCount}"/>
-                <tr>
+                <tr data-repository="${entry.key}" data-project-id="${currentProject.externalId}">
                     <td><div>
                         <span class="webHook"><a href="${entry.key.repositoryUrl}">${entry.key}</a></span>
                         <c:if test="${entry.value.info != null}">
@@ -58,12 +58,16 @@
                     </div></td>
                         <%--@elvariable id="webhook" type="org.jetbrains.teamcity.github.controllers.WebHooksStatus"--%>
                     <c:set var="webhook" value="${entry.value.status}"/>
-                    <td class="edit">
+                    <td class="edit" data-type="actions">
+                        <div class="webhook-actions">
                         <c:forEach items="${webhook.actions}" var="action">
-                            <div><a href="#" onclick="BS.GitHubWebHooks.doAction('${action}', this, '${entry.key}','${currentProject.externalId}'); return false;">${action}</a> </div>
+                            <div><a href="#" onclick="BS.GitHubWebHooks.doAction('${action}', this); return false;">${action}</a>
+                            </div>
                         </c:forEach>
+                        </div>
+                        <div><a href="#" onclick="BS.GitHubWebHooks.refresh(this, '${entry.key}'); return false;">Refresh</a></div>
                     </td>
-                    <td class="edit">
+                    <td class="edit" data-type="status">
                         <%@include file="webhook-status.jspf" %>
                     </td>
                     <td>

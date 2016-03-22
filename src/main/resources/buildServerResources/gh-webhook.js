@@ -253,6 +253,11 @@ BS.GitHubWebHooks = {
             return false;
         }
         var p;
+        if (repository === undefined) {
+            var data_holder = $j(element).parents("[data-repository]");
+            repository = data_holder.attr('data-repository');
+            projectId = data_holder.attr('data-project-id');
+        }
         if (popup === undefined) {
             var fp = BS.GitHubWebHooks.forcePopup[BS.GitHubWebHooks.getServerUrl(repository)];
             if (fp === undefined) fp = true;
@@ -289,6 +294,94 @@ BS.GitHubWebHooks = {
                     var res = json['result'];
                     // TODO: Incremental update
                     window.location.reload()
+                } else {
+                    BS.Log.error("Unexpected response: " + json.toString())
+                }
+                BS.GitHubWebHooks.refreshReports();
+            }
+        })
+    },
+
+    getStatusDiv: function (status) {
+        var presentation = BS.GitHubWebHooks.getStatusPresentation(status);
+        return "<div class=\"webhook-status " + BS.GitHubWebHooks.getStatusClass(status) + "\">" + presentation + "</div>"
+    },
+    getStatusClass: function (status) {
+        switch (status) {
+            case "NO_INFO":
+                return "no-info";
+            case "NOT_FOUND":
+                return "not-found";
+            case "OK":
+                return "good";
+            case "WAITING_FOR_SERVER_RESPONSE":
+                return "pending";
+            case "INCORRECT":
+                return "error";
+            default:
+                return "";
+        }
+    },
+    getStatusPresentation: function (status) {
+        switch (status) {
+            case "NO_INFO":
+                return "No information";
+            case "NOT_FOUND":
+                return "Not found";
+            case "OK":
+                return "OK";
+            case "WAITING_FOR_SERVER_RESPONSE":
+                return "Waiting for ping event";
+            case "INCORRECT":
+                return "Incorrect";
+            default:
+                return status;
+        }
+    },
+
+    refresh: function (element, repositories) {
+        if (repositories.length < 1) return;
+        var parameters = {
+            'action': 'get-info',
+            'repository': repositories
+        };
+        BS.ProgressPopup.showProgress(element, "Fetching webhook(s) info", {shift: {x: -65, y: 20}, zIndex: 100});
+        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
+            method: 'get',
+            parameters: parameters,
+            onComplete: function (transport) {
+                BS.ProgressPopup.hidePopup(0, true);
+                if (transport.status != 200) {
+                    BS.Log.error("Fetching webhooks info responded with " + transport.status);
+                    return
+                }
+                var json = transport.responseJSON;
+                if (json['error']) {
+                    BS.Log.error("Sad :( Something went wrong: " + json['error']);
+                    alert(json['error']);
+                } else if (json['result']) {
+                    var arr = json['result'];
+                    for (var i = 0; i < arr.length; i++) {
+                        var r = arr[i];
+                        var repository = r['repository']; // string
+                        var error = r['error']; // String?
+                        var info = r['info']; // VcsRootGitHubInfo?
+                        var hook = r['hook']; // HookInfo?
+                        var status = r['status']; // String
+                        var actions = r['actions']; // List<String>
+
+                        // Find all table rows with given repository
+                        var elements = $j(element).parents("tr[data-repository='" + repository + "']");
+                        // Update them
+                        elements.find(".webhook-status").replaceWith(BS.GitHubWebHooks.getStatusDiv(status));
+                        elements.find(".webhook-actions").html(
+                            actions.map(function (action) {
+                                return '<div><a href="#" onclick="BS.GitHubWebHooks.doAction(\'' + action + '\', this); return false;">' + action + '</a></div>'
+                            }).join("")
+                        );
+
+                    }
+
                 } else {
                     BS.Log.error("Unexpected response: " + json.toString())
                 }
