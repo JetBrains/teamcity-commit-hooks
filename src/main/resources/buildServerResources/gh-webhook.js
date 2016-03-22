@@ -3,33 +3,51 @@ BS.GitHubWebHooks = {};
     WH.info = {};
     WH.data = {};
     WH.forcePopup = {};
+
+    function onActionSuccessBasic(json, resource) {
+        var info = json['info'];
+        var message = json['message'];
+        var repo = info['owner'] + '/' + info['name'];
+        var server = info['server'];
+        var warning = false;
+        if ("TokenScopeMismatch" == resource) {
+            message = "Token you provided have no access to repository '" + repo + "', try again";
+            warning = true;
+            // TODO: Add link to refresh/request token (via popup window)
+            WH.forcePopup[server] = true
+        } else if ("NoAccess" == resource) {
+            warning = true;
+        } else if ("UserHaveNoAccess" == resource) {
+            warning = true;
+        } else {
+            BS.Log.warn("Unexpected result: " + resource);
+            alert("Unexpected result: " + resource);
+            return true;
+        }
+        BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+        return true;
+    }
+
+    function onActionSuccess(json, resource, good) {
+        var info = json['info'];
+        var message = json['message'];
+        var server = info['server'];
+        var warning = false;
+        if (good.indexOf(resource) > -1) {
+            // Good one
+            BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+            return
+        }
+        onActionSuccessBasic(json, resource);
+    }
+
     WH.actions = {
         add: {
             id: "add",
             name: "Add",
             progress: "Adding WebHook",
             success: function (json, resource) {
-                var info = json['info'];
-                var message = json['message'];
-                var repo = info['owner'] + '/' + info['name'];
-                var server = info['server'];
-                var warning = false;
-                if ("AlreadyExists" == resource) {
-                } else if ("Created" == resource) {
-                } else if ("TokenScopeMismatch" == resource) {
-                    message = "Token you provided have no access to repository '" + repo + "', try again";
-                    warning = true;
-                    // TODO: Add link to refresh/request token (via popup window)
-                    WH.forcePopup[server] = true
-                } else if ("NoAccess" == resource) {
-                    warning = true;
-                } else if ("UserHaveNoAccess" == resource) {
-                    warning = true;
-                } else {
-                    BS.Log.warn("Unexpected result: " + resource);
-                    alert("Unexpected result: " + resource);
-                }
-                BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+                onActionSuccess(json, resource, ["AlreadyExists", "Created"]);
             }
         },
         check: {
@@ -37,27 +55,7 @@ BS.GitHubWebHooks = {};
             name: "Check",
             progress: "Checking WebHook",
             success: function (json, resource) {
-                // TODO: Deduplicate all 'success' functions
-                var info = json['info'];
-                var message = json['message'];
-                var repo = info['owner'] + '/' + info['name'];
-                var server = info['server'];
-                var warning = false;
-                if ("Ok" == resource) {
-                } else if ("TokenScopeMismatch" == resource) {
-                    message = "Token you provided have no access to repository '" + repo + "', try again";
-                    warning = true;
-                    // TODO: Add link to refresh/request token (via popup window)
-                    WH.forcePopup[server] = true
-                } else if ("NoAccess" == resource) {
-                    warning = true;
-                } else if ("UserHaveNoAccess" == resource) {
-                    warning = true;
-                } else {
-                    BS.Log.warn("Unexpected result: " + resource);
-                    alert("Unexpected result: " + resource);
-                }
-                BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+                onActionSuccess(json, resource, ["Ok"]);
             }
         },
         delete: {
@@ -65,28 +63,7 @@ BS.GitHubWebHooks = {};
             name: "Delete",
             progress: "Deleting WebHook",
             success: function (json, resource) {
-                // TODO: Deduplicate all 'success' functions
-                var info = json['info'];
-                var message = json['message'];
-                var repo = info['owner'] + '/' + info['name'];
-                var server = info['server'];
-                var warning = false;
-                if ("Removed" == resource) {
-                } else if ("NeverExisted" == resource) {
-                } else if ("TokenScopeMismatch" == resource) {
-                    message = "Token you provided have no access to repository '" + repo + "', try again";
-                    warning = true;
-                    // TODO: Add link to refresh/request token (via popup window)
-                    WH.forcePopup[server] = true
-                } else if ("NoAccess" == resource) {
-                    warning = true;
-                } else if ("UserHaveNoAccess" == resource) {
-                    warning = true;
-                } else {
-                    BS.Log.warn("Unexpected result: " + resource);
-                    alert("Unexpected result: " + resource);
-                }
-                BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+                onActionSuccess(json, resource, ["Removed", "NeverExisted"]);
             }
         },
         connect: {
@@ -339,7 +316,7 @@ BS.GitHubWebHooks = {};
     }
 
     function getStatusDiv(status) {
-        return "<div class=\"webhook-status " + getStatusClass(status) + "\">" + getStatusPresentation(status) + "</div>"
+        return '<div class="webhook-status ' + getStatusClass(status) + '" data-status="' + status + '">' + getStatusPresentation(status) + '</div>'
     }
 
     function getLinkHtml(repository, hook) {
