@@ -1,7 +1,8 @@
-BS.GitHubWebHooks = {
-    info: {},
-    forcePopup: {},
-    actions: {
+BS.GitHubWebHooks = {};
+(function (WH) {
+    WH.info = {};
+    WH.forcePopup = {};
+    WH.actions = {
         add: {
             id: "add",
             name: "Add",
@@ -18,7 +19,7 @@ BS.GitHubWebHooks = {
                     message = "Token you provided have no access to repository '" + repo + "', try again";
                     warning = true;
                     // TODO: Add link to refresh/request token (via popup window)
-                    BS.GitHubWebHooks.forcePopup[server] = true
+                    WH.forcePopup[server] = true
                 } else if ("NoAccess" == resource) {
                     warning = true;
                 } else if ("UserHaveNoAccess" == resource) {
@@ -46,7 +47,7 @@ BS.GitHubWebHooks = {
                     message = "Token you provided have no access to repository '" + repo + "', try again";
                     warning = true;
                     // TODO: Add link to refresh/request token (via popup window)
-                    BS.GitHubWebHooks.forcePopup[server] = true
+                    WH.forcePopup[server] = true
                 } else if ("NoAccess" == resource) {
                     warning = true;
                 } else if ("UserHaveNoAccess" == resource) {
@@ -75,7 +76,7 @@ BS.GitHubWebHooks = {
                     message = "Token you provided have no access to repository '" + repo + "', try again";
                     warning = true;
                     // TODO: Add link to refresh/request token (via popup window)
-                    BS.GitHubWebHooks.forcePopup[server] = true
+                    WH.forcePopup[server] = true
                 } else if ("NoAccess" == resource) {
                     warning = true;
                 } else if ("UserHaveNoAccess" == resource) {
@@ -92,8 +93,8 @@ BS.GitHubWebHooks = {
             name: "Connect",
             progress: "????CONNECT????"
         }
-    },
-    checkLocation: function () {
+    };
+    WH.checkLocation = function () {
         if (document.location.href.indexOf(BS.ServerInfo.url) == -1) {
             if (confirm("Request cannot be processed because browser URL does not correspond to URL specified in TeamCity server configuration: " + BS.ServerInfo.url + ".\n\n" +
                     "Click Ok to redirect to correct URL or click Cancel to leave URL as is.")) {
@@ -107,22 +108,22 @@ BS.GitHubWebHooks = {
             return false;
         }
         return true;
-    },
-    doWebHookAction: function (action, element, type, id, popup, projectId) {
-        if (!BS.GitHubWebHooks.checkLocation()) return;
+    };
+    WH.doWebHookAction = function (action, element, type, id, popup, projectId) {
+        if (!WH.checkLocation()) return;
         BS.Log.info("From arguments: " + id + ' ' + type);
 
         //var progress = $$("# .progress").show();
 
         // Enforce popup for server if needed
         var server = undefined;
-        var info = BS.GitHubWebHooks.info[id];
+        var info = WH.info[id];
         if (info) {
             server = info['server'];
         } else if (type == "repository") {
-            server = BS.GitHubWebHooks.getServerUrl(id);
+            server = WH.getServerUrl(id);
         }
-        if (server && BS.GitHubWebHooks.forcePopup[server]) {
+        if (server && WH.forcePopup[server]) {
             popup = true
         }
 
@@ -164,7 +165,7 @@ BS.GitHubWebHooks = {
                     //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + type + '_' + id);
                     $j(that).append(link);
                     $(that).onclick = function () {
-                        BS.GitHubWebHooks.doWebHookAction(action, that, type, id, true, projectId);
+                        WH.doWebHookAction(action, that, type, id, true, projectId);
                         return false
                     };
                     BS.Log.info($(that).onclick);
@@ -177,31 +178,31 @@ BS.GitHubWebHooks = {
                 } else if (json['result']) {
                     var res = json['result'];
                     //if ("TokenScopeMismatch" == res) {
-                    //    BS.GitHubWebHooks.showMessage("Token you provided have no access to repository");
+                    //    WH.showMessage("Token you provided have no access to repository");
                     //    // TODO: Add link to refresh/request token (via popup window)
                     //    that.onclick = function (x) {
-                    //        BS.GitHubWebHooks.addWebHook(x, '${Type}', '${Id}', true);
+                    //        WH.addWebHook(x, '${Type}', '${Id}', true);
                     //        return false
                     //    };
                     //    //("<a href='#' onclick='BS.GitHubWebHooks.addWebHook(this, '${Type}', '${Id}', false); return false'>Refresh access token</a>");
                     //    that.innerHTML = "Refresh token and add WebHook"
                     //} else {
-                    BS.GitHubWebHooks.processResult(json, res);
+                    WH.processResult(json, res);
                     //}
                 } else {
                     BS.Log.error("Unexpected response: " + json.toString())
                 }
-                BS.GitHubWebHooks.refreshReports();
+                WH.refreshReports();
             }
         });
-    },
+    };
 
-    addConnection: function (element, projectId, serverUrl) {
+    WH.addConnection = function (element, projectId, serverUrl) {
         document.location.href = window.base_uri + "/admin/editProject.html?projectId=" + projectId + "&tab=oauthConnections#"
-    },
+    };
 
-    processResult: function (json, res) {
-        var action = BS.GitHubWebHooks.actions[json['action']];
+    WH.processResult = function (json, res) {
+        var action = WH.actions[json['action']];
         if (action) {
             if (action.success) {
                 return action.success(json, res)
@@ -210,23 +211,23 @@ BS.GitHubWebHooks = {
             return "There no 'success' function defined for action '" + action.id + "'"
         }
         BS.Log.warn("Unknown action type: " + json['action']);
-    },
+    };
 
-    callback: function (json) {
+    WH.callback = function (json) {
         if (json['error']) {
             BS.Log.error("Sad :( Something went wrong: " + json['error']);
             // Todo: show popup dialog with rich HTML instead of alert
             alert(json['error']);
         } else if (json['result']) {
             var res = json['result'];
-            BS.GitHubWebHooks.processResult(json, res);
+            WH.processResult(json, res);
         } else {
             BS.Log.error("Unexpected response: " + JSON.stringify(json))
         }
-        BS.GitHubWebHooks.refreshReports();
-    },
+        WH.refreshReports();
+    };
 
-    refreshReports: function () {
+    WH.refreshReports = function () {
         var summary = $('reportSummary');
         var categories = $('reportCategories');
         if (summary) {
@@ -239,15 +240,15 @@ BS.GitHubWebHooks = {
             BS.Hider.hideDiv(popup.attr('data-popup'));
         }
         //window.location.reload(false)
-    },
+    };
 
-    getServerUrl: function (repository) {
+    WH.getServerUrl = function (repository) {
         var s = String(repository);
         return s.substring(0, s.lastIndexOf("/", s.lastIndexOf("/") - 1));
-    },
+    };
 
-    doAction: function (name, element, repository, projectId, popup) {
-        var action = BS.GitHubWebHooks.actions[name.toLowerCase()];
+    WH.doAction = function (name, element, repository, projectId, popup) {
+        var action = WH.actions[name.toLowerCase()];
         if (!action) {
             BS.Log.error("Unknown action: " + name);
             return false;
@@ -259,16 +260,16 @@ BS.GitHubWebHooks = {
             projectId = data_holder.attr('data-project-id');
         }
         if (popup === undefined) {
-            var fp = BS.GitHubWebHooks.forcePopup[BS.GitHubWebHooks.getServerUrl(repository)];
+            var fp = WH.forcePopup[WH.getServerUrl(repository)];
             if (fp === undefined) fp = true;
             p = fp
         } else {
             p = popup
         }
-        BS.GitHubWebHooks.doWebHookAction(action, element, "repository", repository, p, projectId);
+        WH.doWebHookAction(action, element, "repository", repository, p, projectId);
         return false;
-    },
-    checkAll: function (element, projectId) {
+    };
+    WH.checkAll = function (element, projectId) {
         var parameters = {
             "action": 'check-all'
         };
@@ -297,16 +298,12 @@ BS.GitHubWebHooks = {
                 } else {
                     BS.Log.error("Unexpected response: " + json.toString())
                 }
-                BS.GitHubWebHooks.refreshReports();
+                WH.refreshReports();
             }
         })
-    },
+    };
 
-    getStatusDiv: function (status) {
-        var presentation = BS.GitHubWebHooks.getStatusPresentation(status);
-        return "<div class=\"webhook-status " + BS.GitHubWebHooks.getStatusClass(status) + "\">" + presentation + "</div>"
-    },
-    getStatusClass: function (status) {
+    function getStatusClass(status) {
         switch (status) {
             case "NO_INFO":
                 return "no-info";
@@ -321,8 +318,9 @@ BS.GitHubWebHooks = {
             default:
                 return "";
         }
-    },
-    getStatusPresentation: function (status) {
+    }
+
+    function getStatusPresentation(status) {
         switch (status) {
             case "NO_INFO":
                 return "No information";
@@ -337,9 +335,14 @@ BS.GitHubWebHooks = {
             default:
                 return status;
         }
-    },
+    }
 
-    refresh: function (element, repositories) {
+    function getStatusDiv(status) {
+        var presentation = getStatusPresentation(status);
+        return "<div class=\"webhook-status " + getStatusClass(status) + "\">" + presentation + "</div>"
+    }
+
+    WH.refresh = function (element, repositories) {
         if (repositories.length < 1) return;
         var parameters = {
             'action': 'get-info',
@@ -373,7 +376,7 @@ BS.GitHubWebHooks = {
                         // Find all table rows with given repository
                         var elements = $j(element).parents("tr[data-repository='" + repository + "']");
                         // Update them
-                        elements.find(".webhook-status").replaceWith(BS.GitHubWebHooks.getStatusDiv(status));
+                        elements.find(".webhook-status").replaceWith(getStatusDiv(status));
                         elements.find(".webhook-actions").html(
                             actions.map(function (action) {
                                 return '<div><a href="#" onclick="BS.GitHubWebHooks.doAction(\'' + action + '\', this); return false;">' + action + '</a></div>'
@@ -385,14 +388,15 @@ BS.GitHubWebHooks = {
                 } else {
                     BS.Log.error("Unexpected response: " + json.toString())
                 }
-                BS.GitHubWebHooks.refreshReports();
+                WH.refreshReports();
             }
         })
-    }
-};
+    };
+})(BS.GitHubWebHooks);
 
-BS.Util.Messages = {
-    show: function (group, text) {
+BS.Util.Messages = {};
+(function (Messages) {
+    Messages.show = function (group, text) {
         var options = arguments[2] || {};
         options = $j.extend({}, options, {
             verbosity: 'info', // Either 'info' or 'warn'
@@ -421,9 +425,8 @@ BS.Util.Messages = {
 
         // Why?
         BS.MultilineProperties.updateVisible();
-    },
-
-    hide: function (options) {
+    };
+    Messages.hide = function (options) {
         if (options.id) {
             if ($(options.id)) {
                 if (window._shownMessages && window._shownMessages[id]) {
@@ -438,23 +441,25 @@ BS.Util.Messages = {
         if (options.group) {
             $j('.' + 'messages_group_' + options.group).remove();
         }
-    }
-};
+    };
 
-BS.AdminActions = BS.AdminActions || {};
-BS.AdminActions.toggleVcsRootInstanceUsages = function (link, vcsRootInstanceId) {
-    $j('#instance_' + vcsRootInstanceId + '_usages').toggle();
-    var parent = $j(link).parent().toggleClass("usageHl");
-    parent.parent().find(".vcsRoot").toggleClass("bold");
-    return false;
-};
+})(BS.Util.Messages);
 
-BS.AdminActions.toggleWebHookUsages = function (link, id) {
-    $j('#webhook_' + id + '_usages').toggle();
-    var parent = $j(link).parent().toggleClass("usageHl");
-    parent.parent().find(".webHook").toggleClass("bold");
-    return false;
-};
+BS.AdminActions = {};
+(function (AA) {
+    AA.toggleVcsRootInstanceUsages = function (link, vcsRootInstanceId) {
+        $j('#instance_' + vcsRootInstanceId + '_usages').toggle();
+        var parent = $j(link).parent().toggleClass("usageHl");
+        parent.parent().find(".vcsRoot").toggleClass("bold");
+        return false;
+    };
+    AA.toggleWebHookUsages = function (link, id) {
+        $j('#webhook_' + id + '_usages').toggle();
+        var parent = $j(link).parent().toggleClass("usageHl");
+        parent.parent().find(".webHook").toggleClass("bold");
+        return false;
+    };
+})(BS.AdminActions);
 
 
 window.GitHubWebHookCallback = BS.GitHubWebHooks.callback;
