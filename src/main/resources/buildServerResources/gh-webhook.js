@@ -35,6 +35,12 @@ BS.GitHubWebHooks = {};
         var warning = false;
         if (good.indexOf(resource) > -1) {
             // Good one
+            const data = json['data'];
+            if (data !== undefined) {
+                var repository = data['repository'];
+                WH.data[repository] = data;
+                update(data, $j('#webHooksTable').find("tr[data-repository='" + repository + "']"))
+            }
             BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
             return
         }
