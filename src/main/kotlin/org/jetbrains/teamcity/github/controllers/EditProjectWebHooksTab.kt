@@ -1,5 +1,6 @@
 package org.jetbrains.teamcity.github.controllers
 
+import com.google.gson.JsonElement
 import com.intellij.util.SmartList
 import jetbrains.buildServer.Used
 import jetbrains.buildServer.controllers.BaseController
@@ -137,7 +138,6 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
             val roots = SmartList<SVcsRoot>()
 
             val hook = webHooksManager.getHook(entry.key)
-            val status = getHookStatus(hook)
             for ((root, instances) in entry.value.entrySet()) {
                 if (root != null) {
                     roots.add(root)
@@ -149,7 +149,7 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
                     }
                 }
             }
-            hooks.put(entry.key, WebHookDetails(hook, status, roots, orphans, usages, project, versionedSettingsManager))
+            hooks.put(entry.key, WebHookDetails(hook, roots, orphans, usages, project, versionedSettingsManager))
         }
     }
 
@@ -171,10 +171,13 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
         pager.setNumberOfRecords(getNumberOfAvailableWebHooks())
         pager.currentPage = form.page
     }
+
+    fun getDataJson(info: VcsRootGitHubInfo): JsonElement {
+        return WebHooksController.Companion.getRepositoryInfo(info, webHooksManager)
+    }
 }
 
 public class WebHookDetails(val info: WebHooksStorage.HookInfo?,
-                            @Used("jps") val status: WebHooksStatus,
                             val roots: List<SVcsRoot>,
                             val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
                             val usages: Map<VcsRootInstance, VcsRootUsages>,

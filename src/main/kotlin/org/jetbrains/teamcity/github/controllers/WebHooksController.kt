@@ -68,6 +68,22 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             constructor(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int) : this(error_json(message, code)) {
             }
         }
+
+        public fun getRepositoryInfo(info: VcsRootGitHubInfo?, manager: WebHooksManager): JsonObject {
+            val element = JsonObject()
+            val hook = info?.let { manager.getHook(it) }
+            val status = getHookStatus(hook)
+            val actions = status.getActions()
+            if (info == null) {
+                element.addProperty("error", "not an github repository url")
+            }
+            element.addProperty("repository", info.toString())
+            element.add("info", Gson().toJsonTree(info))
+            element.add("hook", Gson().toJsonTree(hook))
+            element.add("status", Gson().toJsonTree(status.status))
+            element.add("actions", Gson().toJsonTree(actions))
+            return element
+        }
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
@@ -91,7 +107,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             } else if ("check-all" == action) {
                 element = doHandleCheckAllAction(request, response, action, popup)
             } else if ("get-info" == action) {
-                element = doHandleGetInfoAction(request, response)
+                element = doHandleGetInfoAction(request)
             } else {
                 LOG.warn("Unknown action '$action'")
                 return null
@@ -343,24 +359,12 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         TODO("Implement")
     }
 
-    private fun doHandleGetInfoAction(request: HttpServletRequest, response: HttpServletResponse): JsonElement {
+    private fun doHandleGetInfoAction(request: HttpServletRequest): JsonElement {
         val inRepositories = request.getParameterValues("repository") ?: return error_json("Missing required parameter 'repository'", HttpServletResponse.SC_BAD_REQUEST)
         val array = JsonArray()
         for (inRepository in inRepositories) {
-            val element = JsonObject()
-            element.addProperty("repository", inRepository)
             val info = Util.getGitHubInfo(inRepository)
-            val hook = info?.let { myWebHooksManager.getHook(it) }
-            val status = getHookStatus(hook)
-            val actions = status.getActions()
-            if (info == null) {
-                element.addProperty("error", "not an github repository url")
-            }
-            element.add("info", Gson().toJsonTree(info))
-            element.add("hook", Gson().toJsonTree(hook))
-            element.add("status", Gson().toJsonTree(status.status))
-            element.add("actions", Gson().toJsonTree(actions))
-            array.add(element)
+            array.add(getRepositoryInfo(info, myWebHooksManager))
         }
         val result = JsonObject()
         result.add("result", array)

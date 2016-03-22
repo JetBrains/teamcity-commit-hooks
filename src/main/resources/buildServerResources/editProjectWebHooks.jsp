@@ -52,24 +52,10 @@
                 <tr data-repository="${entry.key}" data-project-id="${currentProject.externalId}">
                     <td><div>
                         <span class="webHook"><a href="${entry.key.repositoryUrl}">${entry.key}</a></span>
-                        <c:if test="${entry.value.info != null}">
-                            <span style="float: right"><a href="${entry.key.repositoryUrl}/settings/hooks/${entry.value.info.id}">View on GitHub</a></span>
-                        </c:if>
+                        <span style="float: right" data-view="link"></span>
                     </div></td>
-                        <%--@elvariable id="webhook" type="org.jetbrains.teamcity.github.controllers.WebHooksStatus"--%>
-                    <c:set var="webhook" value="${entry.value.status}"/>
-                    <td class="edit" data-type="actions">
-                        <div class="webhook-actions">
-                        <c:forEach items="${webhook.actions}" var="action">
-                            <div><a href="#" onclick="BS.GitHubWebHooks.doAction('${action}', this); return false;">${action}</a>
-                            </div>
-                        </c:forEach>
-                        </div>
-                        <div><a href="#" onclick="BS.GitHubWebHooks.refresh(this, '${entry.key}'); return false;">Refresh</a></div>
-                    </td>
-                    <td class="edit" data-type="status">
-                        <%@include file="webhook-status.jspf" %>
-                    </td>
+                    <td class="edit" data-view="actions"></td>
+                    <td class="edit" data-view="status"></td>
                     <td>
                         <a href="#" onclick="return BS.AdminActions.toggleWebHookUsages(this, '${uniq_hash}');"><c:out default="" value="${totalUsages}"/>
                             usage<bs:s val="${totalUsages}"/></a>
@@ -106,8 +92,7 @@
                                         <c:otherwise>
                                             <a href="#" onclick="return BS.AdminActions.toggleVcsRootInstanceUsages(this, '${root.id}_${uniq_hash}');"><c:out default=""
                                                                                                                                                               value="${usages.total}"/>
-                                                usage<bs:s
-                                                        val="${usages.total}"/></a>
+                                                usage<bs:s val="${usages.total}"/></a>
                                         </c:otherwise>
                                     </c:choose>
                                 </div>
@@ -206,6 +191,10 @@
                 BS.GitHubWebHooks.forcePopup['${entry.key}'] = ${entry.value};
             }
             </c:forEach>
+            <c:forEach items="${webHooksBean.visibleHooks}" var="entry">
+            BS.GitHubWebHooks.data['${entry.key}'] = ${webHooksBean.getDataJson(entry.key).toString()};
+            </c:forEach>
+            BS.GitHubWebHooks.update($j('#webHooksTable'))
         })();
     </script>
 
