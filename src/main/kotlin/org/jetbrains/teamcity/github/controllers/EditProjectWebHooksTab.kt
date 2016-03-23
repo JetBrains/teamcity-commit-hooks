@@ -293,7 +293,7 @@ data public class WebHooksStatus(val status: Status, val hook: WebHooksStorage.H
             Status.NO_INFO -> listOf("Check") // or "Connect"
             Status.NOT_FOUND -> listOf("Add")
             Status.OK -> listOf("Delete", "Check")
-            Status.WAITING_FOR_SERVER_RESPONSE -> listOf("Delete", "Check")
+            Status.WAITING_FOR_SERVER_RESPONSE -> listOf("Delete", "Ping", "Check")
             Status.INCORRECT -> listOf("Add", "Check")
         }
     }

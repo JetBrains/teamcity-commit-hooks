@@ -95,11 +95,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             direct = true
         }
         try {
-            if ("add" == action || action == null) {
-                element = doHandleAction(request, action, popup)
-            } else if ("check" == action) {
-                element = doHandleAction(request, action, popup)
-            } else if ("delete" == action) {
+            if (action in listOf("add", "check", "delete", "ping", null)) {
                 element = doHandleAction(request, action, popup)
             } else if ("continue" == action) {
                 element = doHandleAction(request, action, popup)
@@ -217,6 +213,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                         element = doAddWebHook(entry.key, token, ghc, info)
                     } else if ("check" == action) {
                         element = doCheckWebHook(entry.key, token, ghc, info)
+                    } else if ("ping" == action) {
+                        element = doPingWebHook(entry.key, token, ghc, info)
                     } else if ("delete" == action) {
                         element = doDeleteWebHook(entry.key, token, ghc, info)
                     } else if ("continue" == action) {
@@ -264,10 +262,35 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             when (result) {
                 WebHooksManager.HooksGetOperationResult.Ok -> {
                     val hook = myWebHooksManager.getHook(info)
+                    if (hook != null) {
+                        return gh_json(result.name, "Updated hook info for repository '$repoId'", info)
+                    } else {
+                        return gh_json(result.name, "No hook found for repository '$repoId'", info)
+                    }
+                }
+            }
+        } catch(e: GitHubAccessException) {
+            val element = getErrorResult(e, connection, info, repoId, token)
+            if (element != null) return element;
+        } catch(e: RequestException) {
+            LOG.warnAndDebugDetails("Unexpected response from github server", e)
+        } catch(e: IOException) {
+            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+        }
+        return null
+    }
+
+    private fun doPingWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val repoId = info.toString()
+        try {
+            val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
+            when (result) {
+                WebHooksManager.HooksGetOperationResult.Ok -> {
+                    val hook = myWebHooksManager.getHook(info)
                     // Ensure test message was sent
                     myWebHooksManager.TestWebHook.doRun(info, ghc)
                     if (hook != null) {
-                        return gh_json(result.name, "Updated hook info for repository '$repoId'", info)
+                        return gh_json(result.name, "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
                     } else {
                         return gh_json(result.name, "No hook found for repository '$repoId'", info)
                     }

@@ -65,6 +65,14 @@ BS.GitHubWebHooks = {};
                 onActionSuccess(json, resource, ["Ok"]);
             }
         },
+        ping: {
+            id: "ping",
+            name: "Resend 'ping' payload",
+            progress: "Asking GitHub to send ping event",
+            success: function (json, resource) {
+                onActionSuccess(json, resource, ["Ok"]);
+            }
+        },
         delete: {
             id: "delete",
             name: "Delete",
