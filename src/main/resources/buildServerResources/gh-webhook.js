@@ -468,20 +468,24 @@ BS.Util.Messages = {};
         $j(element).parents('div[data-message-group]').remove();
         return false;
     };
+    function hide(list) {
+        if (list === undefined || list == null || list.length == 0) return;
+        list.each(function () {
+            if (window._shownMessages && window._shownMessages[this.id]) {
+                delete window._shownMessages[this.id];
+            }
+        });
+        list.remove();
+    }
     Messages.hide = function (options) {
         if (options.id !== undefined) {
-            if ($(options.id)) {
-                if (window._shownMessages && window._shownMessages[id]) {
-                    delete window._shownMessages[id];
-                }
-                $(options.id).remove()
-            }
+            hide($j($(options.id)))
         }
         if (options.group !== undefined) {
-            $j('div[data-message-group=\'' + options.group + '\'').remove();
+            hide($j('div[data-message-group=\'' + options.group + '\''))
         }
         if (options.verbosity !== undefined) {
-            $j('div[data-message-verbosity=\'' + options.verbosity + '\'').remove();
+            hide($j('div[data-message-verbosity=\'' + options.verbosity + '\''))
         }
     };
 
