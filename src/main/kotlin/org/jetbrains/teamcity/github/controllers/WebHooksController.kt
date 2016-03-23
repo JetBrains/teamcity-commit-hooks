@@ -239,7 +239,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             val result = myWebHooksManager.doRegisterWebHook(info, ghc)
             when (result) {
                 WebHooksManager.HookAddOperationResult.AlreadyExists -> {
-                    return gh_json(result.name, "Hook for repository '$repoId' already exits, updated info", info)
+                    return gh_json(result.name, "Hook for repository '$repoId' already exists, updated info", info)
                 }
                 WebHooksManager.HookAddOperationResult.Created -> {
                     return gh_json(result.name, "Created hook for repository '$repoId'", info)
