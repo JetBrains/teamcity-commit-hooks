@@ -187,9 +187,7 @@
     <script type="text/javascript">
         (function () {
             <c:forEach items="${webHooksBean.enforcePopupData}" var="entry">
-            if (BS.GitHubWebHooks.forcePopup['${entry.key}'] === undefined || BS.GitHubWebHooks.forcePopup['${entry.key}'] == false) {
-                BS.GitHubWebHooks.forcePopup['${entry.key}'] = ${entry.value};
-            }
+            BS.GitHubWebHooks.forcePopup['${entry.key}'] = ${entry.value};
             </c:forEach>
             <c:forEach items="${webHooksBean.visibleHooks}" var="entry">
             BS.GitHubWebHooks.data['${entry.key}'] = ${webHooksBean.getDataJson(entry.key).toString()};
