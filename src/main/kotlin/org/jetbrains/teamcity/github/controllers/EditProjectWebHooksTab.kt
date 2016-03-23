@@ -291,7 +291,7 @@ data public class WebHooksStatus(val status: Status, val hook: WebHooksStorage.H
     fun getActions(): List<String> {
         return when (status) {
             Status.NO_INFO -> listOf("Check") // or "Connect"
-            Status.NOT_FOUND -> listOf("Add", "Check")
+            Status.NOT_FOUND -> listOf("Add")
             Status.OK -> listOf("Delete", "Check")
             Status.WAITING_FOR_SERVER_RESPONSE -> listOf("Delete", "Check")
             Status.INCORRECT -> listOf("Add", "Check")
