@@ -24,7 +24,8 @@ BS.GitHubWebHooks = {};
             alert("Unexpected result: " + resource);
             return true;
         }
-        BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+        var group = server + '/' + repo;
+        BS.Util.Messages.show(group, message, warning ? {verbosity: 'warn'} : {});
         return true;
     }
 
@@ -41,7 +42,8 @@ BS.GitHubWebHooks = {};
                 WH.data[repository] = data;
                 renderOne(data, $j('#webHooksTable'))
             }
-            BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
+            var group = server + '/' + info['owner'] + '/' + info['name'];
+            BS.Util.Messages.show(group, message, warning ? {verbosity: 'warn'} : {});
             return
         }
         onActionSuccessBasic(json, resource);
@@ -145,7 +147,7 @@ BS.GitHubWebHooks = {};
                 if (json['redirect']) {
                     BS.Log.info("Redirect response received");
                     var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doAction('" + action.id + "', this, '" + id + "','" + projectId + "', true); return false\">Refresh access token and " + action.name + " WebHook</a>";
-                    BS.Util.Messages.show('redirect', 'GitHub authorization needed. ' + link);
+                    BS.Util.Messages.show(id, 'GitHub authorization needed. ' + link);
                     //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + type + '_' + id);
                     $j(that).append(link);
                     $(that).onclick = function () {
@@ -428,11 +430,12 @@ BS.GitHubWebHooks = {};
 
 BS.Util.Messages = {};
 (function (Messages) {
-    Messages.show = function (group, text) {
-        var options = arguments[2] || {};
+    Messages.show = function (group, text, options) {
+        group = group.replace(/([:/\.])/g, '_');
+        if (options === undefined) options = {};
         options = $j.extend({}, options, {
             verbosity: 'info', // Either 'info' or 'warn'
-            class: 'messages_group_' + group,
+            group: 'messages_group_' + group,
             id: 'message_id_' + group
         });
 
@@ -441,9 +444,12 @@ BS.Util.Messages = {};
         // Hide previous messages from the same group, id
         BS.Util.Messages.hide({class: options.class});
         BS.Util.Messages.hide({id: options.id});
+        // if (options.verbosity == 'info') {
+        //     BS.Util.Messages.hide({verbosity: options.verbosity});
+        // }
 
         // TODO: Use node manipulations instead of html code generation (?) Note: message may contain html tags
-        var content = '<div class="' + options.class + ' successMessage' + (options.verbosity == 'warn' ? ' attentionComment' : '') + '" id="' + options.id + '" style="display: none;">' + text + '</div>';
+        var content = '<div data-message-group="' + options.group + '" data-message-verbosity="' + options.verbosity + '" class="successMessage' + (options.verbosity == 'warn' ? ' attentionComment' : '') + '" id="' + options.id + '" style="display: none;"><a href="#" class="attentionDismiss" onclick="return BS.Util.Messages.close(this);">X</a>' + text + '</div>';
         var place = $('filterForm');
         if (place) {
             place.insert({'after': content});
@@ -458,8 +464,12 @@ BS.Util.Messages = {};
         // Why?
         BS.MultilineProperties.updateVisible();
     };
+    Messages.close = function (element) {
+        $j(element).parents('div[data-message-group]').remove();
+        return false;
+    };
     Messages.hide = function (options) {
-        if (options.id) {
+        if (options.id !== undefined) {
             if ($(options.id)) {
                 if (window._shownMessages && window._shownMessages[id]) {
                     delete window._shownMessages[id];
@@ -467,11 +477,11 @@ BS.Util.Messages = {};
                 $(options.id).remove()
             }
         }
-        if (options.class) {
-            $j('.' + options.class).remove();
+        if (options.group !== undefined) {
+            $j('div[data-message-group=\'' + options.group + '\'').remove();
         }
-        if (options.group) {
-            $j('.' + 'messages_group_' + options.group).remove();
+        if (options.verbosity !== undefined) {
+            $j('div[data-message-verbosity=\'' + options.verbosity + '\'').remove();
         }
     };
 
