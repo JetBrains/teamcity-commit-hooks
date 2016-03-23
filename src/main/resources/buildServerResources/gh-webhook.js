@@ -333,7 +333,7 @@ BS.GitHubWebHooks = {};
     function getActionsHtml(actions) {
         return actions.map(function (action) {
                 return '<div><a href="#" onclick="BS.GitHubWebHooks.doAction(\'' + action + '\', this); return false;">' + action + '</a></div>'
-            }).join("") + '<div><a href="#" onclick="BS.GitHubWebHooks.refresh(this); return false;">Refresh</a></div>';
+        }).join("");
     }
 
     function update(data, tr) {
@@ -349,21 +349,37 @@ BS.GitHubWebHooks = {};
         tr.find("[data-view=link]").html(getLinkHtml(repository, hook));
     }
 
-    WH.refresh = function (element, repositories) {
+    WH.refresh = function (element, repositories, table) {
         if (repositories === undefined) {
-            var data_holder = $j(element).parents("[data-repository]");
-            repositories = [data_holder.attr('data-repository')];
+            if (table !== undefined) {
+                var data_holders = $j(table).find("[data-repository]");
+                repositories = data_holders.map(function () {
+                    return $j(this).attr('data-repository');
+                }).toArray();
+            } else if (element !== undefined) {
+                var data_holder = $j(element).parents("[data-repository]");
+                repositories = [data_holder.attr('data-repository')];
+            } else return;
         }
         if (repositories.length < 1) return;
-        BS.ProgressPopup.showProgress(element, "Refreshing webhook" + (repositories.length > 1 ? 's' : ''), {shift: {x: -65, y: 20}, zIndex: 100});
+        if (table === undefined) {
+            table = $j('#webHooksTable');
+        }
+        if (element !== undefined) {
+            BS.ProgressPopup.showProgress(element, "Refreshing webhook" + (repositories.length > 1 ? 's' : ''), {shift: {x: -65, y: 20}, zIndex: 100});
+        } else {
+            // TODO: Show table spinner
+        }
         BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
-            method: 'get',
+            method: 'post',
             parameters: {
                 'action': 'get-info',
                 'repository': repositories
             },
             onComplete: function (transport) {
-                BS.ProgressPopup.hidePopup(0, true);
+                if (element !== undefined) {
+                    BS.ProgressPopup.hidePopup(0, true);
+                }
                 if (transport.status != 200) {
                     BS.Log.error("Fetching webhooks info responded with " + transport.status);
                     return
@@ -377,7 +393,7 @@ BS.GitHubWebHooks = {};
                     for (var i = 0; i < arr.length; i++) {
                         var r = arr[i];
                         var repository = r['repository'];
-                        update(r, $j(element).parents("tr[data-repository='" + repository + "']"));
+                        update(r, $j(table).find("tr[data-repository='" + repository + "']"));
                     }
 
                 } else {
@@ -386,6 +402,10 @@ BS.GitHubWebHooks = {};
                 WH.refreshReports();
             }
         })
+    };
+
+    WH.refreshTable = function (table) {
+        WH.refresh(undefined, undefined, table)
     };
 
     WH.update = function (table) {

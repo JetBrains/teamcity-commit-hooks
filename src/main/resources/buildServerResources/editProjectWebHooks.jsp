@@ -42,7 +42,7 @@
             <tr>
                 <th colspan="2">Repository</th>
                 <%--TODO: Implement 'CheckAll' on server side--%>
-                <%--<th class="edit"><a href="#" onclick="BS.GitHubWebHooks.checkAll(this, '${webHooksBean.project.externalId}')">Check All</a></th>--%>
+                <%--<th class="edit"><a href="#" onclick="BS.GitHubWebHooks.refreshTable($j('#webHooksTable'))">Refresh</a></th>--%>
                 <th class="edit">Status</th>
                 <th class="usages">Usages</th>
             </tr>
@@ -194,7 +194,10 @@
             <c:forEach items="${webHooksBean.visibleHooks}" var="entry">
             BS.GitHubWebHooks.data['${entry.key}'] = ${webHooksBean.getDataJson(entry.key).toString()};
             </c:forEach>
-            BS.GitHubWebHooks.update($j('#webHooksTable'))
+            BS.GitHubWebHooks.update($j('#webHooksTable'));
+            BS.PeriodicalRefresh.start(5, function () {
+                BS.GitHubWebHooks.refreshTable($j('#webHooksTable'));
+            });
         })();
     </script>
 
