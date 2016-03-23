@@ -20,8 +20,7 @@ BS.GitHubWebHooks = {};
         } else if ("UserHaveNoAccess" == resource) {
             warning = true;
         } else {
-            BS.Log.warn("Unexpected result: " + resource);
-            alert("Unexpected result: " + resource);
+            BS.Log.error("Unexpected result: " + resource);
             return true;
         }
         var group = server + '/' + repo;
@@ -97,8 +96,6 @@ BS.GitHubWebHooks = {};
     };
     WH.doWebHookAction = function (action, element, type, id, popup, projectId) {
         if (!WH.checkLocation()) return;
-        BS.Log.info("From arguments: " + id + ' ' + type);
-
         //var progress = $$("# .progress").show();
 
         // Enforce popup for server if needed
@@ -160,7 +157,6 @@ BS.GitHubWebHooks = {};
                     BS.Log.info($(that).innerHTML);
                 } else if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);
-                    alert(json['error']);
                 } else if (json['result']) {
                     var res = json['result'];
                     //if ("TokenScopeMismatch" == res) {
@@ -270,13 +266,11 @@ BS.GitHubWebHooks = {};
                 BS.ProgressPopup.hidePopup(0, true);
                 if (transport.status != 200) {
                     BS.Log.error("Check all responded with " + transport.status);
-                    alert("Check all responded with " + transport.status);
                     return
                 }
                 var json = transport.responseJSON;
                 if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);
-                    alert(json['error']);
                 } else if (json['result']) {
                     var res = json['result'];
                     // TODO: Incremental update
@@ -398,7 +392,6 @@ BS.GitHubWebHooks = {};
                 var json = transport.responseJSON;
                 if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);
-                    alert(json['error']);
                 } else if (json['result']) {
                     var arr = json['result'];
                     // Update internal data structure, then re-render table
