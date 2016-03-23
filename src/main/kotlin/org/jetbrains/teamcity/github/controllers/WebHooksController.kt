@@ -18,6 +18,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.util.PropertiesUtil
+import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.SessionUser
@@ -29,6 +30,7 @@ import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import java.io.IOException
 import java.io.OutputStreamWriter
+import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
@@ -101,7 +103,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 element = doHandleAction(request, action, popup)
                 action = request.getParameter("original_action") ?: "add"
             } else if ("check-all" == action) {
-                element = doHandleCheckAllAction(request, response, action, popup)
+                element = doHandleCheckAllAction(request, popup)
             } else if ("get-info" == action) {
                 element = doHandleGetInfoAction(request)
             } else {
@@ -352,8 +354,92 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         return null
     }
 
-    private fun doHandleCheckAllAction(request: HttpServletRequest, response: HttpServletResponse, action: String, popup: Boolean): JsonElement {
-        TODO("Implement")
+    private fun doHandleCheckAllAction(request: HttpServletRequest, popup: Boolean): JsonElement {
+        val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
+
+        val inProjectId = request.getParameter("projectId")
+        if (inProjectId.isNullOrEmpty()) {
+            return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
+        }
+        val project = myProjectManager.findProjectByExternalId(inProjectId) ?: return error_json("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
+
+        val recursive = PropertiesUtil.getBoolean(request.getParameter("recursive"))
+
+        // If connection info specified, only webhooks from that server would be checked
+        var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
+
+        if (popup && connection == null) {
+            return error_json("Popup==true requires connection parameters", HttpServletResponse.SC_BAD_REQUEST)
+        }
+        // TODO: Support popup && connection
+
+        val allGitVcsInstances = HashSet<VcsRootInstance>()
+        Util.findSuitableRoots(project, recursive = recursive) {
+            allGitVcsInstances.add(it)
+            true
+        }
+
+        val mapServerToInfos = allGitVcsInstances
+                .mapNotNull { Util.Companion.getGitHubInfo(it) }
+                .toHashSet()
+                // Filter by connection (if any specified)
+                .filter { connection == null || Util.isConnectionToServer(connection, it.server) }
+                .groupBy { it.server }
+
+        val toCheck = mapServerToInfos
+                .mapValues {
+                    it.value.filter { Status.OK != getHookStatus(myWebHooksManager.getHook(it)).status }
+                }.filterValues { it.isNotEmpty() }
+
+        // For each repository return either check result or redirect request to show in UI.
+        // Redirect would be in case of no connections of no tokens for server/repo/user.
+        val arr = JsonArray()
+        for ((server, infos) in toCheck) {
+            val connections = if (connection != null) listOf(connection) else getConnections(server, project)
+            if (connections.isEmpty()) {
+                for (info in infos) {
+                    val obj = getRepositoryInfo(info, myWebHooksManager)
+                    obj.addProperty("error", "No connections to server $server")
+                    obj.addProperty("user_action_required", true)
+                    arr.add(obj)
+                }
+                continue
+            }
+            val connectionToTokensMap = myTokensHelper.getExistingTokens(connections, user)
+            if (connectionToTokensMap.isEmpty()) {
+                for (info in infos) {
+                    val obj = getRepositoryInfo(info, myWebHooksManager)
+                    obj.addProperty("error", "No tokens to access server $server")
+                    obj.addProperty("user_action_required", true)
+                    arr.add(obj)
+                }
+                continue
+            }
+            for (info in infos) {
+                var elements = ArrayList<JsonElement>()
+                @Suppress("NAME_SHADOWING")
+                for ((connection, tokens) in connectionToTokensMap) {
+                    val ghc: GitHubClientEx = GitHubClientFactory.createGitHubClient(connection.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
+                    for (token in tokens) {
+                        LOG.info("Trying with token: ${token.oauthLogin}, connector is ${connection.id}")
+                        ghc.setOAuth2Token(token.accessToken)
+                        val element = doCheckWebHook(connection, token, ghc, info)
+                        if (element != null) {
+                            elements.add(element)
+                        }
+                    }
+                }
+                // TODO: Choose better (non-error) element from 'elements'
+                arr.add(elements.firstOrNull() ?: getRepositoryInfo(info, myWebHooksManager))
+            }
+        }
+        val o = JsonObject()
+        o.add("data", arr)
+        return o
+    }
+
+    private fun getConnections(server: String, project: SProject): List<OAuthConnectionDescriptor> {
+        return Util.findConnections(myOAuthConnectionsManager, project, server)
     }
 
     private fun doHandleGetInfoAction(request: HttpServletRequest): JsonElement {
@@ -400,11 +486,9 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
 
     fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonElement {
-        val obj = JsonObject()
+        val obj = WebHooksController.getRepositoryInfo(info, myWebHooksManager)
         obj.addProperty("result", result)
         obj.addProperty("message", message)
-        obj.add("info", Gson().toJsonTree(info))
-        obj.add("data", WebHooksController.getRepositoryInfo(info, myWebHooksManager))
         return obj
     }
 }

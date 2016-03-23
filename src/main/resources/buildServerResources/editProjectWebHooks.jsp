@@ -40,11 +40,10 @@
         <c:if test="${not empty webHooksBean.visibleHooks}">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
             <tr>
-                <th colspan="2">Repository
+                <th>Repository
                     <span class="spinner" style="display: none"><i class="icon-refresh icon-spin"></i> Refreshing...</span>
                 </th>
-                <%--TODO: Implement 'CheckAll' on server side--%>
-                <%--<th class="edit"><a href="#" onclick="BS.GitHubWebHooks.refreshTable($j('#webHooksTable'))">Refresh</a></th>--%>
+                <th class="edit"><a href="#" onclick="BS.GitHubWebHooks.checkAll(this, '${webHooksBean.project.externalId}', ${webHooksBean.form.recursive}); return false">Check All</a></th>
                 <th class="edit">Status</th>
                 <th class="usages">Usages</th>
             </tr>

@@ -259,9 +259,11 @@ BS.GitHubWebHooks = {};
         WH.doWebHookAction(action, element, "repository", repository, p, projectId);
         return false;
     };
-    WH.checkAll = function (element, projectId) {
+    WH.checkAll = function (element, projectId, recursive) {
+        if (recursive === undefined) recursive = false
         var parameters = {
-            "action": 'check-all'
+            'action': 'check-all',
+            'recursive': recursive
         };
         if (projectId) {
             parameters["projectId"] = projectId
@@ -279,10 +281,24 @@ BS.GitHubWebHooks = {};
                 var json = transport.responseJSON;
                 if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);
-                } else if (json['result']) {
-                    var res = json['result'];
+                } else if (json['data']) {
+                    var data = json['data'];
+                    for (var i = 0; i < data.length; i++) {
+                        var r = data[i];
+                        const repo = r['repository'];
+                        if (r['user_action_required']) {
+                            BS.Log.info("Some user action required to check '" + repo + "' repository.")
+                            // TODO: Add link to manually check webhook (popup required)
+                        } else if (r['result']) {
+                            // Operation succeed or failed, at least there's some connections/tokens
+                            BS.Log.info("Action either succeed of failed for '" + repo + "'.");
+                            // TODO: Do something
+                        } else {
+                            BS.Log.warn("Action done nothing to '" + repo + "'. Most probably there not connection for that server.");
+                            // TODO: Do something
+                        }
+                    }
                     // TODO: Incremental update
-                    window.location.reload()
                 } else {
                     BS.Log.error("Unexpected response: " + json.toString())
                 }

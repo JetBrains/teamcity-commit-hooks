@@ -49,6 +49,7 @@ public class TokensHelper {
                 HookAccessType.NO_ACCESS -> return false
                 HookAccessType.READ -> return false
 
+                // TODO: Write is not enough for 'delete' action
                 HookAccessType.WRITE -> return true
                 HookAccessType.ADMIN -> return true
             }
