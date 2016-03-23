@@ -50,6 +50,6 @@ form .recursive {
     vertical-align: middle;
 }
 
-form #spinner {
+.spinner {
     float: right;
 }

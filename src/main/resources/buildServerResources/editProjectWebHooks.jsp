@@ -30,7 +30,7 @@
                 <forms:checkbox name="recursive" checked="${webHooksBean.form.recursive}" onclick="$('webHooksFilterForm').submit();"/>
                 <label for="recursive" style="margin: 0;">Show WebHooks from subprojects</label>
             </span>
-            <span id="spinner" style="display: none"><i class="icon-refresh icon-spin"></i> Refreshing...</span>
+            <span id="spinner" class="spinner" style="display: none"><i class="icon-refresh icon-spin"></i> Refreshing...</span>
         </div>
         <input type="hidden" name="projectId" value="${webHooksBean.project.externalId}"/>
         <input type="hidden" name="tab" value="editProjectWebHooks"/>
@@ -40,7 +40,9 @@
         <c:if test="${not empty webHooksBean.visibleHooks}">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
             <tr>
-                <th colspan="2">Repository</th>
+                <th colspan="2">Repository
+                    <span class="spinner" style="display: none"><i class="icon-refresh icon-spin"></i> Refreshing...</span>
+                </th>
                 <%--TODO: Implement 'CheckAll' on server side--%>
                 <%--<th class="edit"><a href="#" onclick="BS.GitHubWebHooks.refreshTable($j('#webHooksTable'))">Refresh</a></th>--%>
                 <th class="edit">Status</th>

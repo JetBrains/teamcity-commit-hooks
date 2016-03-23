@@ -372,8 +372,8 @@ BS.GitHubWebHooks = {};
         }
         if (element !== undefined) {
             BS.ProgressPopup.showProgress(element, "Refreshing webhook" + (repositories.length > 1 ? 's' : ''), {shift: {x: -65, y: 20}, zIndex: 100});
-        } else {
-            // TODO: Show table spinner
+        } else if (table !== undefined) {
+            $j(table).find('.spinner').show();
         }
         BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
             method: 'post',
@@ -384,6 +384,8 @@ BS.GitHubWebHooks = {};
             onComplete: function (transport) {
                 if (element !== undefined) {
                     BS.ProgressPopup.hidePopup(0, true);
+                } else if (table !== undefined) {
+                    $j(table).find('.spinner').hide();
                 }
                 if (transport.status != 200) {
                     BS.Log.error("Fetching webhooks info responded with " + transport.status);
