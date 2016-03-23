@@ -246,24 +246,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 }
             }
         } catch(e: GitHubAccessException) {
-            when (e.type) {
-                GitHubAccessException.Type.InvalidCredentials -> {
-                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
-                }
-                GitHubAccessException.Type.TokenScopeMismatch -> {
-                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
-                    // TODO: Update token scope
-                    myTokensHelper.markTokenIncorrect(token)
-                    return gh_json(e.type.name,  e.message ?: "Token scope does not cover hooks management", info)
-                }
-                GitHubAccessException.Type.NoAccess -> {
-                    return gh_json(e.type.name, "No access to repository '$repoId'", info)
-                }
-                GitHubAccessException.Type.UserHaveNoAccess -> {
-                    return gh_json(e.type.name, "You don't have access to '$repoId'", info)
-                }
-            }
+            val element = getErrorResult(e, connection, info, repoId, token)
+            if (element != null) return element;
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Unexpected response from github server", e)
         } catch(e: IOException) {
@@ -290,24 +274,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 }
             }
         } catch(e: GitHubAccessException) {
-            when (e.type) {
-                GitHubAccessException.Type.InvalidCredentials -> {
-                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
-                }
-                GitHubAccessException.Type.TokenScopeMismatch -> {
-                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
-                    // TODO: Update token scope
-                    myTokensHelper.markTokenIncorrect(token)
-                    return gh_json(e.type.name,  e.message ?: "Token scope does not cover hooks management", info)
-                }
-                GitHubAccessException.Type.UserHaveNoAccess -> {
-                    return gh_json(e.type.name, "You don't have access to '$repoId'", info)
-                }
-                GitHubAccessException.Type.NoAccess -> {
-                    return gh_json(e.type.name, "No access to repository '$repoId'", info)
-                }
-            }
+            val element = getErrorResult(e, connection, info, repoId, token)
+            if (element != null) return element;
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Unexpected response from github server", e)
         } catch(e: IOException) {
@@ -329,28 +297,34 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 }
             }
         } catch(e: GitHubAccessException) {
-            when (e.type) {
-                GitHubAccessException.Type.InvalidCredentials -> {
-                    LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                    myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
-                }
-                GitHubAccessException.Type.TokenScopeMismatch -> {
-                    LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
-                    // TODO: Update token scope
-                    myTokensHelper.markTokenIncorrect(token)
-                    return gh_json(e.type.name, e.message ?: "Token scope does not cover hooks management", info)
-                }
-                GitHubAccessException.Type.UserHaveNoAccess -> {
-                    return gh_json(e.type.name, "You don't have access to '$repoId'", info)
-                }
-                GitHubAccessException.Type.NoAccess -> {
-                    return gh_json(e.type.name, "No access to repository '$repoId'", info)
-                }
-            }
+            val element = getErrorResult(e, connection, info, repoId, token)
+            if (element != null) return element;
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Unexpected response from github server", e)
         } catch(e: IOException) {
             LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+        }
+        return null
+    }
+
+    private fun getErrorResult(e: GitHubAccessException, connection: OAuthConnectionDescriptor, info: VcsRootGitHubInfo, repoId: String, token: OAuthToken): JsonElement? {
+        when (e.type) {
+            GitHubAccessException.Type.InvalidCredentials -> {
+                LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
+                myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+            }
+            GitHubAccessException.Type.TokenScopeMismatch -> {
+                LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
+                // TODO: Update token scope
+                myTokensHelper.markTokenIncorrect(token)
+                return gh_json(e.type.name, e.message ?: "Token scope does not cover hooks management", info)
+            }
+            GitHubAccessException.Type.UserHaveNoAccess -> {
+                return gh_json(e.type.name, "You don't have access to '$repoId'", info)
+            }
+            GitHubAccessException.Type.NoAccess -> {
+                return gh_json(e.type.name, "No access to repository '$repoId'", info)
+            }
         }
         return null
     }
