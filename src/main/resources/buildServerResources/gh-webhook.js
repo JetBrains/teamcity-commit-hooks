@@ -39,7 +39,7 @@ BS.GitHubWebHooks = {};
             if (data !== undefined) {
                 var repository = data['repository'];
                 WH.data[repository] = data;
-                update(data, $j('#webHooksTable').find("tr[data-repository='" + repository + "']"))
+                renderOne(data, $j('#webHooksTable'))
             }
             BS.Util.Messages.show(resource, message, warning ? {verbosity: 'warn'} : {});
             return
@@ -321,7 +321,10 @@ BS.GitHubWebHooks = {};
         }
     }
 
-    function getStatusDiv(status) {
+    function getStatusDiv(status, error) {
+        if (error !== undefined) {
+            return '<div class="webhook-status error" data-status="error">' + error + '</div>'
+        }
         return '<div class="webhook-status ' + getStatusClass(status) + '" data-status="' + status + '">' + getStatusPresentation(status) + '</div>'
     }
 
@@ -336,17 +339,23 @@ BS.GitHubWebHooks = {};
         }).join("");
     }
 
-    function update(data, tr) {
+    function renderOne(data, table) {
         var repository = data['repository']; // string
+
+        var line = $j(table).find("tr[data-repository='" + repository + "']");
+        if (line.length == 0) {
+            BS.Log.warn("Line not found for repository " + repository);
+            return;
+        }
+
         var error = data['error']; // String?
         var info = data['info']; // VcsRootGitHubInfo?
         var hook = data['hook']; // HookInfo?
-        var status = data['status']; // String
-        var actions = data['actions']; // List<String>
-
-        tr.find("[data-view=status]").html(getStatusDiv(status));
-        tr.find("[data-view=actions]").html(getActionsHtml(actions));
-        tr.find("[data-view=link]").html(getLinkHtml(repository, hook));
+        var status = data['status']; // String?
+        var actions = data['actions']; // List<String>?
+        line.find("[data-view=status]").html(getStatusDiv(status, error));
+        line.find("[data-view=actions]").html(getActionsHtml(actions));
+        line.find("[data-view=link]").html(getLinkHtml(repository, hook));
     }
 
     WH.refresh = function (element, repositories, table) {
@@ -390,12 +399,13 @@ BS.GitHubWebHooks = {};
                     alert(json['error']);
                 } else if (json['result']) {
                     var arr = json['result'];
+                    // Update internal data structure, then re-render table
                     for (var i = 0; i < arr.length; i++) {
                         var r = arr[i];
                         var repository = r['repository'];
-                        update(r, $j(table).find("tr[data-repository='" + repository + "']"));
+                        WH.data[repository] = r;
                     }
-
+                    WH.renderTable($j(table));
                 } else {
                     BS.Log.error("Unexpected response: " + json.toString())
                 }
@@ -408,15 +418,10 @@ BS.GitHubWebHooks = {};
         WH.refresh(undefined, undefined, table)
     };
 
-    WH.update = function (table) {
+    WH.renderTable = function (table) {
         for (var k in WH.data) {
             if (!WH.data.hasOwnProperty(k)) continue;
-            const r = WH.data[k];
-            const repository = r['repository'];
-            if (repository != k) {
-                BS.Log.warn("Key mismatch. Expected " + k + ", but was " + repository);
-            }
-            update(r, $j(table).find("tr[data-repository='" + repository + "']"));
+            renderOne(WH.data[k], table);
         }
     }
 })(BS.GitHubWebHooks);

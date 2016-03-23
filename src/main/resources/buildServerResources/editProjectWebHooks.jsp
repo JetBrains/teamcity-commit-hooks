@@ -194,7 +194,7 @@
             <c:forEach items="${webHooksBean.visibleHooks}" var="entry">
             BS.GitHubWebHooks.data['${entry.key}'] = ${webHooksBean.getDataJson(entry.key).toString()};
             </c:forEach>
-            BS.GitHubWebHooks.update($j('#webHooksTable'));
+            BS.GitHubWebHooks.renderTable($j('#webHooksTable'));
             BS.PeriodicalRefresh.start(5, function () {
                 BS.GitHubWebHooks.refreshTable($j('#webHooksTable'));
             });
