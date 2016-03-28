@@ -14,3 +14,11 @@ fun WebHookHealthItem(info: VcsRootGitHubInfo, root: SVcsRoot): HealthStatusItem
 fun WebHookHealthItem(info: VcsRootGitHubInfo, root: VcsRootInstance): HealthStatusItem {
     return WebHookHealthItem(info, root.parent)
 }
+
+fun VCSRootCheckIntervalHealthItem(info: VcsRootGitHubInfo, root: SVcsRoot, hook: WebHooksStorage.HookInfo): HealthStatusItem {
+    return HealthStatusItem("GH.VRCI.${root.id}", VCSRootCheckIntervalHR.CATEGORY, mapOf(
+            "GitHubInfo" to info,
+            "VcsRoot" to root,
+            "HookInfo" to hook
+    ))
+}

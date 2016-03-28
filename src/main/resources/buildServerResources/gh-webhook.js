@@ -370,7 +370,7 @@ BS.GitHubWebHooks = {};
 
     function getActionsHtml(actions) {
         return actions.map(function (action) {
-                return '<div><a href="#" onclick="BS.GitHubWebHooks.doAction(\'' + action + '\', this); return false;">' + action + '</a></div>'
+            return '<div><a href="#" onclick="BS.GitHubWebHooks.doAction(\'' + action + '\', this); return false;">' + action + '</a></div>'
         }).join("");
     }
 
@@ -470,6 +470,32 @@ BS.GitHubWebHooks = {};
     WH.more = function (element) {
         const text = $j(element).parent().next().text();
         BS.WarningPopup.showWarning(element, {x: -65, y: 20}, text);
+    };
+
+    WH.setVcsPoolInterval = function (element, vcsRootId, projectId) {
+        // TODO: Proper message
+        BS.ProgressPopup.showProgress(element, "Updating Changes Checking Interval", {shift: {x: -65, y: 20}, zIndex: 100});
+        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
+            method: "post",
+            parameters: {
+                "action": "set-cci",
+                "vcsRootId": vcsRootId,
+                "projectId": projectId
+            },
+            onComplete: function (transport) {
+                BS.ProgressPopup.hidePopup(0, true);
+                var json = transport.responseJSON;
+                if (json['error']) {
+                    BS.Log.error("Sad :( Something went wrong: " + json['error']);
+                    BS.Util.Messages.show("vcs-roots", json['error'], {verbosity: 'warn'});
+                } else if (json['message']) {
+                    BS.Util.Messages.show("vcs-roots", json['message'], {verbosity: 'warn'});
+                } else {
+                    BS.Log.error("Unexpected response: " + json.toString())
+                }
+                WH.refreshReports();
+            }
+        });
     }
 })(BS.GitHubWebHooks);
 
@@ -522,6 +548,7 @@ BS.Util.Messages = {};
         });
         list.remove();
     }
+
     Messages.hide = function (options) {
         if (options.id !== undefined) {
             hide($j($(options.id)))
