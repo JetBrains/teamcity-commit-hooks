@@ -19,9 +19,14 @@ BS.GitHubWebHooks = {};
             warning = true;
         } else if ("UserHaveNoAccess" == resource) {
             warning = true;
+        } else if ("NoOAuthConnections" == resource) {
+            // TODO: Add link to configure connections, good UI.
+            warning = true;
+        } else if ("Error" == resource) {
+            warning = true;
         } else {
             BS.Log.error("Unexpected result: " + resource);
-            return true;
+            warning = true;
         }
         var group = server + '/' + repo;
         BS.Util.Messages.show(group, message, warning ? {verbosity: 'warn'} : {});
@@ -103,7 +108,7 @@ BS.GitHubWebHooks = {};
         return true;
     };
     WH.doWebHookAction = function (action, element, type, id, popup, projectId) {
-        if (!WH.checkLocation()) return;
+        // if (!WH.checkLocation()) return;
         //var progress = $$("# .progress").show();
 
         // Enforce popup for server if needed
@@ -260,7 +265,7 @@ BS.GitHubWebHooks = {};
         return false;
     };
     WH.checkAll = function (element, projectId, recursive) {
-        if (recursive === undefined) recursive = false
+        if (recursive === undefined) recursive = false;
         var parameters = {
             'action': 'check-all',
             'recursive': recursive
@@ -282,21 +287,30 @@ BS.GitHubWebHooks = {};
                 if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);
                 } else if (json['data']) {
+                    const table = $j('#webHooksTable');
                     var data = json['data'];
                     for (var i = 0; i < data.length; i++) {
                         var r = data[i];
                         const repo = r['repository'];
                         if (r['user_action_required']) {
-                            BS.Log.info("Some user action required to check '" + repo + "' repository.")
+                            BS.Log.info("Some user action required to check '" + repo + "' repository.");
                             // TODO: Add link to manually check webhook (popup required)
+                            // TODO: Prevent automatic updates, that would hide error (if any)
+                            WH.data[repo] = r;
+                            WH.data[repo]['manual'] = true;
+                            WH.forcePopup[WH.getServerUrl(repo)] = true;
                         } else if (r['result']) {
                             // Operation succeed or failed, at least there's some connections/tokens
                             BS.Log.info("Action either succeed of failed for '" + repo + "'.");
+                            WH.data[repo] = r;
+                            // TODO: Prevent automatic updates, that would hide error (if any)
+                            WH.data[repo]['manual'] = true;
                             // TODO: Do something
                         } else {
                             BS.Log.warn("Action done nothing to '" + repo + "'. Most probably there not connection for that server.");
                             // TODO: Do something
                         }
+                        renderOne(r, table)
                     }
                     // TODO: Incremental update
                 } else {
@@ -343,7 +357,8 @@ BS.GitHubWebHooks = {};
 
     function getStatusDiv(status, error) {
         if (error !== undefined) {
-            return '<div class="webhook-status error" data-status="error">' + error + '</div>'
+            return '<div class="webhook-status err" data-status="error">Error <a href="#" onclick="BS.GitHubWebHooks.more(this); return false">details</a></div>' +
+                '<div style="display: none">' + error + '</div>'
         }
         return '<div class="webhook-status ' + getStatusClass(status) + '" data-status="' + status + '">' + getStatusPresentation(status) + '</div>'
     }
@@ -424,6 +439,12 @@ BS.GitHubWebHooks = {};
                     for (var i = 0; i < arr.length; i++) {
                         var r = arr[i];
                         var repository = r['repository'];
+                        if (WH.data[repository] && WH.data[repository]['manual']) {
+                            if (!element) {
+                                continue
+                            }
+                            WH.data[repository]['manual'] = false;
+                        }
                         WH.data[repository] = r;
                     }
                     WH.renderTable($j(table));
@@ -444,6 +465,11 @@ BS.GitHubWebHooks = {};
             if (!WH.data.hasOwnProperty(k)) continue;
             renderOne(WH.data[k], table);
         }
+    };
+
+    WH.more = function (element) {
+        const text = $j(element).parent().next().text();
+        BS.WarningPopup.showWarning(element, {x: -65, y: 20}, text);
     }
 })(BS.GitHubWebHooks);
 

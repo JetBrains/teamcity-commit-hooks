@@ -12,7 +12,7 @@
         <div class="webhook-status pending">Waiting for ping event</div>
     </c:when>
     <c:when test="${webhook.status == 'INCORRECT'}">
-        <div class="webhook-status error">Incorrect</div>
+        <div class="webhook-status err">Incorrect</div>
     </c:when>
     <c:otherwise>
         ${webhook.status}

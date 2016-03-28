@@ -17,7 +17,7 @@
     white-space: nowrap;
 }
 
-.webhook-status.error {
+.webhook-status.err {
     background-color: #FFC5C4;
     color: #C00;
 }

@@ -30,6 +30,7 @@ import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import java.io.IOException
 import java.io.OutputStreamWriter
+import java.net.UnknownHostException
 import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
@@ -171,7 +172,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         } else {
             connections = Util.findConnections(myOAuthConnectionsManager, project, info.server)
             if (connections.isEmpty()) {
-                return error_json("No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, configure it first", HttpServletResponse.SC_NOT_FOUND) //TODO: Add link, good UI.
+                return gh_json("NoOAuthConnections", "No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, configure it first", info)
             }
             // Let's use connection from most nested project. (connections sorted in reverse project hierarchy order)
             connection = connections.first()
@@ -188,7 +189,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
                 if (action == "continue") {
                     // Already from "/oauth/github/accessToken.html", cannot do anything else.
-                    postponedResult = error_json("Cannot find token in connection ${connection.connectionDisplayName}.\nEnsure connection configured correctly", HttpServletResponse.SC_NOT_FOUND)
+                    postponedResult = gh_json("NoTokens", "Cannot find token in connection ${connection.connectionDisplayName}.\nEnsure connection configured correctly", info)
                     continue@attempts
                 }
                 val params = linkedMapOf("action" to "continue", "original_action" to action, "popup" to popup, "type" to inType, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
@@ -211,21 +212,34 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                     ghc.setOAuth2Token(token.accessToken)
                     val element: JsonElement?
 
-                    if ("add" == action) {
-                        element = doAddWebHook(entry.key, token, ghc, info)
-                    } else if ("check" == action) {
-                        element = doCheckWebHook(entry.key, token, ghc, info)
-                    } else if ("ping" == action) {
-                        element = doPingWebHook(entry.key, token, ghc, info)
-                    } else if ("delete" == action) {
-                        element = doDeleteWebHook(entry.key, token, ghc, info)
-                    } else if ("continue" == action) {
-                        element = doAddWebHook(entry.key, token, ghc, info)
-                    } else {
-                        element = null
+                    try {
+                        if ("add" == action) {
+                            element = doAddWebHook(ghc, info)
+                        } else if ("check" == action) {
+                            element = doCheckWebHook(ghc, info)
+                        } else if ("ping" == action) {
+                            element = doPingWebHook(ghc, info)
+                        } else if ("delete" == action) {
+                            element = doDeleteWebHook(ghc, info)
+                        } else if ("continue" == action) {
+                            element = doAddWebHook(ghc, info)
+                        } else {
+                            element = null
+                        }
+                        if (element != null) return element
+                    } catch(e: GitHubAccessException) {
+                        element = getErrorResult(e, connection, info, token)
+                        if (element != null) return element;
+                    } catch(e: RequestException) {
+                        postponedResult = error_json("Exception: ${e.message}", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        LOG.warnAndDebugDetails("Unexpected response from github server", e)
+                    } catch(e: UnknownHostException) {
+                        // It seems host is (temporarily?) unavailable
+                        postponedResult = gh_json("Error", "Unknown host \'${e.message}\'. Probably there's connection problem between TeamCity server and GitHub server", info)
+                    } catch(e: IOException) {
+                        postponedResult = error_json("Exception: ${e.message}", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        LOG.warnAndDebugDetails("IOException instead of response from github server", e)
                     }
-
-                    if (element != null) return element
                 }
             }
         }
@@ -233,106 +247,66 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         return postponedResult ?: gh_json("", "", info)
     }
 
-    private fun doAddWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val repoId = info.toString()
-        try {
-            val result = myWebHooksManager.doRegisterWebHook(info, ghc)
-            when (result) {
-                WebHooksManager.HookAddOperationResult.AlreadyExists -> {
-                    return gh_json(result.name, "Hook for repository '$repoId' already exists, updated info", info)
-                }
-                WebHooksManager.HookAddOperationResult.Created -> {
-                    return gh_json(result.name, "Created hook for repository '$repoId'", info)
-                }
+    @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
+    private fun doAddWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val result = myWebHooksManager.doRegisterWebHook(info, ghc)
+        when (result) {
+            WebHooksManager.HookAddOperationResult.AlreadyExists -> {
+                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
-        } catch(e: GitHubAccessException) {
-            val element = getErrorResult(e, connection, info, repoId, token)
-            if (element != null) return element;
-        } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Unexpected response from github server", e)
-        } catch(e: IOException) {
-            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+            WebHooksManager.HookAddOperationResult.Created -> {
+                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
+            }
         }
-        return null
     }
 
 
-    private fun doCheckWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val repoId = info.toString()
-        try {
-            val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
-            when (result) {
-                WebHooksManager.HooksGetOperationResult.Ok -> {
-                    val hook = myWebHooksManager.getHook(info)
-                    if (hook != null) {
-                        return gh_json(result.name, "Updated hook info for repository '$repoId'", info)
-                    } else {
-                        return gh_json(result.name, "No hook found for repository '$repoId'", info)
-                    }
+    @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
+    private fun doCheckWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
+        when (result) {
+            WebHooksManager.HooksGetOperationResult.Ok -> {
+                val hook = myWebHooksManager.getHook(info)
+                if (hook != null) {
+                    return gh_json(result.name, "Updated hook info for repository '${info.toString()}'", info)
+                } else {
+                    return gh_json(result.name, "No hook found for repository '${info.toString()}'", info)
                 }
             }
-        } catch(e: GitHubAccessException) {
-            val element = getErrorResult(e, connection, info, repoId, token)
-            if (element != null) return element;
-        } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Unexpected response from github server", e)
-        } catch(e: IOException) {
-            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
         }
-        return null
     }
 
-    private fun doPingWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val repoId = info.toString()
-        try {
-            val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
-            when (result) {
-                WebHooksManager.HooksGetOperationResult.Ok -> {
-                    val hook = myWebHooksManager.getHook(info)
-                    // Ensure test message was sent
-                    myWebHooksManager.TestWebHook.doRun(info, ghc)
-                    if (hook != null) {
-                        return gh_json(result.name, "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
-                    } else {
-                        return gh_json(result.name, "No hook found for repository '$repoId'", info)
-                    }
+    @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
+    private fun doPingWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
+        when (result) {
+            WebHooksManager.HooksGetOperationResult.Ok -> {
+                val hook = myWebHooksManager.getHook(info)
+                // Ensure test message was sent
+                myWebHooksManager.TestWebHook.doRun(info, ghc)
+                if (hook != null) {
+                    return gh_json(result.name, "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
+                } else {
+                    return gh_json(result.name, "No hook found for repository '${info.toString()}'", info)
                 }
             }
-        } catch(e: GitHubAccessException) {
-            val element = getErrorResult(e, connection, info, repoId, token)
-            if (element != null) return element;
-        } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Unexpected response from github server", e)
-        } catch(e: IOException) {
-            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
         }
-        return null
     }
 
-    private fun doDeleteWebHook(connection: OAuthConnectionDescriptor, token: OAuthToken, ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val repoId = info.toString()
-        try {
-            val result = myWebHooksManager.doUnRegisterWebHook(info, ghc)
-            when (result) {
-                WebHooksManager.HookDeleteOperationResult.NeverExisted -> {
-                    return gh_json(result.name, "Hook for repository '$repoId' never existed", info)
-                }
-                WebHooksManager.HookDeleteOperationResult.Removed -> {
-                    return gh_json(result.name, "Removed hook for repository '$repoId'", info)
-                }
+    @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
+    private fun doDeleteWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val result = myWebHooksManager.doUnRegisterWebHook(info, ghc)
+        when (result) {
+            WebHooksManager.HookDeleteOperationResult.NeverExisted -> {
+                return gh_json(result.name, "Hook for repository '${info.toString()}' never existed", info)
             }
-        } catch(e: GitHubAccessException) {
-            val element = getErrorResult(e, connection, info, repoId, token)
-            if (element != null) return element;
-        } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Unexpected response from github server", e)
-        } catch(e: IOException) {
-            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
+            WebHooksManager.HookDeleteOperationResult.Removed -> {
+                return gh_json(result.name, "Removed hook for repository '${info.toString()}'", info)
+            }
         }
-        return null
     }
 
-    private fun getErrorResult(e: GitHubAccessException, connection: OAuthConnectionDescriptor, info: VcsRootGitHubInfo, repoId: String, token: OAuthToken): JsonElement? {
+    private fun getErrorResult(e: GitHubAccessException, connection: OAuthConnectionDescriptor, info: VcsRootGitHubInfo, token: OAuthToken): JsonElement? {
         when (e.type) {
             GitHubAccessException.Type.InvalidCredentials -> {
                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
@@ -345,10 +319,10 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 return gh_json(e.type.name, e.message ?: "Token scope does not cover hooks management", info)
             }
             GitHubAccessException.Type.UserHaveNoAccess -> {
-                return gh_json(e.type.name, "You don't have access to '$repoId'", info)
+                return gh_json(e.type.name, "You don't have access to '${info.toString()}'", info)
             }
             GitHubAccessException.Type.NoAccess -> {
-                return gh_json(e.type.name, "No access to repository '$repoId'", info)
+                return gh_json(e.type.name, "No access to repository '${info.toString()}'", info)
             }
         }
         return null
@@ -398,8 +372,9 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             val connections = if (connection != null) listOf(connection) else getConnections(server, project)
             if (connections.isEmpty()) {
                 for (info in infos) {
-                    val obj = getRepositoryInfo(info, myWebHooksManager)
-                    obj.addProperty("error", "No connections to server $server")
+                    val message = "No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, configure it first"
+                    val obj = gh_json("NoOAuthConnections", message, info)
+                    obj.addProperty("error", message)
                     obj.addProperty("user_action_required", true)
                     arr.add(obj)
                 }
@@ -408,8 +383,9 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             val connectionToTokensMap = myTokensHelper.getExistingTokens(connections, user)
             if (connectionToTokensMap.isEmpty()) {
                 for (info in infos) {
-                    val obj = getRepositoryInfo(info, myWebHooksManager)
-                    obj.addProperty("error", "No tokens to access server $server")
+                    val message = "No tokens to access server $server"
+                    val obj = gh_json("NoTokens", message, info)
+                    obj.addProperty("error", message)
                     obj.addProperty("user_action_required", true)
                     arr.add(obj)
                 }
@@ -423,9 +399,21 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                     for (token in tokens) {
                         LOG.info("Trying with token: ${token.oauthLogin}, connector is ${connection.id}")
                         ghc.setOAuth2Token(token.accessToken)
-                        val element = doCheckWebHook(connection, token, ghc, info)
-                        if (element != null) {
-                            elements.add(element)
+                        try {
+                            val element = doCheckWebHook(ghc, info)
+                            if (element != null) {
+                                elements.add(element)
+                            }
+                        } catch(e: GitHubAccessException) {
+                            val element = getErrorResult(e, connection, info, token)
+                            if (element != null) elements.add(element);
+                        } catch(e: RequestException) {
+                            LOG.warnAndDebugDetails("Unexpected response from github server", e)
+                        } catch(e: UnknownHostException) {
+                            // It seems host is (temporarily?) unavailable
+                            elements.add(error_json("CannotAccessGitHub", HttpServletResponse.SC_SERVICE_UNAVAILABLE))
+                        } catch(e: IOException) {
+                            LOG.warnAndDebugDetails("IOException instead of response from github server", e)
                         }
                     }
                 }
@@ -485,7 +473,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
 
-    fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonElement {
+    fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonObject {
         val obj = WebHooksController.getRepositoryInfo(info, myWebHooksManager)
         obj.addProperty("result", result)
         obj.addProperty("message", message)
