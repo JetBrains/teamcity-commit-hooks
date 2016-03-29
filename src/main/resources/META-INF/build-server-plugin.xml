@@ -17,9 +17,6 @@
     <bean class="org.jetbrains.teamcity.github.GitHubWebHookAvailablePageExtension" init-method="register"/>
     <bean class="org.jetbrains.teamcity.github.GitHubWebHookAvailableHealthReport"/>
 
-    <bean class="org.jetbrains.teamcity.github.VCSRootCheckIntervalPE" init-method="register"/>
-    <bean class="org.jetbrains.teamcity.github.VCSRootCheckIntervalHR"/>
-
     <bean class="org.jetbrains.teamcity.github.GitHubWebHookOutdatedHealthReport"/>
     <bean class="org.jetbrains.teamcity.github.GitHubWebHookOutdatedPageExtension" init-method="register"/>
 

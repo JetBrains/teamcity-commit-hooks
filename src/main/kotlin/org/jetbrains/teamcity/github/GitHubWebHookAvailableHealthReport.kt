@@ -6,6 +6,8 @@ import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.util.MultiMap
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
+import org.jetbrains.teamcity.github.controllers.Status
+import org.jetbrains.teamcity.github.controllers.getHookStatus
 import java.util.*
 
 public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksManager,
@@ -13,6 +15,7 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
     companion object {
         public val TYPE = "GitHub.WebHookAvailable"
         public val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
+        public val VCS_CHECKING_FOR_CHAGES_INTERVAL = 3600;
 
         public fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
             val map = HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>>()
@@ -68,7 +71,8 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
 
         val filtered = split
                 .filterKeys {
-                    WebHooksManager.getHook(it) == null
+                    val hook = WebHooksManager.getHook(it)
+                    hook == null || getHookStatus(hook).status == Status.OK
                 }
                 .filter { entry ->
                     // Filter by known servers
@@ -76,20 +80,44 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                 }
 
         for ((info, map) in filtered) {
+            val hook = WebHooksManager.getHook(info)
+            val status = getHookStatus(hook).status
+            if (hook != null && status != Status.OK) {
+                // Something changes since filtering on '.filterKeys' above
+                continue
+            }
             for ((root, instances) in map.entrySet()) {
                 if (root == null) {
-                    for (rootInstance in instances) {
-                        val item = WebHookHealthItem(info, rootInstance)
-                        resultConsumer.consumeForVcsRoot(rootInstance.parent, item)
-                        resultConsumer.consumeForProject(rootInstance.parent.project, item)
-                        rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
+                    if (hook == null) {
+                        // 'Add WebHook' part
+                        for (rootInstance in instances) {
+                            val item = WebHookAddHookHealthItem(info, rootInstance)
+                            resultConsumer.consumeForVcsRoot(rootInstance.parent, item)
+                            resultConsumer.consumeForProject(rootInstance.parent.project, item)
+                            rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
+                        }
+                    } else {
+                        // 'Set Changes Checking Interval' part
+                        // For not Checking For Changes interval could be set only for SVcsRoot
+                        // So we will set it for vcs roots which is parametrized but all VcsRootInstances has correct hooks
+                        // TODO: Implement
                     }
                     continue
                 }
-                val item = WebHookHealthItem(info, root)
-                resultConsumer.consumeForVcsRoot(root, item)
-                resultConsumer.consumeForProject(root.project, item)
-                root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
+                if (hook == null) {
+                    // 'Add WebHook' part
+                    val item = WebHookAddHookHealthItem(info, root)
+                    resultConsumer.consumeForVcsRoot(root, item)
+                    resultConsumer.consumeForProject(root.project, item)
+                    root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
+                } else {
+                    // 'Set Changes Checking Interval' part
+                    if (!root.isUseDefaultModificationCheckInterval && root.modificationCheckInterval >= VCS_CHECKING_FOR_CHAGES_INTERVAL) continue;
+                    val item = WebHookSetCCIHealthItem(info, root, hook)
+                    resultConsumer.consumeForVcsRoot(root, item)
+                    resultConsumer.consumeForProject(root.project, item)
+                    root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
+                }
             }
         }
     }

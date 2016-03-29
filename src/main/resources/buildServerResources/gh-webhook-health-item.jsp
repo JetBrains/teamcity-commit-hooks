@@ -12,18 +12,27 @@
 
 <c:set var="GitHubInfo" value="${healthStatusItem.additionalData['GitHubInfo']}"/>
 <c:set var="VcsRoot" value="${healthStatusItem.additionalData['VcsRoot']}"/>
+<c:set var="HookInfo" value="${healthStatusItem.additionalData['HookInfo']}"/>
 <%--@elvariable id="GitHubInfo" type="org.jetbrains.teamcity.github.VcsRootGitHubInfo"--%>
 <%--@elvariable id="VcsRoot" type="jetbrains.buildServer.vcs.SVcsRoot"--%>
-
+<%--@elvariable id="HookInfo" type="org.jetbrains.teamcity.github.WebHooksStorage.HookInfo"--%>
 
 <c:set var="id" value="hid_${util:forJSIdentifier(GitHubInfo.identifier)}"/>
 
 <div id='${id}' class="suggestionItem" data-repository="${GitHubInfo}" data-server="${GitHubInfo.server}">
     Found VCS root <admin:vcsRootName vcsRoot="${VcsRoot}" editingScope="editProject:${VcsRoot.project.externalId}" cameFromUrl="${pageUrl}"/>
     belongs to <admin:projectName project="${VcsRoot.project}"/>
-    referencing GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a> without configured WebHook:
+    referencing GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a>
+    <c:choose>
+        <c:when test="${HookInfo != null}">with configured WebHook:</c:when>
+        <c:otherwise>without configured WebHook:</c:otherwise>
+    </c:choose>
     <div class="suggestionAction">
         <c:choose>
+            <c:when test="${HookInfo != null}">
+                <a href="#" style="padding-left: 1.5em" onclick="BS.GitHubWebHooks.setVcsPoolInterval(this, '${VcsRoot.id}', '${VcsRoot.project.externalId}'); return false"
+                >Set Checking for changes interval to 1h </a>
+            </c:when>
             <c:when test="${has_connections}">
                 <a href="#" class="addNew" onclick="BS.GitHubWebHooks.doAction('add', this, '${GitHubInfo}', '${VcsRoot.project.externalId}'); return false">Add WebHook</a>
             </c:when>
@@ -32,7 +41,6 @@
                 <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addConnection(this, '${VcsRoot.project.externalId}', '${GitHubInfo.server}'); return false">Add OAuth connection</a>
             </c:otherwise>
         </c:choose>
-        <%--<forms:button className="btn_mini" onclick="BS.GitHubWebHooks.addWebHook('${Type}', '${Id}'); return false">Add WebHook</forms:button>--%>
     </div>
 </div>
 
