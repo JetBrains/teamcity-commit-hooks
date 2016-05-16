@@ -499,7 +499,7 @@ BS.GitHubWebHooks = {};
     }
 })(BS.GitHubWebHooks);
 
-BS.Util.Messages = {};
+BS.Util.Messages = BS.Util.Messages || {};
 (function (Messages) {
     Messages.show = function (group, text, options) {
         group = group.replace(/([:/\.])/g, '_');
@@ -563,7 +563,7 @@ BS.Util.Messages = {};
 
 })(BS.Util.Messages);
 
-BS.AdminActions = {};
+BS.AdminActions = BS.AdminActions || {};
 (function (AA) {
     AA.toggleVcsRootInstanceUsages = function (link, vcsRootInstanceId) {
         $j('#instance_' + vcsRootInstanceId + '_usages').toggle();
