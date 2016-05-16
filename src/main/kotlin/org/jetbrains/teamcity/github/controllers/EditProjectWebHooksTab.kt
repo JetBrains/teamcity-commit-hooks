@@ -8,6 +8,7 @@ import jetbrains.buildServer.controllers.FormUtil
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.log.LogUtil
 import jetbrains.buildServer.serverSide.*
+import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.Pager
@@ -27,7 +28,8 @@ import javax.servlet.http.HttpServletResponse
 public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
                                     val webHooksManager: WebHooksManager,
                                     val versionedSettingsManager: VersionedSettingsManager,
-                                    val tokensHelper: TokensHelper) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
+                                    val tokensHelper: TokensHelper,
+                                    val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
         val TAB_TITLE_PREFIX = "GitHub WebHooks"
     }
@@ -43,7 +45,7 @@ public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescri
         val user = SessionUser.getUser(request) ?: return super.getTabTitle(request)
 
         // TODO: Do not calculate full data, just estimate webhooks count
-        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user)
+        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user, oAuthConnectionsManager)
         webHooksBean.applyFilter()
 
         val num = webHooksBean.getNumberOfAvailableWebHooks()
@@ -61,7 +63,8 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
                                            val webHooksManager: WebHooksManager,
                                            val projectManager: ProjectManager,
                                            val versionedSettingsManager: VersionedSettingsManager,
-                                           val tokensHelper: TokensHelper) : BaseController(server) {
+                                           val tokensHelper: TokensHelper,
+                                           val oAuthConnectionsManager: OAuthConnectionsManager) : BaseController(server) {
     private val jsp = descriptor.getPluginResourcesPath("editProjectWebHooks.jsp")
 
     init {
@@ -74,7 +77,7 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
         val project = projectManager.findProjectByExternalId(projectExternalId) ?: return simpleView("Project with id " + LogUtil.quote(projectExternalId) + " does not exist anymore.")
         val user = SessionUser.getUser(request) ?: return simpleView("Session User not found.")
 
-        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user)
+        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user, oAuthConnectionsManager)
 
         FormUtil.bindFromRequest(request, webHooksBean.form)
         webHooksBean.applyFilter()
@@ -95,9 +98,12 @@ public class ProjectWebHooksForm() {
     var page: Int = 0
 }
 
-public class ProjectWebHooksBean(val project: SProject, val webHooksManager: WebHooksManager, val versionedSettingsManager: VersionedSettingsManager,
+public class ProjectWebHooksBean(val project: SProject,
+                                 val webHooksManager: WebHooksManager,
+                                 val versionedSettingsManager: VersionedSettingsManager,
                                  val helper: TokensHelper,
-                                 val user: SUser) {
+                                 val user: SUser,
+                                 val oAuthConnectionsManager: OAuthConnectionsManager) {
     val hooks: SortedMap<VcsRootGitHubInfo, WebHookDetails> = TreeMap(comparator)
 
     val form: ProjectWebHooksForm = ProjectWebHooksForm();
@@ -129,6 +135,10 @@ public class ProjectWebHooksBean(val project: SProject, val webHooksManager: Web
             true
         }
         val split = GitHubWebHookAvailableHealthReport.split(allGitVcsInstances)
+                .filter { entry ->
+                    // Filter by known servers
+                    entry.key.server == "github.com" || GitHubWebHookAvailableHealthReport.getProjects(entry.value).any { project -> Util.findConnections(oAuthConnectionsManager, project, entry.key.server).isNotEmpty() }
+                }
         for (entry in split) {
             if (keyword != null && keywordFiltering) {
                 if (!entry.key.getRepositoryUrl().contains(keyword, true)) continue
