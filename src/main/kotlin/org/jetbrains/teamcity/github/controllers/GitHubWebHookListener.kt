@@ -5,6 +5,7 @@ import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.impl.VcsModificationChecker
+import jetbrains.buildServer.vcs.OperationRequestor
 import jetbrains.buildServer.vcs.VcsManager
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.WebControllerManager
@@ -131,7 +132,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
     private fun doScheduleCheckForPendingChanges(roots: List<VcsRootInstance>) {
         // TODO: Or #forceCheckingFor ?
         // TODO: Should use rest api method ?
-        VcsModificationChecker.checkForModificationsAsync(roots)
+        VcsModificationChecker.checkForModificationsAsync(roots, OperationRequestor.COMMIT_HOOK)
     }
 
     public fun findSuitableVcsRootInstances(info: VcsRootGitHubInfo, vcsRootId: String?): List<VcsRootInstance> {
