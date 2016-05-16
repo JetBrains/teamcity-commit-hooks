@@ -31,10 +31,24 @@ public class Util {
         public fun parseGitRepoUrl(url: String): VcsRootGitHubInfo? {
             val matcher = GITHUB_REPO_URL_PATTERN.matcher(url)
             if (!matcher.find()) return null
+            val protocol = url.substring(0, matcher.start())
+            if (!isSupportedProtocol(protocol)) return null
             val host = matcher.group(1) ?: return null
             val owner = matcher.group(2) ?: return null
             val name = matcher.group(3)?.removeSuffix(".git") ?: return null
             return VcsRootGitHubInfo(host, owner, name)
+        }
+
+        public fun isSupportedProtocol(candidate: String): Boolean {
+            when (candidate) {
+                "https://" -> return true
+                "http://" -> return true
+                "ssh://" -> return true
+                "git://" -> return true
+                "git@" -> return true
+                "" -> return true
+                else -> return false
+            }
         }
 
         public fun findConnections(manager: OAuthConnectionsManager, project: SProject, server: String): List<OAuthConnectionDescriptor> {

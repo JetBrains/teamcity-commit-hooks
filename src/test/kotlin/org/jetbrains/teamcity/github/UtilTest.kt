@@ -20,6 +20,16 @@ class UtilTest {
 
         doSuccessUrlParsingTest("github.com/VladRassokhin/intellij-hcl", "github.com", "VladRassokhin", "intellij-hcl")
         doSuccessUrlParsingTest("github.com/VladRassokhin/intellij-hcl.git", "github.com", "VladRassokhin", "intellij-hcl")
+
+        // Even non-GitHub sites could match
+        doSuccessUrlParsingTest("git://git.csync.org/projects/csync.git", "git.csync.org", "projects", "csync")
+        doSuccessUrlParsingTest("git://git.libssh.org/projects/libssh.git", "git.libssh.org", "projects", "libssh")
+    }
+
+    @Test
+    fun testUrlsShouldNotParse() {
+        doFailedUrlParsingTest("/media/devel/repositories/git-utf-8")
+        doFailedUrlParsingTest("https://git-wip-us.apache.org/repos/asf/ant.git ")
     }
 
     private fun doSuccessUrlParsingTest(url: String, server: String, owner: String, name: String) {
