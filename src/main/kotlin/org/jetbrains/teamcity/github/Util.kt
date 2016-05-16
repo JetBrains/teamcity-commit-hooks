@@ -82,9 +82,10 @@ public class Util {
             return url.contains(host, true)
         }
 
-        fun isSuitableVcsRoot(root: VcsRoot): Boolean {
+        fun isSuitableVcsRoot(root: VcsRoot, checkUrl: Boolean = true): Boolean {
             if (root.vcsName != Constants.VCS_NAME_GIT) return false
             val url = root.properties[Constants.VCS_PROPERTY_GIT_URL] ?: return false
+            if (!checkUrl) return true;
             if (StringUtil.hasParameterReferences(url)) return false
             return getGitHubInfo(url) != null
         }
@@ -102,7 +103,7 @@ public class Util {
             for (bt in buildTypes) {
                 if (!archived && bt.project.isArchived) continue
                 for (it in bt.vcsRootInstances) {
-                    if (it.vcsName == Constants.VCS_NAME_GIT && it.properties[Constants.VCS_PROPERTY_GIT_URL] != null) {
+                    if (isSuitableVcsRoot(it, false)) {
                         if (!collector(it)) return;
                     }
                 }
