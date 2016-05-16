@@ -58,11 +58,12 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         val indexOfPathPart = path.indexOf(PATH + "/")
         val vcsRootId: String?
         if (indexOfPathPart != -1) {
-            vcsRootId = path.substring(indexOfPathPart + PATH.length + 1)
-            LOG.debug("Received hook event with vcs root id in path: $vcsRootId");
+            val substring = path.substring(indexOfPathPart + PATH.length + 1)
+            vcsRootId = if (substring.isNotBlank()) substring else null
         } else {
             vcsRootId = null
         }
+        if (vcsRootId != null) LOG.debug("Received hook event with vcs root id in path: $vcsRootId");
         try {
             when(eventType) {
                 "ping" -> {
