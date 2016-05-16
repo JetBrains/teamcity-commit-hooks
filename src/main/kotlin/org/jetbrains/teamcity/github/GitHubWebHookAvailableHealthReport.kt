@@ -15,7 +15,6 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
     companion object {
         public val TYPE = "GitHub.WebHookAvailable"
         public val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
-        public val VCS_CHECKING_FOR_CHAGES_INTERVAL = 3600;
 
         public fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
             val map = HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>>()
@@ -107,13 +106,6 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                 if (hook == null) {
                     // 'Add WebHook' part
                     val item = WebHookAddHookHealthItem(info, root)
-                    resultConsumer.consumeForVcsRoot(root, item)
-                    resultConsumer.consumeForProject(root.project, item)
-                    root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
-                } else {
-                    // 'Set Changes Checking Interval' part
-                    if (!root.isUseDefaultModificationCheckInterval && root.modificationCheckInterval >= VCS_CHECKING_FOR_CHAGES_INTERVAL) continue;
-                    val item = WebHookSetCCIHealthItem(info, root, hook)
                     resultConsumer.consumeForVcsRoot(root, item)
                     resultConsumer.consumeForProject(root.project, item)
                     root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
