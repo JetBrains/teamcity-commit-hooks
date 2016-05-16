@@ -95,11 +95,6 @@ public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: Web
                             resultConsumer.consumeForProject(rootInstance.parent.project, item)
                             rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
                         }
-                    } else {
-                        // 'Set Changes Checking Interval' part
-                        // For not Checking For Changes interval could be set only for SVcsRoot
-                        // So we will set it for vcs roots which is parametrized but all VcsRootInstances has correct hooks
-                        // TODO: Implement
                     }
                     continue
                 }
