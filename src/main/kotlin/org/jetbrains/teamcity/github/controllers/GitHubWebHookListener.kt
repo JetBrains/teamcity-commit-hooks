@@ -8,6 +8,7 @@ import jetbrains.buildServer.serverSide.impl.VcsModificationChecker
 import jetbrains.buildServer.vcs.VcsManager
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.WebControllerManager
+import jetbrains.buildServer.web.util.WebUtil
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.event.PingWebHookPayload
 import org.eclipse.egit.github.core.event.PushWebHookPayload
@@ -41,7 +42,9 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         // Looks like GET is not necessary, POST is enough
         setSupportedMethods(METHOD_POST)
         WebControllerManager.registerController(PATH, this)
+        WebControllerManager.registerController(PATH + "/*", this)
         AuthorizationInterceptor.addPathNotRequiringAuth(PATH)
+        AuthorizationInterceptor.addPathNotRequiringAuth(PATH + "/*")
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
@@ -49,6 +52,15 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         if (eventType == null) {
             response.status = HttpServletResponse.SC_BAD_REQUEST
             return simpleView("'$X_GitHub_Event' header is missing")
+        }
+        val path = WebUtil.getPathWithoutAuthenticationType(request)
+        val indexOfPathPart = path.indexOf(PATH + "/")
+        val vcsRootId: String?
+        if (indexOfPathPart != -1) {
+            vcsRootId = path.substring(indexOfPathPart + PATH.length + 1)
+            LOG.debug("Received hook event with vcs root id in path: $vcsRootId");
+        } else {
+            vcsRootId = null
         }
         try {
             when(eventType) {
@@ -58,7 +70,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
                 }
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(request.reader, PushWebHookPayload::class.java)
-                    response.status = doHandlePushEvent(payload)
+                    response.status = doHandlePushEvent(payload, vcsRootId)
                 }
                 else -> {
                     LOG.info("Received unknown event type: $eventType, ignoring")
@@ -89,7 +101,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         return HttpServletResponse.SC_ACCEPTED
     }
 
-    private fun doHandlePushEvent(payload: PushWebHookPayload): Int {
+    private fun doHandlePushEvent(payload: PushWebHookPayload, vcsRootId: String?): Int {
         val url = payload.repository?.gitUrl
         LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
@@ -103,7 +115,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         }
         updateLastUsed(info)
         updateBranches(info, payload)
-        val foundVcsInstances = findSuitableVcsRootInstances(info)
+        val foundVcsInstances = findSuitableVcsRootInstances(info, vcsRootId)
         doScheduleCheckForPendingChanges(foundVcsInstances)
         return HttpServletResponse.SC_ACCEPTED
     }
@@ -122,13 +134,13 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         VcsModificationChecker.checkForModificationsAsync(roots)
     }
 
-    public fun findSuitableVcsRootInstances(info: VcsRootGitHubInfo): List<VcsRootInstance> {
+    public fun findSuitableVcsRootInstances(info: VcsRootGitHubInfo, vcsRootId: String?): List<VcsRootInstance> {
         val roots = HashSet<VcsRootInstance>()
         for (bt in ProjectManager.allBuildTypes) {
             if (bt.project.isArchived) continue
             roots.addAll(bt.vcsRootInstances)
         }
-        return roots.filter { info == Util.getGitHubInfo(it) }
+        return roots.filter { info == Util.getGitHubInfo(it) && (vcsRootId == null || it.parent.externalId == vcsRootId) }
     }
 
     private fun setModificationCheckInterval(info: VcsRootGitHubInfo) {
