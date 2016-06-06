@@ -48,7 +48,7 @@ public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescri
         val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user, oAuthConnectionsManager)
         webHooksBean.applyFilter()
 
-        val num = webHooksBean.getNumberOfAvailableWebHooks()
+        val num = webHooksBean.getNumberOfCorrectWebHooks()
         if (num > 0) {
             return "$TAB_TITLE_PREFIX ($num)"
         }
@@ -115,6 +115,10 @@ public class ProjectWebHooksBean(val project: SProject,
 
     fun getNumberOfAvailableWebHooks(): Int {
         return hooks.size
+    }
+
+    fun getNumberOfCorrectWebHooks(): Int {
+        return hooks.count() { getHookStatus(it.value.info).status in arrayOf(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE) }
     }
 
     @Used("jps")
