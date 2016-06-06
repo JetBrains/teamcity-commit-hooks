@@ -57,7 +57,7 @@ BS.GitHubWebHooks = {};
         add: {
             id: "add",
             name: "Add",
-            progress: "Adding WebHook",
+            progress: "Adding Webhook",
             success: function (json, resource) {
                 onActionSuccess(json, resource, ["AlreadyExists", "Created"]);
             }
@@ -65,7 +65,7 @@ BS.GitHubWebHooks = {};
         check: {
             id: "check",
             name: "Check",
-            progress: "Checking WebHook",
+            progress: "Checking Webhook",
             success: function (json, resource) {
                 onActionSuccess(json, resource, ["Ok"]);
             }
@@ -81,7 +81,7 @@ BS.GitHubWebHooks = {};
         delete: {
             id: "delete",
             name: "Delete",
-            progress: "Deleting WebHook",
+            progress: "Deleting Webhook",
             success: function (json, resource) {
                 onActionSuccess(json, resource, ["Removed", "NeverExisted"]);
             }
@@ -156,7 +156,7 @@ BS.GitHubWebHooks = {};
                 var json = transport.responseJSON;
                 if (json['redirect']) {
                     BS.Log.info("Redirect response received");
-                    var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doAction('" + action.id + "', this, '" + id + "','" + projectId + "', true); return false\">Refresh access token and " + action.name + " WebHook</a>";
+                    var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doAction('" + action.id + "', this, '" + id + "','" + projectId + "', true); return false\">Refresh access token and " + action.name + " webhook</a>";
                     BS.Util.Messages.show(id, 'GitHub authorization needed. ' + link);
                     //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + type + '_' + id);
                     $j(that).append(link);
@@ -166,7 +166,7 @@ BS.GitHubWebHooks = {};
                     };
                     BS.Log.info($(that).onclick);
                     // FIXME: Investigate why text not changed
-                    $j(that).text("Refresh token and add WebHook");
+                    $j(that).text("Refresh token and add webhook");
                     BS.Log.info($(that).innerHTML);
                 } else if (json['error']) {
                     BS.Log.error("Sad :( Something went wrong: " + json['error']);

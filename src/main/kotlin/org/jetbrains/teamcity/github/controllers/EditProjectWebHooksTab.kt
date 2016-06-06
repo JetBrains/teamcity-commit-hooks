@@ -31,7 +31,7 @@ public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescri
                                     val tokensHelper: TokensHelper,
                                     val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
-        val TAB_TITLE_PREFIX = "GitHub WebHooks"
+        val TAB_TITLE_PREFIX = "GitHub Webhooks"
     }
 
     init {

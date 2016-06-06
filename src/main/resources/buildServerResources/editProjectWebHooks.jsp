@@ -15,7 +15,7 @@
 <%--@elvariable id="currentProject" type="jetbrains.buildServer.serverSide.SProject"--%>
 
 <div class="editProjectPage">
-    <h2 class="noBorder">GitHub WebHooks</h2>
+    <h2 class="noBorder">GitHub Webhooks</h2>
     <c:set var="cameFromUrl" value="${param['cameFromUrl']}"/>
 
     <form action="<c:url value='/admin/editProject.html'/>" method="get" id="webHooksFilterForm" onsubmit="BS.Util.show('spinner'); return true;">
@@ -28,7 +28,7 @@
             <forms:resetFilter resetHandler="if($('webHooksFilterForm').keyword.value != '') {$('webHooksFilterForm').keyword.value='';$('webHooksFilterForm').submit();}"/>
          <span style="margin-left: 20px">
                 <forms:checkbox name="recursive" checked="${webHooksBean.form.recursive}" onclick="$('webHooksFilterForm').submit();"/>
-                <label for="recursive" style="margin: 0;">Show WebHooks from subprojects</label>
+                <label for="recursive" style="margin: 0;">Show Webhooks from subprojects</label>
             </span>
             <span id="spinner" class="spinner" style="display: none"><i class="icon-refresh icon-spin"></i> Refreshing...</span>
         </div>

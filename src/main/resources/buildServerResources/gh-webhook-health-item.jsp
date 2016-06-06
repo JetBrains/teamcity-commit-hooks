@@ -21,11 +21,11 @@
     Found VCS root <admin:vcsRootName vcsRoot="${VcsRoot}" editingScope="editProject:${VcsRoot.project.externalId}" cameFromUrl="${pageUrl}"/>
     belongs to <admin:projectName project="${VcsRoot.project}"/>
     referencing GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a>
-    without configured WebHook:
+    without configured Webhook:
     <div class="suggestionAction">
         <c:choose>
             <c:when test="${has_connections}">
-                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.doAction('add', this, '${GitHubInfo}', '${VcsRoot.project.externalId}'); return false">Add WebHook</a>
+                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.doAction('add', this, '${GitHubInfo}', '${VcsRoot.project.externalId}'); return false">Add Webhook</a>
             </c:when>
             <c:otherwise>
                 <span>There no GitHub OAuth connections found for GitHub server '${GitHubInfo.server}'</span>
