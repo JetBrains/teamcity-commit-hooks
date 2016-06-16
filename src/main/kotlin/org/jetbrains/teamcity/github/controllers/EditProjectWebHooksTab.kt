@@ -55,7 +55,23 @@ public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescri
         return TAB_TITLE_PREFIX
     }
 
+    /**
+     * Available only if there's at least one github repository in project and subprojects
+     */
+    override fun isAvailable(request: HttpServletRequest): Boolean {
+        val superIsAvailable = super.isAvailable(request)
+        if (!superIsAvailable) return false;
+        val project = getProject(request) ?: return false
+        val user = SessionUser.getUser(request) ?: return false
 
+        // TODO: Do not calculate full data, just estimate webhooks count
+        val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user, oAuthConnectionsManager)
+        webHooksBean.form.recursive = true
+        webHooksBean.applyFilter()
+
+        val num = webHooksBean.getNumberOfAvailableWebHooks()
+        return num > 0
+    }
 }
 
 public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerManager,
