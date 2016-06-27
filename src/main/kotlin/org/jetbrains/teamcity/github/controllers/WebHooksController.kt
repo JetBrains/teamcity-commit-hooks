@@ -94,16 +94,15 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         var action = request.getParameter("action")
         val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
         val element: JsonElement
-        var direct: Boolean = false
-        if (!popup) {
-            direct = true
-        }
         try {
-            if (action in listOf("add", "check", "delete", "ping", null)) {
+            if (action in listOf("add", "check", "delete", "ping", "install", null)) {
                 element = doHandleAction(request, action, popup)
-            } else if ("continue" == action) {
+            } else if ("continue-add" == action) {
                 element = doHandleAction(request, action, popup)
                 action = request.getParameter("original_action") ?: "add"
+            } else if ("continue-install" == action) {
+                element = doHandleAction(request, action, popup)
+                action = request.getParameter("original_action") ?: "install"
             } else if ("check-all" == action) {
                 element = doHandleCheckAllAction(request, popup)
             } else if ("get-info" == action) {
@@ -120,13 +119,13 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         if (element is JsonObject) {
             element.addProperty("action", action)
         }
-        if (direct) {
+        if (!popup) {
             response.contentType = MediaType.APPLICATION_JSON_VALUE
             val writer = JsonWriter(OutputStreamWriter(response.outputStream))
             Gson().toJson(element, writer)
             writer.flush()
             return null
-        } else if (popup) {
+        } else {
             if (element is JsonObject) {
                 val url = element.getAsJsonPrimitive("redirect")?.asString
                 if (url != null) {
@@ -173,7 +172,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         if (connection != null) {
             connections = listOf(connection)
         } else {
-            connections = Util.findConnections(myOAuthConnectionsManager, project, info.server)
+            connections = getConnections(info.server, project)
             if (connections.isEmpty()) {
                 return gh_json("NoOAuthConnections", "No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, configure it first", info)
             }
@@ -216,6 +215,11 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                     val element: JsonElement?
 
                     try {
+                        @Suppress("NAME_SHADOWING")
+                        val action =
+                                if (action == "continue") {
+                                    request.getParameter("original_action") ?: "add"
+                                } else action
                         if ("add" == action) {
                             element = doAddWebHook(ghc, info)
                         } else if ("check" == action) {
@@ -224,8 +228,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                             element = doPingWebHook(ghc, info)
                         } else if ("delete" == action) {
                             element = doDeleteWebHook(ghc, info)
-                        } else if ("continue" == action) {
-                            element = doAddWebHook(ghc, info)
+                        } else if ("install" == action) {
+                            element = doInstallWebHook(ghc, info)
                         } else {
                             element = null
                         }
@@ -252,6 +256,19 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doAddWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
+        val result = myWebHooksManager.doRegisterWebHook(info, ghc)
+        when (result) {
+            WebHooksManager.HookAddOperationResult.AlreadyExists -> {
+                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
+            }
+            WebHooksManager.HookAddOperationResult.Created -> {
+                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
+            }
+        }
+    }
+
+    @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
+    private fun doInstallWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc)
         when (result) {
             WebHooksManager.HookAddOperationResult.AlreadyExists -> {
