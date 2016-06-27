@@ -4,11 +4,13 @@
 <jsp:useBean id="currentProject" type="jetbrains.buildServer.serverSide.SProject" scope="request"/>
 <jsp:useBean id="repository" type="java.lang.String" scope="request"/>
 <jsp:useBean id="connectionId" type="java.lang.String" scope="request"/>
+<jsp:useBean id="connectionProjectId" type="java.lang.String" scope="request"/>
 <jsp:useBean id="cameFrom" type="jetbrains.buildServer.web.util.CameFromSupport" scope="request"/>
 <div class="editProjectPage">
     <form id="installWebhook">
         <input type="hidden" id="projectId" value="${currentProject.externalId}">
         <input type="hidden" id="connectionId" value="${connectionId}">
+        <input type="hidden" id="connectionProjectId" value="${connectionProjectId}">
         <table class="runnerFormTable">
             <tr>
                 <th><label for="repository">Repository url: <l:star/></label></th>

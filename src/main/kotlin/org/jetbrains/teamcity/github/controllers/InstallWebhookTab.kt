@@ -1,6 +1,7 @@
 package org.jetbrains.teamcity.github.controllers
 
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
+import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
@@ -29,7 +30,16 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
         val repository = request.getParameter("repository")
         val info = repository?.let { org.jetbrains.teamcity.github.Util.Companion.parseGitRepoUrl(it) }
         model["repository"] = repository ?: ""
-        model["connectionId"] = request.getParameter("connectionId") ?: info?.let { Util.findConnections(oAuthConnectionsManager, project, it.server).firstOrNull()?.id } ?: ""
+
+        val connectionId = request.getParameter("connectionId")
+        val connectionProjectId = request.getParameter("connectionProjectId")
+        val connection: OAuthConnectionDescriptor? =
+                if (connectionId != null && connectionProjectId != null) null
+                else {
+                    info?.let { Util.findConnections(oAuthConnectionsManager, project, it.server).firstOrNull() }
+                }
+        model["connectionId"] = connectionId ?: connection?.id ?: ""
+        model["connectionProjectId"] = connectionProjectId ?: connection?.project?.externalId ?: ""
 
         model["info"] = info
 
