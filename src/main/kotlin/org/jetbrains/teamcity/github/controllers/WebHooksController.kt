@@ -19,6 +19,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.util.PropertiesUtil
+import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
@@ -149,6 +150,9 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         val inType = request.getParameter("type")?.toLowerCase() ?: return error_json("Required parameter 'type' is missing", HttpServletResponse.SC_BAD_REQUEST)
         val inId = request.getParameter("id") ?: return error_json("Required parameter 'id' is missing", HttpServletResponse.SC_BAD_REQUEST)
         val inProjectId = request.getParameter("projectId")
+
+        if (StringUtil.isEmptyOrSpaces(inType)) return error_json("Required parameter 'type' is empty", HttpServletResponse.SC_BAD_REQUEST)
+        if (StringUtil.isEmptyOrSpaces(inId)) return error_json("Required parameter 'id' is empty", HttpServletResponse.SC_BAD_REQUEST)
 
         var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
 
