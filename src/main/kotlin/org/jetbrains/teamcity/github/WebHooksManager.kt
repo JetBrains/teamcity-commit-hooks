@@ -3,6 +3,7 @@ package org.jetbrains.teamcity.github
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.WebLinks
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
+import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.vcs.RepositoryState
 import jetbrains.buildServer.vcs.RepositoryStateListener
@@ -18,6 +19,7 @@ import java.util.*
 
 public class WebHooksManager(private val links: WebLinks,
                              private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
+                             private val myAuthDataStorage: AuthDataStorage,
                              private val myStorage: WebHooksStorage) {
 
     private val myRepoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
@@ -67,17 +69,18 @@ public class WebHooksManager(private val links: WebLinks,
 
     interface Operation<ORT : Enum<ORT>> {
         @Throws(GitHubAccessException::class)
-        public fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): ORT
+        public fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): ORT
     }
 
     val GetAllWebHooks = object : Operation<HooksGetOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HooksGetOperationResult {
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
             val service = RepositoryService(client)
             val repo = info.getRepositoryId()
             try {
                 val hooks = service.getHooks(repo)
-                val filtered = hooks.filter { it.name == "web" && it.config["url"] == getCallbackUrl() && it.config["content_type"] == "json" }
+                // TODO: Check AuthData.user == user
+                val filtered = hooks.filter { it.name == "web" && it.config["url"].orEmpty().startsWith(getCallbackUrl()) && it.config["content_type"] == "json" }
                 updateHooks(info.server, repo, filtered);
             } catch(e: RequestException) {
                 when (e.status) {
@@ -105,7 +108,7 @@ public class WebHooksManager(private val links: WebLinks,
 
     val TestWebHook = object : Operation<HookTestOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HookTestOperationResult {
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookTestOperationResult {
             val service = RepositoryService(client)
             val hook = getHook(info) ?: return HookTestOperationResult.NotFound
             try {
@@ -128,23 +131,27 @@ public class WebHooksManager(private val links: WebLinks,
 
     val CreateWebHook = object : Operation<HookAddOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HookAddOperationResult {
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
-            val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
-                    "url" to getCallbackUrl(),
-                    "content_type" to "json"
-                    // TODO: Investigate ssl option
-            ))
 
             if (getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
             }
 
+            val authData = myAuthDataStorage.create(user);
+
+            val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
+                    "url" to getCallbackUrl(authData),
+                    "content_type" to "json",
+                    "secret" to authData.secretKey
+                    // TODO: Investigate ssl option
+            ))
+
             // First, check for already existing hooks, otherwise Github will answer with code 422
             // If we cannot get hooks, we cannot add new one
             // TODO: Consider handling GitHubAccessException
-            GetAllWebHooks.doRun(info, client)
+            GetAllWebHooks.doRun(info, client, user)
 
             if (getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
@@ -180,7 +187,7 @@ public class WebHooksManager(private val links: WebLinks,
 
     val DeleteWebHook = object : Operation<HookDeleteOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx): HookDeleteOperationResult {
+        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
@@ -192,7 +199,7 @@ public class WebHooksManager(private val links: WebLinks,
             }
 
             // TODO: Consider handling GitHubAccessException
-            GetAllWebHooks.doRun(info, client)
+            GetAllWebHooks.doRun(info, client, user)
 
             hook = getHook(info)
 
@@ -223,20 +230,19 @@ public class WebHooksManager(private val links: WebLinks,
         }
     }
 
-
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx): HookAddOperationResult {
-        return CreateWebHook.doRun(info, client)
+    public fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
+        return CreateWebHook.doRun(info, client, user)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doGetAllWebHooks(info: VcsRootGitHubInfo, client: GitHubClientEx): HooksGetOperationResult {
-        return GetAllWebHooks.doRun(info, client)
+    public fun doGetAllWebHooks(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
+        return GetAllWebHooks.doRun(info, client, user)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doUnRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx): HookDeleteOperationResult {
-        return DeleteWebHook.doRun(info, client)
+    public fun doUnRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
+        return DeleteWebHook.doRun(info, client, user)
     }
 
 
@@ -257,9 +263,13 @@ public class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    private fun getCallbackUrl(): String {
+    private fun getCallbackUrl(authData: AuthDataStorage.AuthData? = null): String {
         // It's not possible to add some url parameters, since GitHub ignores that part of url
-        return links.rootUrl.removeSuffix("/") + GitHubWebHookListener.PATH;
+        val base = links.rootUrl.removeSuffix("/") + GitHubWebHookListener.PATH
+        if (authData == null) {
+            return base
+        }
+        return base + '/' + authData.public;
     }
 
     private fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {

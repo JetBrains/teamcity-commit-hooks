@@ -18,6 +18,7 @@ import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
+import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.PropertiesUtil
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.VcsRootInstance
@@ -225,15 +226,15 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                                     request.getParameter("original_action") ?: "add"
                                 } else action
                         if ("add" == action) {
-                            element = doAddWebHook(ghc, info)
+                            element = doAddWebHook(ghc, info, user)
                         } else if ("check" == action) {
-                            element = doCheckWebHook(ghc, info)
+                            element = doCheckWebHook(ghc, info, user)
                         } else if ("ping" == action) {
-                            element = doPingWebHook(ghc, info)
+                            element = doPingWebHook(ghc, info, user)
                         } else if ("delete" == action) {
-                            element = doDeleteWebHook(ghc, info)
+                            element = doDeleteWebHook(ghc, info, user)
                         } else if ("install" == action) {
-                            element = doInstallWebHook(ghc, info)
+                            element = doInstallWebHook(ghc, info, user)
                         } else {
                             element = null
                         }
@@ -259,8 +260,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doAddWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val result = myWebHooksManager.doRegisterWebHook(info, ghc)
+    private fun doAddWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         when (result) {
             WebHooksManager.HookAddOperationResult.AlreadyExists -> {
                 return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
@@ -272,8 +273,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doInstallWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val result = myWebHooksManager.doRegisterWebHook(info, ghc)
+    private fun doInstallWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         when (result) {
             WebHooksManager.HookAddOperationResult.AlreadyExists -> {
                 return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
@@ -286,8 +287,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
 
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doCheckWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
+    private fun doCheckWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+        val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
         when (result) {
             WebHooksManager.HooksGetOperationResult.Ok -> {
                 val hook = myWebHooksManager.getHook(info)
@@ -301,13 +302,13 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doPingWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
+    private fun doPingWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+        val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
         when (result) {
             WebHooksManager.HooksGetOperationResult.Ok -> {
                 val hook = myWebHooksManager.getHook(info)
                 // Ensure test message was sent
-                myWebHooksManager.TestWebHook.doRun(info, ghc)
+                myWebHooksManager.TestWebHook.doRun(info, ghc, user)
                 if (hook != null) {
                     return gh_json(result.name, "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
                 } else {
@@ -318,8 +319,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doDeleteWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo): JsonElement? {
-        val result = myWebHooksManager.doUnRegisterWebHook(info, ghc)
+    private fun doDeleteWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+        val result = myWebHooksManager.doUnRegisterWebHook(info, ghc, user)
         when (result) {
             WebHooksManager.HookDeleteOperationResult.NeverExisted -> {
                 return gh_json(result.name, "Hook for repository '${info.toString()}' never existed", info)
@@ -424,7 +425,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                         LOG.info("Trying with token: ${token.oauthLogin}, connector is ${connection.id}")
                         ghc.setOAuth2Token(token.accessToken)
                         try {
-                            val element = doCheckWebHook(ghc, info)
+                            val element = doCheckWebHook(ghc, info, user)
                             if (element != null) {
                                 elements.add(element)
                             }
