@@ -1,7 +1,6 @@
 buildscript {
     ext.kotlinVersion = '1.0.2'
     repositories {
-        mavenLocal()
         mavenCentral()
         maven {
             url "https://plugins.gradle.org/m2/"
@@ -34,7 +33,6 @@ project.plugins.withType(JavaPlugin) {
     project.repositories.clear()
 }
 repositories {
-    mavenLocal()
     mavenCentral()
     maven { url "http://download.jetbrains.com/teamcity-repository" }
 }
