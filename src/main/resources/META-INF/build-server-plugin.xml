@@ -24,4 +24,7 @@
     <bean class="org.jetbrains.teamcity.github.controllers.EditProjectWebHooksController"/>
 
     <bean class="org.jetbrains.teamcity.github.controllers.InstallWebhookTab"/>
+
+    <bean class="org.jetbrains.teamcity.github.AuthDataStorage" init-method="init" destroy-method="destroy"/>
+
 </beans>
