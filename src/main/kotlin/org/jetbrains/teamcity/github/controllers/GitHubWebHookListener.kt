@@ -141,9 +141,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         } catch(e: Exception) {
             LOG.warnAndDebugDetails("Failed to process request (event type is '$eventType')", e)
             response.status = HttpServletResponse.SC_SERVICE_UNAVAILABLE
-        } finally {
-            // TODO: check if it's safe to close reader here, especially if signature check not enabled
-            contentReader.close()
         }
         return null
     }
