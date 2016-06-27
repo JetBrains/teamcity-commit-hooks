@@ -514,7 +514,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             throw RequestException("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
         var project = myProjectManager.findProjectByExternalId(inProjectId) ?: throw RequestException("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
-        var info = Util.Companion.getGitHubInfo(inId) ?: throw RequestException("Not an GitHub VCS", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+        var info = Util.Companion.getGitHubInfo(inId) ?: throw RequestException("Malformed GitHub repository url", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
         return project to info
     }
 
