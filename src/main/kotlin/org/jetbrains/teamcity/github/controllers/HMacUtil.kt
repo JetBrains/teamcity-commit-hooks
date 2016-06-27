@@ -23,7 +23,7 @@ class HMacUtil {
             mac.init(SecretKeySpec(key, HMAC_Algorithm))
             mac.update(message)
             val digest = mac.doFinal()
-            return String(Hex.encodeHex(digest))
+            return "sha1=" + String(Hex.encodeHex(digest))
         }
     }
 }
