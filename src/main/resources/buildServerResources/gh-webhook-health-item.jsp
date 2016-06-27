@@ -1,4 +1,5 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="afn" uri="/WEB-INF/functions/authz" %>
 <%@ taglib prefix="forms" tagdir="/WEB-INF/tags/forms" %>
 <%@ taglib prefix="util" uri="/WEB-INF/functions/util" %>
@@ -23,15 +24,9 @@
     referencing GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a>
     without configured Webhook:
     <div class="suggestionAction">
-        <c:choose>
-            <c:when test="${has_connections}">
-                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.doAction('add', this, '${GitHubInfo}', '${VcsRoot.project.externalId}'); return false">Add Webhook</a>
-            </c:when>
-            <c:otherwise>
-                <span>There no GitHub OAuth connections found for GitHub server '${GitHubInfo.server}'</span>
-                <a href="#" class="addNew" onclick="BS.GitHubWebHooks.addConnection(this, '${VcsRoot.project.externalId}', '${GitHubInfo.server}'); return false">Add OAuth connection</a>
-            </c:otherwise>
-        </c:choose>
+        <c:url var="installTabUrl" value="/admin/editProject.html?projectId=${VcsRoot.project.externalId}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}"/>
+        <%--TODO: Should be button--%>
+        <a class="button" href="${installTabUrl}">Install webhook</a>
     </div>
 </div>
 
