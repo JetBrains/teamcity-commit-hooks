@@ -37,7 +37,7 @@ import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-public class WebHooksController(private val descriptor: PluginDescriptor, server: SBuildServer) : BaseController(server) {
+class WebHooksController(private val descriptor: PluginDescriptor, server: SBuildServer) : BaseController(server) {
 
     @Autowired
     lateinit var myWebControllerManager: WebControllerManager
@@ -60,12 +60,12 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     private val myResultJspPath = descriptor.getPluginResourcesPath("hook-created.jsp")
 
 
-    public fun register(): Unit {
+    fun register(): Unit {
         myWebControllerManager.registerController(PATH, this)
     }
 
     companion object {
-        public val PATH = "/oauth/github/webhooks.html"
+        val PATH = "/oauth/github/webhooks.html"
 
         private val LOG = Logger.getInstance(WebHooksController::class.java.name)
 
@@ -74,7 +74,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
             }
         }
 
-        public fun getRepositoryInfo(info: VcsRootGitHubInfo?, manager: WebHooksManager): JsonObject {
+        fun getRepositoryInfo(info: VcsRootGitHubInfo?, manager: WebHooksManager): JsonObject {
             val element = JsonObject()
             val hook = info?.let { manager.getHook(it) }
             val status = getHookStatus(hook)
@@ -364,7 +364,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         val recursive = PropertiesUtil.getBoolean(request.getParameter("recursive"))
 
         // If connection info specified, only webhooks from that server would be checked
-        var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
+        val connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
 
         if (popup && connection == null) {
             return error_json("Popup==true requires connection parameters", HttpServletResponse.SC_BAD_REQUEST)
@@ -416,7 +416,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
                 continue
             }
             for (info in infos) {
-                var elements = ArrayList<JsonElement>()
+                val elements = ArrayList<JsonElement>()
                 @Suppress("NAME_SHADOWING")
                 for ((connection, tokens) in connectionToTokensMap) {
                     val ghc: GitHubClientEx = GitHubClientFactory.createGitHubClient(connection.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
@@ -513,8 +513,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         if (inProjectId.isNullOrEmpty()) {
             throw RequestException("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
-        var project = myProjectManager.findProjectByExternalId(inProjectId) ?: throw RequestException("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
-        var info = Util.Companion.getGitHubInfo(inId) ?: throw RequestException("Malformed GitHub repository url", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+        val project = myProjectManager.findProjectByExternalId(inProjectId) ?: throw RequestException("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
+        val info = Util.Companion.getGitHubInfo(inId) ?: throw RequestException("Malformed GitHub repository url", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
         return project to info
     }
 

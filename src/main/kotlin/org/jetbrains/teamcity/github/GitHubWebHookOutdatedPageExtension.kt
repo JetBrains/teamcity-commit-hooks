@@ -12,7 +12,7 @@ import jetbrains.buildServer.web.util.SessionUser
 import org.springframework.beans.factory.annotation.Autowired
 import javax.servlet.http.HttpServletRequest
 
-public class GitHubWebHookOutdatedPageExtension(descriptor: PluginDescriptor, places: PagePlaces) : HealthStatusItemPageExtension(GitHubWebHookOutdatedHealthReport.TYPE, places) {
+class GitHubWebHookOutdatedPageExtension(descriptor: PluginDescriptor, places: PagePlaces) : HealthStatusItemPageExtension(GitHubWebHookOutdatedHealthReport.TYPE, places) {
     @Autowired
     lateinit var helper: TokensHelper
     private val myResourcesPath = descriptor.pluginResourcesPath

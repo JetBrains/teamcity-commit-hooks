@@ -5,9 +5,9 @@ import jetbrains.buildServer.util.StringUtil
 import org.eclipse.egit.github.core.RepositoryId
 import java.io.StringWriter
 
-public data class VcsRootGitHubInfo(val server: String, val owner: String, val name: String){
-    public fun getRepositoryId(): RepositoryId = RepositoryId.create(owner, name)
-    public fun toJson(): String {
+data class VcsRootGitHubInfo(val server: String, val owner: String, val name: String){
+    fun getRepositoryId(): RepositoryId = RepositoryId.create(owner, name)
+    fun toJson(): String {
         val sw = StringWriter()
         val writer = JsonWriter(sw)
         writer.beginObject()
@@ -19,7 +19,7 @@ public data class VcsRootGitHubInfo(val server: String, val owner: String, val n
         return sw.toString()
     }
 
-    public fun isHasParameterReferences(): Boolean {
+    fun isHasParameterReferences(): Boolean {
         return StringUtil.hasParameterReferences(server) || StringUtil.hasParameterReferences(owner) || StringUtil.hasParameterReferences(name);
     }
 
@@ -35,7 +35,7 @@ public data class VcsRootGitHubInfo(val server: String, val owner: String, val n
         return builder.toString()
     }
 
-    public fun getRepositoryUrl(): String {
+    fun getRepositoryUrl(): String {
         val builder = StringBuilder()
         // TODO: Uncomment next line. It's workaround for our non-https GHE server
         //builder.append("https:")
@@ -50,7 +50,7 @@ public data class VcsRootGitHubInfo(val server: String, val owner: String, val n
         return builder.toString()
     }
 
-    public fun getIdentifier(): String {
+    fun getIdentifier(): String {
         return toString().replace("/", "_")
     }
 }

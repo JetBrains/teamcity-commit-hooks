@@ -25,7 +25,7 @@ import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
+class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
                                     val webHooksManager: WebHooksManager,
                                     val versionedSettingsManager: VersionedSettingsManager,
                                     val tokensHelper: TokensHelper,
@@ -74,7 +74,7 @@ public class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescri
     }
 }
 
-public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerManager,
+class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerManager,
                                            val descriptor: PluginDescriptor,
                                            val webHooksManager: WebHooksManager,
                                            val projectManager: ProjectManager,
@@ -108,13 +108,13 @@ public class EditProjectWebHooksController(server: SBuildServer, wcm: WebControl
 
 }
 
-public class ProjectWebHooksForm() {
+class ProjectWebHooksForm() {
     var keyword: String? = null
     var recursive: Boolean = false
     var page: Int = 0
 }
 
-public class ProjectWebHooksBean(val project: SProject,
+class ProjectWebHooksBean(val project: SProject,
                                  val webHooksManager: WebHooksManager,
                                  val versionedSettingsManager: VersionedSettingsManager,
                                  val helper: TokensHelper,
@@ -137,8 +137,7 @@ public class ProjectWebHooksBean(val project: SProject,
         return hooks.count() { getHookStatus(it.value.info).status in arrayOf(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE) }
     }
 
-    @Used("jps")
-    public fun getVisibleHooks(): List<Map.Entry<VcsRootGitHubInfo, WebHookDetails>> {
+    @Used("jps") fun getVisibleHooks(): List<Map.Entry<VcsRootGitHubInfo, WebHookDetails>> {
         val origin = hooks.entries.toList()
         return pager.getCurrentPageData(origin)
     }
@@ -207,7 +206,7 @@ public class ProjectWebHooksBean(val project: SProject,
     }
 }
 
-public class WebHookDetails(val info: WebHooksStorage.HookInfo?,
+class WebHookDetails(val info: WebHooksStorage.HookInfo?,
                             val roots: List<SVcsRoot>,
                             val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
                             val usages: Map<VcsRootInstance, VcsRootUsages>,
@@ -250,7 +249,7 @@ interface VcsRootUsages {
     val versionedSettings: Collection<SProject>
 }
 
-public class VcsRootUsagesBean(val root: LVcsRoot, val project: SProject, val VersionedSettingsManager: VersionedSettingsManager) : VcsRootUsages {
+class VcsRootUsagesBean(val root: LVcsRoot, val project: SProject, val VersionedSettingsManager: VersionedSettingsManager) : VcsRootUsages {
     override val total: Int by lazy { templates.size + buildTypes.size + versionedSettings.size }
 
     override val templates: List<BuildTypeTemplate> by lazy {
@@ -278,7 +277,7 @@ public class VcsRootUsagesBean(val root: LVcsRoot, val project: SProject, val Ve
     }
 }
 
-public class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyList()) : VcsRootUsages {
+class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyList()) : VcsRootUsages {
     override val total: Int get() {
         return templates.size + buildTypes.size + versionedSettings.size
     }
@@ -316,7 +315,7 @@ public class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyLi
     }
 }
 
-data public class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo?) {
+data class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo?) {
     @Used("jps")
     fun getActions(): List<String> {
         return when (status) {

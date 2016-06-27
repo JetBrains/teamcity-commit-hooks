@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-public class GitHubWebHookListener(private val WebControllerManager: WebControllerManager,
+class GitHubWebHookListener(private val WebControllerManager: WebControllerManager,
                                    private val ProjectManager: ProjectManager,
                                    private val VcsModificationChecker: VcsModificationChecker,
                                    private val AuthorizationInterceptor: AuthorizationInterceptor,
@@ -55,7 +55,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
     @Autowired
     lateinit var VcsManager: VcsManager
 
-    public fun register(): Unit {
+    fun register(): Unit {
         // Looks like GET is not necessary, POST is enough
         setSupportedMethods(METHOD_POST)
         WebControllerManager.registerController(PATH, this)
@@ -223,7 +223,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
         })
     }
 
-    public fun findSuitableVcsRootInstances(info: VcsRootGitHubInfo, vcsRootId: String?): List<VcsRootInstance> {
+    fun findSuitableVcsRootInstances(info: VcsRootGitHubInfo, vcsRootId: String?): List<VcsRootInstance> {
         val roots = HashSet<VcsRootInstance>()
         for (bt in ProjectManager.allBuildTypes) {
             if (bt.project.isArchived) continue

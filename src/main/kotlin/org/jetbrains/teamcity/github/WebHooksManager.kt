@@ -17,7 +17,7 @@ import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import java.io.IOException
 import java.util.*
 
-public class WebHooksManager(private val links: WebLinks,
+class WebHooksManager(private val links: WebLinks,
                              private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
                              private val myAuthDataStorage: AuthDataStorage,
                              private val myStorage: WebHooksStorage) {
@@ -48,28 +48,27 @@ public class WebHooksManager(private val links: WebLinks,
         private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
     }
 
-    public enum class HooksGetOperationResult {
+    enum class HooksGetOperationResult {
         Ok
     }
 
-    public enum class HookTestOperationResult {
+    enum class HookTestOperationResult {
         NotFound,
         Ok
     }
 
-    public enum class HookAddOperationResult {
+    enum class HookAddOperationResult {
         AlreadyExists,
         Created,
     }
 
-    public enum class HookDeleteOperationResult {
+    enum class HookDeleteOperationResult {
         Removed,
         NeverExisted,
     }
 
     interface Operation<ORT : Enum<ORT>> {
-        @Throws(GitHubAccessException::class)
-        public fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): ORT
+        @Throws(GitHubAccessException::class) fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): ORT
     }
 
     val GetAllWebHooks = object : Operation<HooksGetOperationResult> {
@@ -230,18 +229,15 @@ public class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
         return CreateWebHook.doRun(info, client, user)
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doGetAllWebHooks(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doGetAllWebHooks(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
         return GetAllWebHooks.doRun(info, client, user)
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    public fun doUnRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doUnRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
         return DeleteWebHook.doRun(info, client, user)
     }
 

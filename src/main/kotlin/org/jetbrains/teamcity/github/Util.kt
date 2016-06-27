@@ -12,9 +12,9 @@ import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.VcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
 
-public class Util {
+class Util {
     companion object {
-        public fun getGitHubInfo(root: VcsRoot): VcsRootGitHubInfo? {
+        fun getGitHubInfo(root: VcsRoot): VcsRootGitHubInfo? {
             if (root.vcsName != Constants.VCS_NAME_GIT) return null
             val url = root.properties[Constants.VCS_PROPERTY_GIT_URL] ?: return null
 
@@ -22,13 +22,13 @@ public class Util {
             return getGitHubInfo(url)
         }
 
-        public fun getGitHubInfo(url: String): VcsRootGitHubInfo? {
+        fun getGitHubInfo(url: String): VcsRootGitHubInfo? {
             return parseGitRepoUrl(url)
         }
 
-        public val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
+        val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
 
-        public fun parseGitRepoUrl(url: String): VcsRootGitHubInfo? {
+        fun parseGitRepoUrl(url: String): VcsRootGitHubInfo? {
             val matcher = GITHUB_REPO_URL_PATTERN.matcher(url)
             if (!matcher.find()) return null
             val protocol = url.substring(0, matcher.start())
@@ -39,7 +39,7 @@ public class Util {
             return VcsRootGitHubInfo(host, owner, name)
         }
 
-        public fun isSupportedProtocol(candidate: String): Boolean {
+        fun isSupportedProtocol(candidate: String): Boolean {
             when (candidate) {
                 "https://" -> return true
                 "http://" -> return true
@@ -51,14 +51,14 @@ public class Util {
             }
         }
 
-        public fun findConnections(manager: OAuthConnectionsManager, project: SProject, server: String): List<OAuthConnectionDescriptor> {
+        fun findConnections(manager: OAuthConnectionsManager, project: SProject, server: String): List<OAuthConnectionDescriptor> {
             return manager.getAvailableConnections(project)
                     .filter {
                         it != null && isConnectionToServer(it, server)
                     }
         }
 
-        public fun isConnectionToServer(connection: OAuthConnectionDescriptor, server: String): Boolean {
+        fun isConnectionToServer(connection: OAuthConnectionDescriptor, server: String): Boolean {
             when (connection.oauthProvider) {
                 is GHEOAuthProvider -> {
                     // Check server url

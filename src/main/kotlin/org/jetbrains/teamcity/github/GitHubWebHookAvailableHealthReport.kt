@@ -10,13 +10,13 @@ import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.controllers.getHookStatus
 import java.util.*
 
-public class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksManager,
+class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksManager,
                                                 private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
-        public val TYPE = "GitHub.WebHookAvailable"
-        public val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
+        val TYPE = "GitHub.WebHookAvailable"
+        val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
 
-        public fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
+        fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
             val map = HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>>()
 
             for (rootInstance in vcsRootInstances) {

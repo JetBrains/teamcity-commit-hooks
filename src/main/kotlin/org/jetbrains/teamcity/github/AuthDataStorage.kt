@@ -13,7 +13,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-public class AuthDataStorage(private val myCacheProvider: CacheProvider,
+class AuthDataStorage(private val myCacheProvider: CacheProvider,
                              private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
     companion object {
         private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
