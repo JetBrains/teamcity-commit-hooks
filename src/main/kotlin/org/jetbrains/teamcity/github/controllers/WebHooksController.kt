@@ -20,7 +20,6 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.PropertiesUtil
-import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
@@ -152,8 +151,8 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
         val inId = request.getParameter("id") ?: return error_json("Required parameter 'id' is missing", HttpServletResponse.SC_BAD_REQUEST)
         val inProjectId = request.getParameter("projectId")
 
-        if (StringUtil.isEmptyOrSpaces(inType)) return error_json("Required parameter 'type' is empty", HttpServletResponse.SC_BAD_REQUEST)
-        if (StringUtil.isEmptyOrSpaces(inId)) return error_json("Required parameter 'id' is empty", HttpServletResponse.SC_BAD_REQUEST)
+        if (inType.isNullOrBlank()) return error_json("Required parameter 'type' is empty", HttpServletResponse.SC_BAD_REQUEST)
+        if (inId.isNullOrBlank()) return error_json("Required parameter 'id' is empty", HttpServletResponse.SC_BAD_REQUEST)
 
         var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
 
@@ -493,7 +492,7 @@ public class WebHooksController(private val descriptor: PluginDescriptor, server
     private fun getConnection(request: HttpServletRequest, inProjectId: String?): OAuthConnectionDescriptor? {
         val inConnectionId = request.getParameter("connectionId")
         val inConnectionProjectId = request.getParameter("connectionProjectId") ?: inProjectId
-        if (inConnectionId == null || inConnectionProjectId == null) {
+        if (inConnectionId.isNullOrBlank() || inConnectionId.isNullOrBlank()) {
             return null
         }
         val connectionOwnerProject = myProjectManager.findProjectByExternalId(inConnectionProjectId)
