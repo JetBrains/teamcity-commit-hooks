@@ -20,7 +20,8 @@ public class AuthDataStorage(private val myCacheProvider: CacheProvider,
     }
 
     data class AuthData(val userId: Long,
-                        val secretKey: ByteArray) : Serializable {
+                        val secretKey: String,
+                        val public: String) : Serializable {
         companion object {
             val serialVersionUID = 987149781384712L
         }
@@ -70,8 +71,8 @@ public class AuthDataStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun save(user: SUser, public: String, secret: ByteArray) {
-        val data = AuthData(user.id, secret)
+    fun save(user: SUser, public: String, secret: String) {
+        val data = AuthData(user.id, secret, public)
         myCacheLock.write {
             myCache.invalidate(public)
             myCache.write(public, data)
@@ -80,7 +81,7 @@ public class AuthDataStorage(private val myCacheProvider: CacheProvider,
 
     fun create(user: SUser): AuthData {
         val (public, secret) = generate()
-        val data = AuthData(user.id, secret)
+        val data = AuthData(user.id, secret, public)
         myCacheLock.write {
             myCache.invalidate(public)
             myCache.write(public, data)
@@ -88,10 +89,10 @@ public class AuthDataStorage(private val myCacheProvider: CacheProvider,
         return data
     }
 
-    private fun generate(): Pair<String, ByteArray> {
+    private fun generate(): Pair<String, String> {
         val public = UUID.randomUUID()
         val secret = UUID.randomUUID()
-        return public.toString() to (secret.toString().toByteArray(charset("UTF-8")))
+        return public.toString() to (secret.toString())
     }
 
     fun removeAllForUser(userId: Long) {

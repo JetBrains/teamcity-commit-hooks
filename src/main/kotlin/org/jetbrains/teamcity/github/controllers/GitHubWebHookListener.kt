@@ -115,7 +115,7 @@ public class GitHubWebHookListener(private val WebControllerManager: WebControll
 
         FileUtil.close(request.inputStream)
 
-        if (!HMacUtil.checkHMac(content, authData.secretKey, signature)) {
+        if (!HMacUtil.checkHMac(content, authData.secretKey.toByteArray(charset("UTF-8")), signature)) {
             LOG.warn("HMac verification failed for $eventType event")
             response.status = HttpServletResponse.SC_PRECONDITION_FAILED //TODO: Maybe it's ok to return SC_BAD_REQUEST
             return null
