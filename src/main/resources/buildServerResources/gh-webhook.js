@@ -126,7 +126,13 @@ BS.GitHubWebHooks = {};
             },
             doHandleRedirect:function (json) {
 
-            }
+            },
+            doHandleError: function (json) {
+                BS.Util.hide('installProgress');
+                var error = json['error'];
+                BS.Util.Messages.show('InstallWebhook', error, {verbosity: 'warn'});
+                $j('#errorRepository').text(error).show();
+            },
         }
     };
     WH.checkLocation = function () {
@@ -212,7 +218,12 @@ BS.GitHubWebHooks = {};
                         BS.Log.info($(that).innerHTML);
                     }
                 } else if (json['error']) {
-                    BS.Log.error("Sad :( Something went wrong: " + json['error']);
+                    var action = WH.actions[json['action']];
+                    if (action && action.doHandleError) {
+                        action.doHandleError(json)
+                    } else {
+                        BS.Log.error("Sad :( Something went wrong: " + json['error']);
+                    }
                 } else if (json['result']) {
                     var res = json['result'];
                     //if ("TokenScopeMismatch" == res) {
@@ -549,6 +560,10 @@ BS.GitHubWebHooks = {};
     WH.doInstallForm = function (element) {
         var repository = $j('input#repository').val();
         var projectId = $j('input#projectId').val();
+
+        $j('#errorRepository').text("").hide();
+        BS.Util.Messages.hide({group: 'messages_group_InstallWebhook'});
+
         BS.Util.show('installProgress');
         $j('#installButton').attr('disabled', true);
         return WH.doAction('install', element, repository, projectId, false);
