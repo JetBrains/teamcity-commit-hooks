@@ -133,6 +133,12 @@ BS.GitHubWebHooks = {};
                 BS.Util.Messages.show('InstallWebhook', error, {verbosity: 'warn'});
                 $j('#errorRepository').text(error).show();
             },
+            doShowProgress: function (element) {
+                BS.Util.show('installProgress');
+            },
+            doHideProgress: function (element) {
+                BS.Util.hide('installProgress');
+            },
         }
     };
     WH.checkLocation = function () {
@@ -178,7 +184,11 @@ BS.GitHubWebHooks = {};
         var that = element;
 
         // TODO: Proper message
-        BS.ProgressPopup.showProgress(element, action.progress, {shift: {x: -65, y: 20}, zIndex: 100});
+        if (action.doShowProgress) {
+            action.doShowProgress(element)
+        } else {
+            BS.ProgressPopup.showProgress(element, action.progress, {shift: {x: -65, y: 20}, zIndex: 100});
+        }
         var parameters = {
             "action": action.id,
             "type": type,
@@ -193,11 +203,14 @@ BS.GitHubWebHooks = {};
             method: "post",
             parameters: parameters,
             onComplete: function (transport) {
-                //progress.hide();
-                BS.ProgressPopup.hidePopup(0, true);
-
                 var json = transport.responseJSON;
                 var action = WH.actions[json['action']];
+
+                if (action && action.doShowProgress && action.doHideProgress) {
+                    action.doHideProgress();
+                } else {
+                    BS.ProgressPopup.hidePopup(0, true);
+                }
 
                 if (json['redirect']) {
                     BS.Log.info("Redirect response received");
