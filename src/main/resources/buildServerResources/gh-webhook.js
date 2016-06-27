@@ -96,8 +96,7 @@ BS.GitHubWebHooks = {};
             name: "Install",
             progress: "Installing Webhook",
             doHandleResult: function (json, result) {
-                BS.Util.hide('installProgress');
-                $j('#installButton').removeAttr('disabled', false);
+                this.doHideProgress(undefined);
                 var good = ["AlreadyExists", "Created"];
                 var info = json['info'];
                 var message = json['message'];
@@ -128,16 +127,18 @@ BS.GitHubWebHooks = {};
 
             },
             doHandleError: function (json) {
-                BS.Util.hide('installProgress');
+                this.doHideProgress(undefined);
                 var error = json['error'];
                 BS.Util.Messages.show('InstallWebhook', error, {verbosity: 'warn'});
                 $j('#errorRepository').text(error).show();
             },
             doShowProgress: function (element) {
                 BS.Util.show('installProgress');
+                $j('#installButton').attr('disabled', true);
             },
             doHideProgress: function (element) {
                 BS.Util.hide('installProgress');
+                $j('#installButton').removeAttr('disabled', false)
             },
         }
     };
@@ -577,8 +578,6 @@ BS.GitHubWebHooks = {};
         $j('#errorRepository').text("").hide();
         BS.Util.Messages.hide({group: 'messages_group_InstallWebhook'});
 
-        BS.Util.show('installProgress');
-        $j('#installButton').attr('disabled', true);
         return WH.doAction('install', element, repository, projectId, false);
     }
 })(BS.GitHubWebHooks);
