@@ -1,5 +1,6 @@
 package org.jetbrains.teamcity.github
 
+import com.google.gson.GsonBuilder
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
@@ -7,7 +8,6 @@ import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.util.cache.SCacheImpl
-import java.io.Serializable
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -21,13 +21,17 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
 
     data class AuthData(val userId: Long,
                         val secret: String,
-                        val public: String) : Serializable {
+                        val public: String) {
         companion object {
-            val serialVersionUID = 987149781384712L
+            private val gson = GsonBuilder().create()
+            fun fromJson(string: String): AuthData? = gson.fromJson(string, AuthData::class.java)
+            fun toJson(info: AuthData): String = gson.toJson(info)
         }
+
+        fun toJson(): String = AuthData.toJson(this)
     }
 
-    private val myCache = myCacheProvider.getOrCreateCache("WebHooksAuthCache", AuthData::class.java)
+    private val myCache = myCacheProvider.getOrCreateCache("WebHooksAuthCache", String::class.java)
 
     private val myCacheLock = ReentrantReadWriteLock()
 
@@ -67,7 +71,7 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
 
     fun find(public: String): AuthData? {
         myCacheLock.read {
-            return myCache.read(public)
+            return myCache.read(public)?.let { AuthData.fromJson(it) }
         }
     }
 
@@ -75,7 +79,7 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         val data = AuthData(user.id, secret, public)
         myCacheLock.write {
             myCache.invalidate(public)
-            myCache.write(public, data)
+            myCache.write(public, data.toJson())
         }
     }
 
@@ -84,7 +88,7 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         val data = AuthData(user.id, secret, public)
         myCacheLock.write {
             myCache.invalidate(public)
-            myCache.write(public, data)
+            myCache.write(public, data.toJson())
         }
         return data
     }
@@ -96,14 +100,15 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
     }
 
     fun removeAllForUser(userId: Long) {
-        0.rangeTo(2).forEach {
+        for (i in 0..2) {
             val keysToRemove =
                     myCacheLock.read {
                         return@read myCache.keys.filter {
                             val data = myCache.read(it)
-                            userId == data?.userId
+                            userId == data?.let { AuthData.fromJson(it) }?.userId
                         }
                     }
+            if (keysToRemove.isEmpty()) return
             myCacheLock.write {
                 keysToRemove.forEach { myCache.invalidate(it) }
             }
