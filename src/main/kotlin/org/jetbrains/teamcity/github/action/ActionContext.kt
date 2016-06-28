@@ -1,16 +1,22 @@
 package org.jetbrains.teamcity.github.action
 
+import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.WebLinks
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
 import org.jetbrains.teamcity.github.AuthDataStorage
 import org.jetbrains.teamcity.github.GitHubRepositoryInfo
 import org.jetbrains.teamcity.github.WebHooksStorage
+import org.jetbrains.teamcity.github.callbackUrl
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 
 open class ActionContext(val storage: WebHooksStorage,
                          val authDataStorage: AuthDataStorage,
                          protected val links: WebLinks) {
+
+    companion object {
+        private val LOG = Logger.getInstance(ActionContext::class.java.name)
+    }
 
     fun getCallbackUrl(authData: AuthDataStorage.AuthData? = null): String {
         // It's not possible to add some url parameters, since GitHub ignores that part of url
@@ -39,7 +45,12 @@ open class ActionContext(val storage: WebHooksStorage,
     }
 
     fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {
-        storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url) })
+        val callbackUrl = created.callbackUrl
+        if (callbackUrl == null) {
+            LOG.warn("Received RepositoryHook without callback url, ignoring it")
+            return
+        }
+        storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url, callbackUrl = callbackUrl) })
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {

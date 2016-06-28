@@ -50,6 +50,18 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         val SupportedEvents = listOf("ping", "push")
 
         private val LOG = Logger.getInstance(GitHubWebHookListener::class.java.name)
+
+        fun getPubKeyFromRequestPath(path: String): String? {
+            val indexOfPathPart = path.indexOf(PATH + "/")
+            val pubKey: String?
+            if (indexOfPathPart != -1) {
+                val substring = path.substring(indexOfPathPart + PATH.length + 1)
+                pubKey = if (substring.isNotBlank()) substring else null
+            } else {
+                pubKey = null
+            }
+            return pubKey
+        }
     }
 
     @Autowired
@@ -145,17 +157,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return null
     }
 
-    fun getPubKeyFromRequestPath(path: String): String? {
-        val indexOfPathPart = path.indexOf(PATH + "/")
-        val pubKey: String?
-        if (indexOfPathPart != -1) {
-            val substring = path.substring(indexOfPathPart + PATH.length + 1)
-            pubKey = if (substring.isNotBlank()) substring else null
-        } else {
-            pubKey = null
-        }
-        return pubKey
-    }
 
     private fun getAuthData(subPath: String) = AuthDataStorage.find(subPath)
 
