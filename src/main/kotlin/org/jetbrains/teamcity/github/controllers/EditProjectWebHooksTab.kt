@@ -262,7 +262,7 @@ class VcsRootUsagesBean(val root: LVcsRoot, val project: SProject, val Versioned
         if (root is VcsRootInstance) {
             list.addAll(root.usages.keys)
         } else if (root is SVcsRoot) {
-            list.addAll(root.usages.keys)
+            list.addAll(root.usagesInConfigurations)
         }
         list
     }
