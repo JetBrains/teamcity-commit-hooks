@@ -11,7 +11,7 @@ import org.jetbrains.teamcity.github.controllers.getHookStatus
 import java.util.*
 
 class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksManager,
-                                                private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
+                                         private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
         val TYPE = "GitHub.WebHookAvailable"
         val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)

@@ -7,7 +7,7 @@ import jetbrains.buildServer.vcs.VcsRootInstance
 import java.util.*
 
 class GitHubWebHookOutdatedHealthReport(private val WebHooksManager: WebHooksManager,
-                                               private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
+                                        private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
         val TYPE = "GitHub.WebHookOutdated"
         val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Outdated", "GitHub repo webhook is misconfigured or outdated", ItemSeverity.INFO)

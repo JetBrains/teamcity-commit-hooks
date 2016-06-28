@@ -5,7 +5,7 @@ import jetbrains.buildServer.util.StringUtil
 import org.eclipse.egit.github.core.RepositoryId
 import java.io.StringWriter
 
-data class VcsRootGitHubInfo(val server: String, val owner: String, val name: String){
+data class VcsRootGitHubInfo(val server: String, val owner: String, val name: String) {
     fun getRepositoryId(): RepositoryId = RepositoryId.create(owner, name)
     fun toJson(): String {
         val sw = StringWriter()

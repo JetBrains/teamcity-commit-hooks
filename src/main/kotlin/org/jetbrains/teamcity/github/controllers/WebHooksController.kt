@@ -479,7 +479,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
         try {
             vcsRoot.modificationCheckInterval = 3600;
         } catch(e: AccessDeniedException) {
-            return error_json("Access Denied:" + (e.message ?: "") , HttpServletResponse.SC_FORBIDDEN)
+            return error_json("Access Denied:" + (e.message ?: ""), HttpServletResponse.SC_FORBIDDEN)
         }
         val result = JsonObject()
         result.addProperty("result", "Ok")

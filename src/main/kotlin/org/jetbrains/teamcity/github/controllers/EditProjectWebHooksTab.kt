@@ -26,10 +26,10 @@ import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
 class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
-                                    val webHooksManager: WebHooksManager,
-                                    val versionedSettingsManager: VersionedSettingsManager,
-                                    val tokensHelper: TokensHelper,
-                                    val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
+                             val webHooksManager: WebHooksManager,
+                             val versionedSettingsManager: VersionedSettingsManager,
+                             val tokensHelper: TokensHelper,
+                             val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
         val TAB_TITLE_PREFIX = "GitHub Webhooks"
     }
@@ -75,12 +75,12 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
 }
 
 class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerManager,
-                                           val descriptor: PluginDescriptor,
-                                           val webHooksManager: WebHooksManager,
-                                           val projectManager: ProjectManager,
-                                           val versionedSettingsManager: VersionedSettingsManager,
-                                           val tokensHelper: TokensHelper,
-                                           val oAuthConnectionsManager: OAuthConnectionsManager) : BaseController(server) {
+                                    val descriptor: PluginDescriptor,
+                                    val webHooksManager: WebHooksManager,
+                                    val projectManager: ProjectManager,
+                                    val versionedSettingsManager: VersionedSettingsManager,
+                                    val tokensHelper: TokensHelper,
+                                    val oAuthConnectionsManager: OAuthConnectionsManager) : BaseController(server) {
     private val jsp = descriptor.getPluginResourcesPath("editProjectWebHooks.jsp")
 
     init {
@@ -115,11 +115,11 @@ class ProjectWebHooksForm() {
 }
 
 class ProjectWebHooksBean(val project: SProject,
-                                 val webHooksManager: WebHooksManager,
-                                 val versionedSettingsManager: VersionedSettingsManager,
-                                 val helper: TokensHelper,
-                                 val user: SUser,
-                                 val oAuthConnectionsManager: OAuthConnectionsManager) {
+                          val webHooksManager: WebHooksManager,
+                          val versionedSettingsManager: VersionedSettingsManager,
+                          val helper: TokensHelper,
+                          val user: SUser,
+                          val oAuthConnectionsManager: OAuthConnectionsManager) {
     val hooks: SortedMap<VcsRootGitHubInfo, WebHookDetails> = TreeMap(comparator)
 
     val form: ProjectWebHooksForm = ProjectWebHooksForm();
@@ -207,11 +207,11 @@ class ProjectWebHooksBean(val project: SProject,
 }
 
 class WebHookDetails(val info: WebHooksStorage.HookInfo?,
-                            val roots: List<SVcsRoot>,
-                            val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
-                            val usages: Map<VcsRootInstance, VcsRootUsages>,
-                            val project: SProject,
-                            val versionedSettingsManager: VersionedSettingsManager
+                     val roots: List<SVcsRoot>,
+                     val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
+                     val usages: Map<VcsRootInstance, VcsRootUsages>,
+                     val project: SProject,
+                     val versionedSettingsManager: VersionedSettingsManager
 ) {
     @Used("jps")
     val totalUsagesCount: Int by lazy { getTotalUsages().total }

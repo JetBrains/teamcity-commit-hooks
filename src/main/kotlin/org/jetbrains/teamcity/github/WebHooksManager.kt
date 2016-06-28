@@ -18,9 +18,9 @@ import java.io.IOException
 import java.util.*
 
 class WebHooksManager(private val links: WebLinks,
-                             private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
-                             private val myAuthDataStorage: AuthDataStorage,
-                             private val myStorage: WebHooksStorage) {
+                      private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
+                      private val myAuthDataStorage: AuthDataStorage,
+                      private val myStorage: WebHooksStorage) {
 
     private val myRepoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {

@@ -34,13 +34,13 @@ import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
 class GitHubWebHookListener(private val WebControllerManager: WebControllerManager,
-                                   private val ProjectManager: ProjectManager,
-                                   private val VcsModificationChecker: VcsModificationChecker,
-                                   private val AuthorizationInterceptor: AuthorizationInterceptor,
-                                   private val AuthDataStorage: AuthDataStorage,
-                                   private val UserModel: UserModelEx,
-                                   private val SecurityContext: SecurityContextEx,
-                                   private val WebHooksManager: WebHooksManager) : BaseController() {
+                            private val ProjectManager: ProjectManager,
+                            private val VcsModificationChecker: VcsModificationChecker,
+                            private val AuthorizationInterceptor: AuthorizationInterceptor,
+                            private val AuthDataStorage: AuthDataStorage,
+                            private val UserModel: UserModelEx,
+                            private val SecurityContext: SecurityContextEx,
+                            private val WebHooksManager: WebHooksManager) : BaseController() {
 
     companion object {
         val PATH = "/app/hooks/github"
@@ -124,7 +124,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         val contentReader = BufferedReader(InputStreamReader(ByteArrayInputStream(content), request.characterEncoding ?: "UTF-8"))
 
         try {
-            when(eventType) {
+            when (eventType) {
                 "ping" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PingWebHookPayload::class.java)
                     response.status = doHandlePingEvent(payload)
