@@ -89,7 +89,7 @@ class WebHooksManager(private val links: WebLinks,
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
-            if (getHook(info) != null) {
+            if (context.storage.getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
             }
 
@@ -98,7 +98,7 @@ class WebHooksManager(private val links: WebLinks,
             // TODO: Consider handling GitHubAccessException
             GetAllWebHooks.doRun(info, client, user, context)
 
-            if (getHook(info) != null) {
+            if (context.storage.getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
             }
 
@@ -126,6 +126,8 @@ class WebHooksManager(private val links: WebLinks,
                     422 -> {
                         if (e.error.errors.any { it.resource.equals("hook", true) && it.message.contains("already exists") }) {
                             // Already exists
+                            // TODO: Handle AuthData
+                            // TODO: Remove existing hook if there no auth data know here.
                             return HookAddOperationResult.AlreadyExists
                         }
                     }
@@ -147,27 +149,27 @@ class WebHooksManager(private val links: WebLinks,
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
-            var hook = getHook(info)
+            var hook = context.storage.getHook(info)
 
             if (hook != null) {
-                delete(client, hook, info, repo, service)
+                delete(client, hook, info, repo, service, context)
                 return HookDeleteOperationResult.Removed
             }
 
             // TODO: Consider handling GitHubAccessException
             GetAllWebHooks.doRun(info, client, user, context)
 
-            hook = getHook(info)
+            hook = context.storage.getHook(info)
 
             if (hook != null) {
-                delete(client, hook, info, repo, service)
+                delete(client, hook, info, repo, service, context)
                 return HookDeleteOperationResult.Removed
             }
 
             return HookDeleteOperationResult.NeverExisted
         }
 
-        private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, repo: RepositoryId, service: RepositoryService) {
+        private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, repo: RepositoryId, service: RepositoryService, context: ActionContext) {
             try {
                 service.deleteHook(repo, hook.id.toInt())
             } catch(e: RequestException) {
@@ -182,7 +184,7 @@ class WebHooksManager(private val links: WebLinks,
                 }
                 throw e
             }
-            myStorage.delete(info.server, repo)
+            context.storage.delete(info.server, repo)
         }
     }
 
@@ -203,7 +205,7 @@ class WebHooksManager(private val links: WebLinks,
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, user: SUser): HookTestOperationResult {
-       return TestWebHookAction.doRun(info, ghc, user, ActionContext(myStorage))
+        return TestWebHookAction.doRun(info, ghc, user, ActionContext(myStorage))
     }
 
 
