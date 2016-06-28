@@ -4,10 +4,13 @@ import com.google.gson.GsonBuilder
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
+import jetbrains.buildServer.serverSide.oauth.OAuthToken
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.util.cache.SCacheImpl
+import org.jetbrains.teamcity.github.json.OAuthTokenJsonSerializer
+import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -22,9 +25,14 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
     data class AuthData(val userId: Long,
                         val secret: String,
                         val public: String,
-                        val repository: GitHubRepositoryInfo) {
+                        val repository: GitHubRepositoryInfo,
+                        var token: OAuthToken? = null) {
         companion object {
-            private val gson = GsonBuilder().create()
+            private val gson = GsonBuilder()
+                    .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
+                    .registerTypeAdapter(OAuthToken::class.java, OAuthTokenJsonSerializer)
+                    .create()
+
             fun fromJson(string: String): AuthData? = gson.fromJson(string, AuthData::class.java)
             fun toJson(info: AuthData): String = gson.toJson(info)
         }
@@ -76,8 +84,8 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun save(user: SUser, public: String, secret: String, repository: GitHubRepositoryInfo) {
-        val data = AuthData(user.id, secret, public, repository)
+    fun save(user: SUser, public: String, secret: String, repository: GitHubRepositoryInfo, token: OAuthToken) {
+        val data = AuthData(user.id, secret, public, repository, token)
         myCacheLock.write {
             myCache.invalidate(public)
             myCache.write(public, data.toJson())
