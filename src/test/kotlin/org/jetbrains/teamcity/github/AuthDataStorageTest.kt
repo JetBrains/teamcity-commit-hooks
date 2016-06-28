@@ -8,8 +8,8 @@ class AuthDataStorageTest {
 
     @Test
     fun testAuthDataSerialization() {
-        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, "secret", "public"))
-        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, UUID.randomUUID().toString(), UUID.randomUUID().toString()))
+        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, "secret", "public", GitHubRepositoryInfo("server", "owner", "repo")))
+        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, UUID.randomUUID().toString(), UUID.randomUUID().toString(), GitHubRepositoryInfo("server", "owner", "repo")))
     }
 
     private fun doAuthDataSerializationTest(first: AuthDataStorage.AuthData) {

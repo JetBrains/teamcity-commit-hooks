@@ -21,7 +21,8 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
 
     data class AuthData(val userId: Long,
                         val secret: String,
-                        val public: String) {
+                        val public: String,
+                        val repository: GitHubRepositoryInfo) {
         companion object {
             private val gson = GsonBuilder().create()
             fun fromJson(string: String): AuthData? = gson.fromJson(string, AuthData::class.java)
@@ -75,17 +76,17 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun save(user: SUser, public: String, secret: String) {
-        val data = AuthData(user.id, secret, public)
+    fun save(user: SUser, public: String, secret: String, repository: GitHubRepositoryInfo) {
+        val data = AuthData(user.id, secret, public, repository)
         myCacheLock.write {
             myCache.invalidate(public)
             myCache.write(public, data.toJson())
         }
     }
 
-    fun create(user: SUser): AuthData {
+    fun create(user: SUser, repository: GitHubRepositoryInfo): AuthData {
         val (public, secret) = generate()
-        val data = AuthData(user.id, secret, public)
+        val data = AuthData(user.id, secret, public, repository)
         myCacheLock.write {
             myCache.invalidate(public)
             myCache.write(public, data.toJson())

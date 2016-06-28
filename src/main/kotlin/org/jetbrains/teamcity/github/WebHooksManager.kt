@@ -138,7 +138,7 @@ class WebHooksManager(private val links: WebLinks,
                 return HookAddOperationResult.AlreadyExists
             }
 
-            val authData = myAuthDataStorage.create(user);
+            val authData = myAuthDataStorage.create(user, info);
 
             val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
                     "url" to getCallbackUrl(authData),
