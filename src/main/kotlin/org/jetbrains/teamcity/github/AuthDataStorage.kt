@@ -26,6 +26,8 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
                         val secret: String,
                         val public: String,
                         val repository: GitHubRepositoryInfo,
+                        var connectionId: String? = null,
+                        var connectionProjectId: String? = null,
                         var token: OAuthToken? = null) {
         companion object {
             private val gson = GsonBuilder()
@@ -80,14 +82,6 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
     fun find(public: String): AuthData? {
         myCacheLock.read {
             return myCache.read(public)?.let { AuthData.fromJson(it) }
-        }
-    }
-
-    fun save(user: SUser, public: String, secret: String, repository: GitHubRepositoryInfo, token: OAuthToken) {
-        val data = AuthData(user.id, secret, public, repository, token)
-        myCacheLock.write {
-            myCache.invalidate(public)
-            myCache.write(public, data.toJson())
         }
     }
 
