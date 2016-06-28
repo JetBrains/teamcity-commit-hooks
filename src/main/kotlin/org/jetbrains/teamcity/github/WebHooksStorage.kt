@@ -41,7 +41,8 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
                         val url: String, // API URL
                         var correct: Boolean = true,
                         var lastUsed: Date? = null,
-                        var lastBranchRevisions: MutableMap<String, String>? = null) {
+                        var lastBranchRevisions: MutableMap<String, String>? = null,
+                        var callbackUrl: String? = null) {
         companion object {
             private val gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()
 
@@ -120,6 +121,10 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
             myCache.write(toKey(server, repo), info.toJson())
             return info
         }
+    }
+
+    fun delete(info: GitHubRepositoryInfo) {
+        delete(info.server, info.getRepositoryId())
     }
 
     fun delete(server: String, repo: RepositoryId) {

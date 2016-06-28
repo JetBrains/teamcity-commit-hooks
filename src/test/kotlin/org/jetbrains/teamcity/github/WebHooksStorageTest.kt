@@ -21,6 +21,7 @@ class WebHooksStorageTest {
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false))
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10)))
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), LinkedHashMap(mapOf("1" to "2"))))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), LinkedHashMap(mapOf("1" to "2")), "__CALLBACK_URL__"))
     }
 
     private fun doHookInfoSerializationTest(first: WebHooksStorage.HookInfo) {
@@ -32,6 +33,7 @@ class WebHooksStorageTest {
         then(second.lastUsed).isEqualTo(first.lastUsed)
         then(second.lastBranchRevisions).isEqualTo(first.lastBranchRevisions)
         then(second.url).isEqualTo(first.url)
+        then(second.callbackUrl).isEqualTo(first.callbackUrl)
         then(second.toJson()).isEqualTo(first.toJson())
         then(second.hashCode()).isEqualTo(first.hashCode())
         then(second).isEqualTo(first)
