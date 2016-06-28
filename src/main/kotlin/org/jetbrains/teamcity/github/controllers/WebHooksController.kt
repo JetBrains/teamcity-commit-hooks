@@ -21,7 +21,6 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.PropertiesUtil
 import jetbrains.buildServer.vcs.SVcsRoot
-import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.SessionUser
@@ -57,6 +56,9 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
     @Autowired
     lateinit var myTokensHelper: TokensHelper
+
+    @Autowired
+    lateinit private var myAuthDataStorage: AuthDataStorage
 
     @Autowired
     lateinit var myProjectManager: ProjectManager
@@ -237,7 +239,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                         } else if ("delete" == action) {
                             element = doDeleteWebHook(ghc, info, user)
                         } else if ("install" == action) {
-                            element = doInstallWebHook(ghc, info, user)
+                            element = doInstallWebHook(ghc, info, user, token)
                         } else {
                             element = null
                         }
@@ -265,25 +267,29 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
-        when (result) {
+        when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
+                return gh_json(result.first.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
+                return gh_json(result.first.name, "Created hook for repository '${info.toString()}'", info)
             }
         }
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
+    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, token: OAuthToken): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
-        when (result) {
+        result.second?.let {
+            it.token = token
+            myAuthDataStorage.store(it);
+        }
+        when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
+                return gh_json(result.first.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
+                return gh_json(result.first.name, "Created hook for repository '${info.toString()}'", info)
             }
         }
     }

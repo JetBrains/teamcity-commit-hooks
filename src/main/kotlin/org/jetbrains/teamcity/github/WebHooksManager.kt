@@ -46,7 +46,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
+    fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): Pair<HookAddOperationResult, AuthDataStorage.AuthData?> {
         return CreateWebHookAction.doRun(info, client, user, this)
     }
 
