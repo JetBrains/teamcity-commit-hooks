@@ -23,7 +23,7 @@ object CreateWebHookAction {
         // First, check for already existing hooks, otherwise Github will answer with code 422
         // If we cannot get hooks, we cannot add new one
         // TODO: Consider handling GitHubAccessException
-        GetAllWebHooksAction.doRun(info, client, user, context)
+        GetAllWebHooksAction.doRun(info, client, context)
 
         hookInfo = context.getHook(info)
         if (hookInfo != null) {

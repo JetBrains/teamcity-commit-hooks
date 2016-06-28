@@ -52,7 +52,7 @@ class WebHooksManager(links: WebLinks,
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
-        return GetAllWebHooksAction.doRun(info, client, user, this)
+        return GetAllWebHooksAction.doRun(info, client, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)

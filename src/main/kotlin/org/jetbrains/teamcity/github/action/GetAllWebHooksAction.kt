@@ -1,7 +1,6 @@
 package org.jetbrains.teamcity.github.action
 
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
-import jetbrains.buildServer.users.SUser
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.GitHubAccessException
@@ -12,9 +11,9 @@ import org.jetbrains.teamcity.github.callbackUrl
 /**
  * Fetches all webhooks points to this server for given repository
  */
-object GetAllWebHooksAction : Action<HooksGetOperationResult, ActionContext> {
+object GetAllWebHooksAction {
     @Throws(GitHubAccessException::class)
-    override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HooksGetOperationResult {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext): HooksGetOperationResult {
         val service = RepositoryService(client)
         val repo = info.getRepositoryId()
         try {

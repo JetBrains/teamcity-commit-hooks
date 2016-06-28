@@ -24,7 +24,7 @@ object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
         }
 
         // TODO: Consider handling GitHubAccessException
-        GetAllWebHooksAction.doRun(info, client, user, context)
+        GetAllWebHooksAction.doRun(info, client, context)
 
         hook = context.getHook(info)
 
