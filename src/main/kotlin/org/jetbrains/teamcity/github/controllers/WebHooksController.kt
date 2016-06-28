@@ -95,6 +95,14 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
             element.add("actions", Gson().toJsonTree(actions))
             return element
         }
+
+
+        fun gh_json(result: String, message: String, info: GitHubRepositoryInfo, webHooksManager: WebHooksManager): JsonObject {
+            val obj = WebHooksController.getRepositoryInfo(info, webHooksManager)
+            obj.addProperty("result", result)
+            obj.addProperty("message", message)
+            return obj
+        }
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
@@ -209,11 +217,11 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                     params.put("projectId", inProjectId)
                 }
                 return redirect_json(url(request.contextPath + "/oauth/github/accessToken.html",
-                        "action" to "obtainToken",
-                        "connectionId" to connection.id,
-                        "projectId" to connection.project.externalId,
-                        "scope" to "admin:repo_hook",
-                        "callbackUrl" to url(request.contextPath + PATH, params))
+                                         "action" to "obtainToken",
+                                         "connectionId" to connection.id,
+                                         "projectId" to connection.project.externalId,
+                                         "scope" to "admin:repo_hook",
+                                         "callbackUrl" to url(request.contextPath + PATH, params))
                 )
             }
 
@@ -239,7 +247,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                         } else if ("delete" == action) {
                             element = doDeleteWebHook(ghc, info, user)
                         } else if ("install" == action) {
-                            element = doInstallWebHook(ghc, info, user, token)
+                            element = doInstallWebHook(ghc, info, user, token, entry.key)
                         } else {
                             element = null
                         }
@@ -278,10 +286,12 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, token: OAuthToken): JsonElement? {
+    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, token: OAuthToken, connection: OAuthConnectionDescriptor): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         result.second?.let {
             it.token = token
+            it.connectionId = connection.id
+            it.connectionProjectId = connection.project.externalId
             myAuthDataStorage.store(it);
         }
         when (result.first) {
@@ -530,10 +540,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
 
     fun gh_json(result: String, message: String, info: GitHubRepositoryInfo): JsonObject {
-        val obj = WebHooksController.getRepositoryInfo(info, myWebHooksManager)
-        obj.addProperty("result", result)
-        obj.addProperty("message", message)
-        return obj
+        return gh_json(result, message, info, myWebHooksManager)
     }
 }
 
