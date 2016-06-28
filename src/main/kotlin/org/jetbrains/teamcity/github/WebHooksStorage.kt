@@ -176,8 +176,10 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
             myCacheLock.read {
                 val info = myCache.read(key)?.let { HookInfo.fromJson(it) }
                 if (info != null) {
-                    val (server, owner, name) = fromKey(key)
-                    result.addAll(listOf(info).filter { !it.correct }.map { GitHubRepositoryInfo(server, owner, name) to it })
+                    if (!info.correct) {
+                        val (server, owner, name) = fromKey(key)
+                        result.add(GitHubRepositoryInfo(server, owner, name) to info)
+                    }
                 }
             }
         }

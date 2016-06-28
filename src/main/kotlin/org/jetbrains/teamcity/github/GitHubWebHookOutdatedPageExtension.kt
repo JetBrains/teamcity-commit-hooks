@@ -2,9 +2,7 @@ package org.jetbrains.teamcity.github
 
 import com.google.gson.Gson
 import jetbrains.buildServer.serverSide.SProject
-import jetbrains.buildServer.util.MultiMap
 import jetbrains.buildServer.vcs.SVcsRoot
-import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemPageExtension
@@ -32,7 +30,7 @@ class GitHubWebHookOutdatedPageExtension(descriptor: PluginDescriptor, places: P
         @Suppress("UNCHECKED_CAST")
         val projects: Set<SProject> = item.additionalData["Projects"] as Set<SProject>
         @Suppress("UNCHECKED_CAST")
-        val map: MultiMap<SVcsRoot?, VcsRootInstance> = item.additionalData["UsageMap"] as MultiMap<SVcsRoot?, VcsRootInstance>
+        val usages: Set<SVcsRoot> = item.additionalData["Usages"] as Set<SVcsRoot>
 
         //        val connections = helper.getConnections(root.project, info.server)
         //        model.put("has_connections", connections.isNotEmpty())

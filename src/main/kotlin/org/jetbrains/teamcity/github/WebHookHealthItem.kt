@@ -10,7 +10,3 @@ fun WebHookAddHookHealthItem(info: GitHubRepositoryInfo, root: SVcsRoot): Health
             "VcsRoot" to root
     ))
 }
-
-fun WebHookAddHookHealthItem(info: GitHubRepositoryInfo, root: VcsRootInstance): HealthStatusItem {
-    return WebHookAddHookHealthItem(info, root.parent)
-}
