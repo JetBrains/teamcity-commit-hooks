@@ -14,14 +14,13 @@ import org.eclipse.egit.github.core.RepositoryId
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.action.*
-import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import java.io.IOException
 import java.util.*
 
-class WebHooksManager(private val links: WebLinks,
+class WebHooksManager(links: WebLinks,
                       private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
                       private val myAuthDataStorage: AuthDataStorage,
-                      private val myStorage: WebHooksStorage) {
+                      storage: WebHooksStorage) : ActionContext(storage, links) {
 
     private val myRepoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {
@@ -30,7 +29,7 @@ class WebHooksManager(private val links: WebLinks,
             val hook = getHook(info) ?: return
             if (!isBranchesInfoUpToDate(hook, newState.branchRevisions, info)) {
                 // Mark hook as outdated, probably incorrectly configured
-                myStorage.update(info) {
+                storage.update(info) {
                     it.correct = false
                 }
             }
@@ -57,8 +56,8 @@ class WebHooksManager(private val links: WebLinks,
             try {
                 val hooks = service.getHooks(repo)
                 // TODO: Check AuthData.user == user
-                val filtered = hooks.filter { it.name == "web" && it.config["url"].orEmpty().startsWith(getCallbackUrl()) && it.config["content_type"] == "json" }
-                updateHooks(info.server, repo, filtered)
+                val filtered = hooks.filter { it.name == "web" && it.config["url"].orEmpty().startsWith(context.getCallbackUrl()) && it.config["content_type"] == "json" }
+                context.updateHooks(info.server, repo, filtered)
             } catch(e: RequestException) {
                 when (e.status) {
                     401 -> {
@@ -89,7 +88,7 @@ class WebHooksManager(private val links: WebLinks,
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
-            if (context.storage.getHook(info) != null) {
+            if (context.getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
             }
 
@@ -98,14 +97,14 @@ class WebHooksManager(private val links: WebLinks,
             // TODO: Consider handling GitHubAccessException
             GetAllWebHooks.doRun(info, client, user, context)
 
-            if (context.storage.getHook(info) != null) {
+            if (context.getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
             }
 
             val authData = myAuthDataStorage.create(user, info, false)
 
             val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
-                    "url" to getCallbackUrl(authData),
+                    "url" to context.getCallbackUrl(authData),
                     "content_type" to "json",
                     "secret" to authData.secret
                     // TODO: Investigate ssl option
@@ -135,7 +134,7 @@ class WebHooksManager(private val links: WebLinks,
                 throw e
             }
 
-            addHook(created, info.server, repo)
+            context.addHook(created, info.server, repo)
 
             myAuthDataStorage.store(authData)
             return HookAddOperationResult.Created
@@ -149,7 +148,7 @@ class WebHooksManager(private val links: WebLinks,
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
-            var hook = context.storage.getHook(info)
+            var hook = context.getHook(info)
 
             if (hook != null) {
                 delete(client, hook, info, repo, service, context)
@@ -159,7 +158,7 @@ class WebHooksManager(private val links: WebLinks,
             // TODO: Consider handling GitHubAccessException
             GetAllWebHooks.doRun(info, client, user, context)
 
-            hook = context.storage.getHook(info)
+            hook = context.getHook(info)
 
             if (hook != null) {
                 delete(client, hook, info, repo, service, context)
@@ -190,65 +189,30 @@ class WebHooksManager(private val links: WebLinks,
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
-        return CreateWebHook.doRun(info, client, user, ActionContext(myStorage))
+        return CreateWebHook.doRun(info, client, user, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
-        return GetAllWebHooks.doRun(info, client, user, ActionContext(myStorage))
+        return GetAllWebHooks.doRun(info, client, user, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
-        return DeleteWebHook.doRun(info, client, user, ActionContext(myStorage))
+        return DeleteWebHook.doRun(info, client, user, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, user: SUser): HookTestOperationResult {
-        return TestWebHookAction.doRun(info, ghc, user, ActionContext(myStorage))
+        return TestWebHookAction.doRun(info, ghc, user, this)
     }
-
-
-    private fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
-        // TODO: Support more than one hook in storage, report that as misconfiguration
-        for (hook in filtered) {
-            val info = myStorage.getHook(server, repo)
-            if (info == null) {
-                addHook(hook, server, repo)
-            } else if (info.id != hook.id || info.url != hook.url) {
-                myStorage.delete(server, repo)
-                addHook(hook, server, repo)
-            }
-        }
-        if (filtered.isEmpty()) {
-            // Remove old hooks
-            myStorage.delete(server, repo)
-        }
-    }
-
-    private fun getCallbackUrl(authData: AuthDataStorage.AuthData? = null): String {
-        // It's not possible to add some url parameters, since GitHub ignores that part of url
-        val base = links.rootUrl.removeSuffix("/") + GitHubWebHookListener.PATH
-        if (authData == null) {
-            return base
-        }
-        return base + '/' + authData.public
-    }
-
-    private fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {
-        myStorage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url) })
-    }
-
-    fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
-        return myStorage.getHook(info)
-    }
-
+    
     fun updateLastUsed(info: GitHubRepositoryInfo, date: Date) {
         // We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
         val hook = getHook(info) ?: return
         val used = hook.lastUsed
         if (used == null || used.before(date)) {
-            myStorage.update(info) {
+            storage.update(info) {
                 @Suppress("NAME_SHADOWING")
                 val used = it.lastUsed
                 if (used == null || used.before(date)) {
@@ -261,7 +225,7 @@ class WebHooksManager(private val links: WebLinks,
 
     fun updateBranchRevisions(info: GitHubRepositoryInfo, map: Map<String, String>) {
         val hook = getHook(info) ?: return
-        myStorage.update(info) {
+        storage.update(info) {
             it.correct = true
             val lbr = hook.lastBranchRevisions ?: HashMap()
             lbr.putAll(map)
@@ -274,7 +238,7 @@ class WebHooksManager(private val links: WebLinks,
 
         // Maybe we have forgot about revisions (cache cleanup after server restart)
         if (hookBranches == null) {
-            myStorage.update(info) {
+            storage.update(info) {
                 it.lastBranchRevisions = HashMap(newBranches)
             }
             return true
@@ -293,7 +257,7 @@ class WebHooksManager(private val links: WebLinks,
         return true
     }
 
-    fun isHasIncorrectHooks() = myStorage.isHasIncorrectHooks()
-    fun getIncorrectHooks() = myStorage.getIncorrectHooks()
+    fun isHasIncorrectHooks() = storage.isHasIncorrectHooks()
+    fun getIncorrectHooks() = storage.getIncorrectHooks()
 
 }
