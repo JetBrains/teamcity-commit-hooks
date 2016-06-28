@@ -109,7 +109,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
         myServerEventDispatcher.removeListener(myServerListener)
     }
 
-    fun store(info: VcsRootGitHubInfo, hook: HookInfo) {
+    fun store(info: GitHubRepositoryInfo, hook: HookInfo) {
         store(info.server, info.getRepositoryId(), hook)
     }
 
@@ -119,7 +119,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun add(info: VcsRootGitHubInfo, builder: () -> HookInfo) {
+    fun add(info: GitHubRepositoryInfo, builder: () -> HookInfo) {
         add(info.server, info.getRepositoryId(), builder)
     }
 
@@ -146,7 +146,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun update(info: VcsRootGitHubInfo, update: (HookInfo) -> Unit): Boolean {
+    fun update(info: GitHubRepositoryInfo, update: (HookInfo) -> Unit): Boolean {
         return update(info.server, info.getRepositoryId(), update)
     }
 
@@ -159,7 +159,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun getHook(info: VcsRootGitHubInfo): WebHooksStorage.HookInfo? {
+    fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
         return getHook(info.server, info.getRepositoryId())
     }
 
@@ -185,17 +185,17 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
         return false
     }
 
-    fun getIncorrectHooks(): List<Pair<VcsRootGitHubInfo, WebHooksStorage.HookInfo>> {
+    fun getIncorrectHooks(): List<Pair<GitHubRepositoryInfo, WebHooksStorage.HookInfo>> {
         val keys = myCacheLock.read {
             myCache.keys
         }
-        val result = ArrayList<Pair<VcsRootGitHubInfo, WebHooksStorage.HookInfo>>()
+        val result = ArrayList<Pair<GitHubRepositoryInfo, WebHooksStorage.HookInfo>>()
         for (key in keys) {
             myCacheLock.read {
                 val info = myCache.read(key)?.let { HookInfo.fromJson(it) }
                 if (info != null) {
                     val (server, owner, name) = fromKey(key)
-                    result.addAll(listOf(info).filter { !it.correct }.map { VcsRootGitHubInfo(server, owner, name) to it })
+                    result.addAll(listOf(info).filter { !it.correct }.map { GitHubRepositoryInfo(server, owner, name) to it })
                 }
             }
         }

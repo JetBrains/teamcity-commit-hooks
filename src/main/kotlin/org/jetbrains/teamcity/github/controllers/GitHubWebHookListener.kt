@@ -20,7 +20,7 @@ import org.eclipse.egit.github.core.event.PingWebHookPayload
 import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.jetbrains.teamcity.github.AuthDataStorage
 import org.jetbrains.teamcity.github.Util
-import org.jetbrains.teamcity.github.VcsRootGitHubInfo
+import org.jetbrains.teamcity.github.GitHubRepositoryInfo
 import org.jetbrains.teamcity.github.WebHooksManager
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.servlet.ModelAndView
@@ -204,11 +204,11 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return HttpServletResponse.SC_ACCEPTED
     }
 
-    private fun updateLastUsed(info: VcsRootGitHubInfo) {
+    private fun updateLastUsed(info: GitHubRepositoryInfo) {
         WebHooksManager.updateLastUsed(info, Date())
     }
 
-    private fun updateBranches(info: VcsRootGitHubInfo, payload: PushWebHookPayload) {
+    private fun updateBranches(info: GitHubRepositoryInfo, payload: PushWebHookPayload) {
         WebHooksManager.updateBranchRevisions(info, mapOf(payload.ref to payload.after))
     }
 
@@ -220,7 +220,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         })
     }
 
-    fun findSuitableVcsRootInstances(info: VcsRootGitHubInfo, vcsRootId: String?): List<VcsRootInstance> {
+    fun findSuitableVcsRootInstances(info: GitHubRepositoryInfo, vcsRootId: String?): List<VcsRootInstance> {
         val roots = HashSet<VcsRootInstance>()
         for (bt in ProjectManager.allBuildTypes) {
             if (bt.project.isArchived) continue
@@ -229,7 +229,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return roots.filter { info == Util.getGitHubInfo(it) && (vcsRootId == null || it.parent.externalId == vcsRootId) }
     }
 
-    private fun setModificationCheckInterval(info: VcsRootGitHubInfo) {
+    private fun setModificationCheckInterval(info: GitHubRepositoryInfo) {
         // It's worth to update intervals for all git vcs roots with same url ('info')
         val roots = VcsManager.allRegisteredVcsRoots.filter { info == Util.Companion.getGitHubInfo(it) }
         for (root in roots) {

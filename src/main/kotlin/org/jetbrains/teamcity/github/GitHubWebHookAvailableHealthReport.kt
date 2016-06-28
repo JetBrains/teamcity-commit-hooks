@@ -16,8 +16,8 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
         val TYPE = "GitHub.WebHookAvailable"
         val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
 
-        fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
-            val map = HashMap<VcsRootGitHubInfo, MultiMap<SVcsRoot?, VcsRootInstance>>()
+        fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<GitHubRepositoryInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
+            val map = HashMap<GitHubRepositoryInfo, MultiMap<SVcsRoot?, VcsRootInstance>>()
 
             for (rootInstance in vcsRootInstances) {
                 val info = Util.Companion.getGitHubInfo(rootInstance) ?: continue

@@ -14,7 +14,7 @@ import jetbrains.buildServer.vcs.VcsRootInstance
 
 class Util {
     companion object {
-        fun getGitHubInfo(root: VcsRoot): VcsRootGitHubInfo? {
+        fun getGitHubInfo(root: VcsRoot): GitHubRepositoryInfo? {
             if (root.vcsName != Constants.VCS_NAME_GIT) return null
             val url = root.properties[Constants.VCS_PROPERTY_GIT_URL] ?: return null
 
@@ -22,13 +22,13 @@ class Util {
             return getGitHubInfo(url)
         }
 
-        fun getGitHubInfo(url: String): VcsRootGitHubInfo? {
+        fun getGitHubInfo(url: String): GitHubRepositoryInfo? {
             return parseGitRepoUrl(url)
         }
 
         val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
 
-        fun parseGitRepoUrl(url: String): VcsRootGitHubInfo? {
+        fun parseGitRepoUrl(url: String): GitHubRepositoryInfo? {
             val matcher = GITHUB_REPO_URL_PATTERN.matcher(url)
             if (!matcher.find()) return null
             val protocol = url.substring(0, matcher.start())
@@ -36,7 +36,7 @@ class Util {
             val host = matcher.group(1) ?: return null
             val owner = matcher.group(2) ?: return null
             val name = matcher.group(3)?.removeSuffix(".git") ?: return null
-            return VcsRootGitHubInfo(host, owner, name)
+            return GitHubRepositoryInfo(host, owner, name)
         }
 
         fun isSupportedProtocol(candidate: String): Boolean {

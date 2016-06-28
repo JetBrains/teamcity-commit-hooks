@@ -74,7 +74,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
             }
         }
 
-        fun getRepositoryInfo(info: VcsRootGitHubInfo?, manager: WebHooksManager): JsonObject {
+        fun getRepositoryInfo(info: GitHubRepositoryInfo?, manager: WebHooksManager): JsonObject {
             val element = JsonObject()
             val hook = info?.let { manager.getHook(it) }
             val status = getHookStatus(hook)
@@ -156,7 +156,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
         var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
 
-        val info: VcsRootGitHubInfo
+        val info: GitHubRepositoryInfo
         val project: SProject
 
         if ("repository" == inType) {
@@ -259,7 +259,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doAddWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+    private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         when (result) {
             WebHooksManager.HookAddOperationResult.AlreadyExists -> {
@@ -272,7 +272,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doInstallWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         when (result) {
             WebHooksManager.HookAddOperationResult.AlreadyExists -> {
@@ -286,7 +286,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doCheckWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+    private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
         when (result) {
             WebHooksManager.HooksGetOperationResult.Ok -> {
@@ -301,7 +301,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doPingWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+    private fun doPingWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
         when (result) {
             WebHooksManager.HooksGetOperationResult.Ok -> {
@@ -318,7 +318,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doDeleteWebHook(ghc: GitHubClientEx, info: VcsRootGitHubInfo, user: SUser): JsonElement? {
+    private fun doDeleteWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doUnRegisterWebHook(info, ghc, user)
         when (result) {
             WebHooksManager.HookDeleteOperationResult.NeverExisted -> {
@@ -330,7 +330,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
         }
     }
 
-    private fun getErrorResult(e: GitHubAccessException, connection: OAuthConnectionDescriptor, info: VcsRootGitHubInfo, token: OAuthToken): JsonElement? {
+    private fun getErrorResult(e: GitHubAccessException, connection: OAuthConnectionDescriptor, info: GitHubRepositoryInfo, token: OAuthToken): JsonElement? {
         when (e.type) {
             GitHubAccessException.Type.InvalidCredentials -> {
                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
@@ -509,7 +509,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
     @Throws(RequestException::class)
-    fun getRepositoryInfo(inProjectId: String?, inId: String): Pair<SProject, VcsRootGitHubInfo> {
+    fun getRepositoryInfo(inProjectId: String?, inId: String): Pair<SProject, GitHubRepositoryInfo> {
         if (inProjectId.isNullOrEmpty()) {
             throw RequestException("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
@@ -519,7 +519,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
 
-    fun gh_json(result: String, message: String, info: VcsRootGitHubInfo): JsonObject {
+    fun gh_json(result: String, message: String, info: GitHubRepositoryInfo): JsonObject {
         val obj = WebHooksController.getRepositoryInfo(info, myWebHooksManager)
         obj.addProperty("result", result)
         obj.addProperty("message", message)

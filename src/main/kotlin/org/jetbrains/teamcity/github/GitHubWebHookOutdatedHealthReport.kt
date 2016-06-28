@@ -39,7 +39,7 @@ class GitHubWebHookOutdatedHealthReport(private val WebHooksManager: WebHooksMan
                     // Filter by known servers
                     entry.key.server == "github.com" || GitHubWebHookAvailableHealthReport.getProjects(entry.value).any { project -> Util.findConnections(OAuthConnectionsManager, project, entry.key.server).isNotEmpty() }
                 }
-        val infos = HashSet<VcsRootGitHubInfo>(split.keys)
+        val infos = HashSet<GitHubRepositoryInfo>(split.keys)
 
         val hooks = WebHooksManager.getIncorrectHooks().filter { infos.contains(it.first) }
 

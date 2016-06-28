@@ -13,7 +13,7 @@
 
 <c:set var="GitHubInfo" value="${healthStatusItem.additionalData['GitHubInfo']}"/>
 <c:set var="VcsRoot" value="${healthStatusItem.additionalData['VcsRoot']}"/>
-<%--@elvariable id="GitHubInfo" type="org.jetbrains.teamcity.github.VcsRootGitHubInfo"--%>
+<%--@elvariable id="GitHubInfo" type="org.jetbrains.teamcity.github.GitHubRepositoryInfo"--%>
 <%--@elvariable id="VcsRoot" type="jetbrains.buildServer.vcs.SVcsRoot"--%>
 
 <c:set var="id" value="hid_${util:forJSIdentifier(GitHubInfo.identifier)}"/>

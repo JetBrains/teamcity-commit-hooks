@@ -24,7 +24,7 @@ class GitHubWebHookAvailablePageExtension(descriptor: PluginDescriptor, places: 
         val item = getStatusItem(request)
         val user = SessionUser.getUser(request)!!
         val root: SVcsRoot = item.additionalData["VcsRoot"] as SVcsRoot
-        val info: VcsRootGitHubInfo = item.additionalData["GitHubInfo"] as VcsRootGitHubInfo
+        val info: GitHubRepositoryInfo = item.additionalData["GitHubInfo"] as GitHubRepositoryInfo
 
         val connections = helper.getConnections(root.project, info.server)
         model.put("has_connections", connections.isNotEmpty())

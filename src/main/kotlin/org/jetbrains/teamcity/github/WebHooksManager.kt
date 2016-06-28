@@ -68,12 +68,12 @@ class WebHooksManager(private val links: WebLinks,
     }
 
     interface Operation<ORT : Enum<ORT>> {
-        @Throws(GitHubAccessException::class) fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): ORT
+        @Throws(GitHubAccessException::class) fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): ORT
     }
 
     val GetAllWebHooks = object : Operation<HooksGetOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
             val service = RepositoryService(client)
             val repo = info.getRepositoryId()
             try {
@@ -107,7 +107,7 @@ class WebHooksManager(private val links: WebLinks,
 
     val TestWebHook = object : Operation<HookTestOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookTestOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookTestOperationResult {
             val service = RepositoryService(client)
             val hook = getHook(info) ?: return HookTestOperationResult.NotFound
             try {
@@ -130,7 +130,7 @@ class WebHooksManager(private val links: WebLinks,
 
     val CreateWebHook = object : Operation<HookAddOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
@@ -186,7 +186,7 @@ class WebHooksManager(private val links: WebLinks,
 
     val DeleteWebHook = object : Operation<HookDeleteOperationResult> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
@@ -210,7 +210,7 @@ class WebHooksManager(private val links: WebLinks,
             return HookDeleteOperationResult.NeverExisted
         }
 
-        private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: VcsRootGitHubInfo, repo: RepositoryId, service: RepositoryService) {
+        private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, repo: RepositoryId, service: RepositoryService) {
             try {
                 service.deleteHook(repo, hook.id.toInt())
             } catch(e: RequestException) {
@@ -229,15 +229,15 @@ class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
         return CreateWebHook.doRun(info, client, user)
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doGetAllWebHooks(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
         return GetAllWebHooks.doRun(info, client, user)
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doUnRegisterWebHook(info: VcsRootGitHubInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
         return DeleteWebHook.doRun(info, client, user)
     }
 
@@ -272,11 +272,11 @@ class WebHooksManager(private val links: WebLinks,
         myStorage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url) })
     }
 
-    fun getHook(info: VcsRootGitHubInfo): WebHooksStorage.HookInfo? {
+    fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
         return myStorage.getHook(info)
     }
 
-    fun updateLastUsed(info: VcsRootGitHubInfo, date: Date) {
+    fun updateLastUsed(info: GitHubRepositoryInfo, date: Date) {
         // We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
         val hook = getHook(info) ?: return
         val used = hook.lastUsed
@@ -292,7 +292,7 @@ class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    fun updateBranchRevisions(info: VcsRootGitHubInfo, map: Map<String, String>) {
+    fun updateBranchRevisions(info: GitHubRepositoryInfo, map: Map<String, String>) {
         val hook = getHook(info) ?: return
         myStorage.update(info) {
             it.correct = true
@@ -302,7 +302,7 @@ class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>, info: VcsRootGitHubInfo): Boolean {
+    private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>, info: GitHubRepositoryInfo): Boolean {
         val hookBranches = hook.lastBranchRevisions
 
         // Maybe we have forgot about revisions (cache cleanup after server restart)

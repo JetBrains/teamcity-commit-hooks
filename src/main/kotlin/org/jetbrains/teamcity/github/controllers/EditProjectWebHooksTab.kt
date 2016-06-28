@@ -120,13 +120,13 @@ class ProjectWebHooksBean(val project: SProject,
                           val helper: TokensHelper,
                           val user: SUser,
                           val oAuthConnectionsManager: OAuthConnectionsManager) {
-    val hooks: SortedMap<VcsRootGitHubInfo, WebHookDetails> = TreeMap(comparator)
+    val hooks: SortedMap<GitHubRepositoryInfo, WebHookDetails> = TreeMap(comparator)
 
     val form: ProjectWebHooksForm = ProjectWebHooksForm();
     val pager: Pager = Pager(50)
 
     companion object {
-        private val comparator = Comparator<org.jetbrains.teamcity.github.VcsRootGitHubInfo> { a, b -> a.toString().compareTo(b.toString(), ignoreCase = true); }
+        private val comparator = Comparator<org.jetbrains.teamcity.github.GitHubRepositoryInfo> { a, b -> a.toString().compareTo(b.toString(), ignoreCase = true); }
     }
 
     fun getNumberOfAvailableWebHooks(): Int {
@@ -137,7 +137,7 @@ class ProjectWebHooksBean(val project: SProject,
         return hooks.count() { getHookStatus(it.value.info).status in arrayOf(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE) }
     }
 
-    @Used("jps") fun getVisibleHooks(): List<Map.Entry<VcsRootGitHubInfo, WebHookDetails>> {
+    @Used("jps") fun getVisibleHooks(): List<Map.Entry<GitHubRepositoryInfo, WebHookDetails>> {
         val origin = hooks.entries.toList()
         return pager.getCurrentPageData(origin)
     }
@@ -201,7 +201,7 @@ class ProjectWebHooksBean(val project: SProject,
         pager.currentPage = form.page
     }
 
-    fun getDataJson(info: VcsRootGitHubInfo): JsonElement {
+    fun getDataJson(info: GitHubRepositoryInfo): JsonElement {
         return WebHooksController.Companion.getRepositoryInfo(info, webHooksManager)
     }
 }

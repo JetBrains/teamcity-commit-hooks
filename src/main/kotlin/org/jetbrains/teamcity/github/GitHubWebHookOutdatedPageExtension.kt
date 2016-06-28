@@ -27,7 +27,7 @@ class GitHubWebHookOutdatedPageExtension(descriptor: PluginDescriptor, places: P
         val item = getStatusItem(request)
         val user = SessionUser.getUser(request)!!
 
-        val info: VcsRootGitHubInfo = item.additionalData["GitHubInfo"] as VcsRootGitHubInfo
+        val info: GitHubRepositoryInfo = item.additionalData["GitHubInfo"] as GitHubRepositoryInfo
         val hook: WebHooksStorage.HookInfo = item.additionalData["HookInfo"] as WebHooksStorage.HookInfo
         @Suppress("UNCHECKED_CAST")
         val projects: Set<SProject> = item.additionalData["Projects"] as Set<SProject>
