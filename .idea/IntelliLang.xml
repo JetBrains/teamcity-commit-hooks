@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="LanguageInjectionConfiguration">
+    <injection language="JQuery-CSS" injector-id="js">
+      <display-name>jQuery for $j</display-name>
+      <place><![CDATA[jsLiteralExpression().and(jsArgument("$j", 0, 1))]]></place>
+    </injection>
+  </component>
+</project>
