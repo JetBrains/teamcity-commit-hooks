@@ -7,6 +7,7 @@ class GitHubAccessException(val type: Type, message: String? = null) : Exception
         TokenScopeMismatch, // If token is valid but does not have required scope
         NoAccess,
         UserHaveNoAccess,
+        InternalServerError,
     }
 }
 

@@ -368,6 +368,14 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
             GitHubAccessException.Type.NoAccess -> {
                 return gh_json(e.type.name, "No access to repository '${info.toString()}'", info)
             }
+            GitHubAccessException.Type.InternalServerError -> {
+                // TODO: Support in gh-webhooks.js
+                LOG.warn("GitHub server ${info.server} returned 500")
+                val contact =
+                        if (Util.isSameUrl(info.server, "github.com")) "Check https://status.github.com/"
+                        else "Contact your system administrator."
+                return gh_json(e.type.name, "Error on GitHub side. $contact Try again later.", info)
+            }
         }
         return null
     }

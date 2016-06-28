@@ -78,7 +78,7 @@ class Util {
             return connection.parameters[GitHubConstants.CLIENT_ID_PARAM] != null && connection.parameters[GitHubConstants.CLIENT_SECRET_PARAM] != null
         }
 
-        private fun isSameUrl(host: String, url: String): Boolean {
+        fun isSameUrl(host: String, url: String): Boolean {
             // TODO: Improve somehow
             return url.contains(host, true)
         }
