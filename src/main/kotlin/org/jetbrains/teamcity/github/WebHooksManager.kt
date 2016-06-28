@@ -143,7 +143,7 @@ class WebHooksManager(private val links: WebLinks,
             val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
                     "url" to getCallbackUrl(authData),
                     "content_type" to "json",
-                    "secret" to authData.secretKey
+                    "secret" to authData.secret
                     // TODO: Investigate ssl option
             ))
 

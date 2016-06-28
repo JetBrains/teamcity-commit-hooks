@@ -20,7 +20,7 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
     }
 
     data class AuthData(val userId: Long,
-                        val secretKey: String,
+                        val secret: String,
                         val public: String) : Serializable {
         companion object {
             val serialVersionUID = 987149781384712L
