@@ -307,7 +307,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
-        val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
+        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
         when (result) {
             HooksGetOperationResult.Ok -> {
                 val hook = myWebHooksManager.getHook(info)
@@ -322,7 +322,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doPingWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
-        val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
+        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
         when (result) {
             HooksGetOperationResult.Ok -> {
                 val hook = myWebHooksManager.getHook(info)
