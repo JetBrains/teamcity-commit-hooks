@@ -48,40 +48,6 @@ class WebHooksManager(links: WebLinks,
         private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
     }
 
-    val GetAllWebHooks = object : Action<HooksGetOperationResult, ActionContext> {
-        @Throws(GitHubAccessException::class)
-        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HooksGetOperationResult {
-            val service = RepositoryService(client)
-            val repo = info.getRepositoryId()
-            try {
-                val hooks = service.getHooks(repo)
-                // TODO: Check AuthData.user == user
-                val filtered = hooks.filter { it.name == "web" && it.config["url"].orEmpty().startsWith(context.getCallbackUrl()) && it.config["content_type"] == "json" }
-                context.updateHooks(info.server, repo, filtered)
-            } catch(e: RequestException) {
-                when (e.status) {
-                    401 -> {
-                        throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
-                    }
-                    403, 404 -> {
-                        // No access
-                        // Probably token does not have permissions
-                        val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess) // Weird. No header?
-                        val pair = TokensHelper.getHooksAccessType(scopes)
-                        val accessType = pair.first
-                        when (accessType) {
-                            TokensHelper.HookAccessType.NO_ACCESS -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
-                            TokensHelper.HookAccessType.READ -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
-                            TokensHelper.HookAccessType.WRITE, TokensHelper.HookAccessType.ADMIN -> throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
-                        }
-                    }
-                }
-                throw e
-            }
-            return HooksGetOperationResult.Ok
-        }
-    }
-
     val CreateWebHook = object : Action<HookAddOperationResult, ActionContext> {
         @Throws(GitHubAccessException::class)
         override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookAddOperationResult {
@@ -95,7 +61,7 @@ class WebHooksManager(links: WebLinks,
             // First, check for already existing hooks, otherwise Github will answer with code 422
             // If we cannot get hooks, we cannot add new one
             // TODO: Consider handling GitHubAccessException
-            GetAllWebHooks.doRun(info, client, user, context)
+            GetAllWebHooksAction.doRun(info, client, user, context)
 
             if (context.getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
@@ -156,7 +122,7 @@ class WebHooksManager(links: WebLinks,
             }
 
             // TODO: Consider handling GitHubAccessException
-            GetAllWebHooks.doRun(info, client, user, context)
+            GetAllWebHooksAction.doRun(info, client, user, context)
 
             hook = context.getHook(info)
 
@@ -194,7 +160,7 @@ class WebHooksManager(links: WebLinks,
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
-        return GetAllWebHooks.doRun(info, client, user, this)
+        return GetAllWebHooksAction.doRun(info, client, user, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
@@ -206,7 +172,7 @@ class WebHooksManager(links: WebLinks,
     fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, user: SUser): HookTestOperationResult {
         return TestWebHookAction.doRun(info, ghc, user, this)
     }
-    
+
     fun updateLastUsed(info: GitHubRepositoryInfo, date: Date) {
         // We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
         val hook = getHook(info) ?: return
