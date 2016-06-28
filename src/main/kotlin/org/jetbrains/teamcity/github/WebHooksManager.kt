@@ -9,9 +9,7 @@ import jetbrains.buildServer.vcs.RepositoryState
 import jetbrains.buildServer.vcs.RepositoryStateListener
 import jetbrains.buildServer.vcs.RepositoryStateListenerAdapter
 import jetbrains.buildServer.vcs.VcsRoot
-import org.eclipse.egit.github.core.RepositoryId
 import org.eclipse.egit.github.core.client.RequestException
-import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.action.*
 import java.io.IOException
 import java.util.*
@@ -47,51 +45,6 @@ class WebHooksManager(links: WebLinks,
         private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
     }
 
-    val DeleteWebHook = object : Action<HookDeleteOperationResult, ActionContext> {
-        @Throws(GitHubAccessException::class)
-        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookDeleteOperationResult {
-            val repo = info.getRepositoryId()
-            val service = RepositoryService(client)
-
-            var hook = context.getHook(info)
-
-            if (hook != null) {
-                delete(client, hook, info, repo, service, context)
-                return HookDeleteOperationResult.Removed
-            }
-
-            // TODO: Consider handling GitHubAccessException
-            GetAllWebHooksAction.doRun(info, client, user, context)
-
-            hook = context.getHook(info)
-
-            if (hook != null) {
-                delete(client, hook, info, repo, service, context)
-                return HookDeleteOperationResult.Removed
-            }
-
-            return HookDeleteOperationResult.NeverExisted
-        }
-
-        private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, repo: RepositoryId, service: RepositoryService, context: ActionContext) {
-            try {
-                service.deleteHook(repo, hook.id.toInt())
-            } catch(e: RequestException) {
-                when (e.status) {
-                    403, 404 -> {
-                        // ? No access
-                        // "X-Accepted-OAuth-Scopes" -> "admin:repo_hook, public_repo, repo"
-                        val pair = TokensHelper.getHooksAccessType(client) ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess)// Weird. No header?
-                        if (pair.first < TokensHelper.HookAccessType.ADMIN) throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch, "Required scope 'admin:repo_hook', 'public_repo' or 'repo'")
-                        throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
-                    }
-                }
-                throw e
-            }
-            context.storage.delete(info.server, repo)
-        }
-    }
-
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
         return CreateWebHookAction.doRun(info, client, user, this)
@@ -104,7 +57,7 @@ class WebHooksManager(links: WebLinks,
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
-        return DeleteWebHook.doRun(info, client, user, this)
+        return DeleteWebHookAction.doRun(info, client, user, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
