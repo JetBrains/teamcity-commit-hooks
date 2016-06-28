@@ -131,7 +131,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                 }
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PushWebHookPayload::class.java)
-                    response.status = doHandlePushEvent(payload, pubKey, authData)
+                    response.status = doHandlePushEvent(payload, authData)
                 }
                 else -> {
                     LOG.info("Received unknown event type: $eventType, ignoring")
@@ -176,7 +176,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return HttpServletResponse.SC_ACCEPTED
     }
 
-    private fun doHandlePushEvent(payload: PushWebHookPayload, pubKey: String?, authData: AuthDataStorage.AuthData): Int {
+    private fun doHandlePushEvent(payload: PushWebHookPayload, authData: AuthDataStorage.AuthData): Int {
         val url = payload.repository?.gitUrl
         LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
