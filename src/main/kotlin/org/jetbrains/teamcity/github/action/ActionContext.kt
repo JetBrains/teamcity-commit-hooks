@@ -29,7 +29,19 @@ open class ActionContext(val storage: WebHooksStorage,
 
     fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
         // TODO: Support more than one hook in storage, report that as misconfiguration
+        if (filtered.isEmpty()) {
+            // Remove old hooks
+            storage.delete(server, repo)
+            return
+        }
+        if (!filtered.any { it.isActive }) {
+            // No active webhooks, remove info
+            // TODO: Investigate whether hook disabled if GitHub failed to deliver payload (TC returned error)
+            storage.delete(server, repo)
+            return
+        }
         for (hook in filtered) {
+            if (!hook.isActive) continue
             val info = storage.getHook(server, repo)
             if (info == null) {
                 addHook(hook, server, repo)
@@ -37,10 +49,6 @@ open class ActionContext(val storage: WebHooksStorage,
                 storage.delete(server, repo)
                 addHook(hook, server, repo)
             }
-        }
-        if (filtered.isEmpty()) {
-            // Remove old hooks
-            storage.delete(server, repo)
         }
     }
 
