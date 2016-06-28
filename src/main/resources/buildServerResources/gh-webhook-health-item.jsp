@@ -37,12 +37,12 @@
         }
         if (typeof BS.ServerInfo === 'undefined') {
             BS.ServerInfo = {
-                url : '${serverSummary.rootURL}'
+                url: '${serverSummary.rootURL}'
             };
         }
         if (typeof BS.RequestInfo === 'undefined') {
             BS.RequestInfo = {
-                context_path : '${pageContext.request.contextPath}'
+                context_path: '${pageContext.request.contextPath}'
             };
         }
         BS.GitHubWebHooks.info['${GitHubInfo.identifier}'] = ${GitHubInfo.toJson()};
