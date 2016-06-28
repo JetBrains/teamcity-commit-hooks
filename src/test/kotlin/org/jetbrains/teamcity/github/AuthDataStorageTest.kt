@@ -18,7 +18,7 @@ class AuthDataStorageTest {
     }
 
     private fun doAuthDataSerializationTest(first: AuthDataStorage.AuthData) {
-        val second = AuthDataStorage.AuthData.fromJson(AuthDataStorage.AuthData.toJson(first))
+        val second = AuthDataStorage.AuthData.fromJson(first.toJson())
         then(second).isNotNull()
         second!!
         then(second.userId).isEqualTo(first.userId)
@@ -26,7 +26,7 @@ class AuthDataStorageTest {
         then(second.public).isEqualTo(first.public)
         then(second.repository).isEqualTo(first.repository)
         then(second.token).isEqualTo(first.token)
-        then(AuthDataStorage.AuthData.toJson(second)).isEqualTo(AuthDataStorage.AuthData.toJson(first))
+        then(second.toJson()).isEqualTo(first.toJson())
         then(second.hashCode()).isEqualTo(first.hashCode())
         then(second).isEqualTo(first)
     }

@@ -16,8 +16,8 @@ import java.util.*
 
 class WebHooksManager(links: WebLinks,
                       private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
-                      private val myAuthDataStorage: AuthDataStorage,
-                      storage: WebHooksStorage) : ActionContext(storage, myAuthDataStorage, links) {
+                      authDataStorage: AuthDataStorage,
+                      storage: WebHooksStorage) : ActionContext(storage, authDataStorage, links) {
 
     private val myRepoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {

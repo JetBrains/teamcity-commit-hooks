@@ -34,10 +34,9 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
                     .create()
 
             fun fromJson(string: String): AuthData? = gson.fromJson(string, AuthData::class.java)
-            fun toJson(info: AuthData): String = gson.toJson(info)
         }
 
-        fun toJson(): String = AuthData.toJson(this)
+        fun toJson(): String = gson.toJson(this)
     }
 
     private val myCache = myCacheProvider.getOrCreateCache("WebHooksAuthCache", String::class.java)

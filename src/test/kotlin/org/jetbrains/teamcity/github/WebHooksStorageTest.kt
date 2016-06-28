@@ -24,7 +24,7 @@ class WebHooksStorageTest {
     }
 
     private fun doHookInfoSerializationTest(first: WebHooksStorage.HookInfo) {
-        val second = WebHooksStorage.HookInfo.fromJson(WebHooksStorage.HookInfo.toJson(first))
+        val second = WebHooksStorage.HookInfo.fromJson(first.toJson())
         then(second).isNotNull()
         second!!
         then(second.id).isEqualTo(first.id)
@@ -32,7 +32,7 @@ class WebHooksStorageTest {
         then(second.lastUsed).isEqualTo(first.lastUsed)
         then(second.lastBranchRevisions).isEqualTo(first.lastBranchRevisions)
         then(second.url).isEqualTo(first.url)
-        then(WebHooksStorage.HookInfo.toJson(second)).isEqualTo(WebHooksStorage.HookInfo.toJson(first))
+        then(second.toJson()).isEqualTo(first.toJson())
         then(second.hashCode()).isEqualTo(first.hashCode())
         then(second).isEqualTo(first)
     }

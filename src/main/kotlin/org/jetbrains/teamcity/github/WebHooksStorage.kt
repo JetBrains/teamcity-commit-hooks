@@ -46,8 +46,9 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
             private val gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()
 
             fun fromJson(string: String): HookInfo? = gson.fromJson(string, HookInfo::class.java)
-            fun toJson(info: HookInfo): String = gson.toJson(info)
         }
+
+        fun toJson(): String = gson.toJson(this)
     }
 
 
@@ -96,7 +97,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
 
     fun store(server: String, repo: RepositoryId, hook: HookInfo) {
         myCacheLock.write {
-            myCache.write(toKey(server, repo), HookInfo.toJson(hook))
+            myCache.write(toKey(server, repo), hook.toJson())
         }
     }
 
@@ -116,7 +117,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
                 return info
             }
             info = builder()
-            myCache.write(toKey(server, repo), HookInfo.toJson(info))
+            myCache.write(toKey(server, repo), info.toJson())
             return info
         }
     }
@@ -135,7 +136,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
         myCacheLock.write {
             val hook = myCache.read(toKey(server, repo))?.let { HookInfo.fromJson(it) } ?: return false
             update(hook)
-            myCache.write(toKey(server, repo), HookInfo.toJson(hook))
+            myCache.write(toKey(server, repo), hook.toJson())
             return true
         }
     }
