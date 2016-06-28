@@ -9,7 +9,6 @@ import jetbrains.buildServer.vcs.RepositoryState
 import jetbrains.buildServer.vcs.RepositoryStateListener
 import jetbrains.buildServer.vcs.RepositoryStateListenerAdapter
 import jetbrains.buildServer.vcs.VcsRoot
-import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
@@ -20,7 +19,7 @@ import java.util.*
 class WebHooksManager(links: WebLinks,
                       private val repoStateEventDispatcher: EventDispatcher<RepositoryStateListener>,
                       private val myAuthDataStorage: AuthDataStorage,
-                      storage: WebHooksStorage) : ActionContext(storage, links) {
+                      storage: WebHooksStorage) : ActionContext(storage, myAuthDataStorage, links) {
 
     private val myRepoStateListener: RepositoryStateListenerAdapter = object : RepositoryStateListenerAdapter() {
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {
@@ -46,66 +45,6 @@ class WebHooksManager(links: WebLinks,
 
     companion object {
         private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
-    }
-
-    val CreateWebHook = object : Action<HookAddOperationResult, ActionContext> {
-        @Throws(GitHubAccessException::class)
-        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookAddOperationResult {
-            val repo = info.getRepositoryId()
-            val service = RepositoryService(client)
-
-            if (context.getHook(info) != null) {
-                return HookAddOperationResult.AlreadyExists
-            }
-
-            // First, check for already existing hooks, otherwise Github will answer with code 422
-            // If we cannot get hooks, we cannot add new one
-            // TODO: Consider handling GitHubAccessException
-            GetAllWebHooksAction.doRun(info, client, user, context)
-
-            if (context.getHook(info) != null) {
-                return HookAddOperationResult.AlreadyExists
-            }
-
-            val authData = myAuthDataStorage.create(user, info, false)
-
-            val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
-                    "url" to context.getCallbackUrl(authData),
-                    "content_type" to "json",
-                    "secret" to authData.secret
-                    // TODO: Investigate ssl option
-            ))
-
-            val created: RepositoryHook
-            try {
-                created = service.createHook(repo, hook)
-            } catch(e: RequestException) {
-                when (e.status) {
-                    401 -> throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
-                    403, 404 -> {
-                        // ? No access
-                        val pair = TokensHelper.getHooksAccessType(client) ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess)// Weird. No header?
-                        if (pair.first <= TokensHelper.HookAccessType.READ) throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
-                        throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
-                    }
-                    422 -> {
-                        if (e.error.errors.any { it.resource.equals("hook", true) && it.message.contains("already exists") }) {
-                            // Already exists
-                            // TODO: Handle AuthData
-                            // TODO: Remove existing hook if there no auth data know here.
-                            return HookAddOperationResult.AlreadyExists
-                        }
-                    }
-                }
-                throw e
-            }
-
-            context.addHook(created, info.server, repo)
-
-            myAuthDataStorage.store(authData)
-            return HookAddOperationResult.Created
-
-        }
     }
 
     val DeleteWebHook = object : Action<HookDeleteOperationResult, ActionContext> {
@@ -155,7 +94,7 @@ class WebHooksManager(links: WebLinks,
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
-        return CreateWebHook.doRun(info, client, user, this)
+        return CreateWebHookAction.doRun(info, client, user, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)

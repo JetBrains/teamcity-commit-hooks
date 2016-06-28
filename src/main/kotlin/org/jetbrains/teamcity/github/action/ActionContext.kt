@@ -9,6 +9,7 @@ import org.jetbrains.teamcity.github.WebHooksStorage
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 
 open class ActionContext(val storage: WebHooksStorage,
+                         val authDataStorage: AuthDataStorage,
                          protected val links: WebLinks) {
 
     fun getCallbackUrl(authData: AuthDataStorage.AuthData? = null): String {
