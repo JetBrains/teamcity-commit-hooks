@@ -92,14 +92,22 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun create(user: SUser, repository: GitHubRepositoryInfo): AuthData {
+    fun create(user: SUser, repository: GitHubRepositoryInfo, store: Boolean = true): AuthData {
         val (public, secret) = generate()
         val data = AuthData(user.id, secret, public, repository)
-        myCacheLock.write {
-            myCache.invalidate(public)
-            myCache.write(public, data.toJson())
+        if (store) {
+            store(data)
         }
         return data
+    }
+
+    fun store(data: AuthData) {
+        myCacheLock.write {
+            myCacheLock.write {
+                myCache.invalidate(data.public)
+                myCache.write(data.public, data.toJson())
+            }
+        }
     }
 
     private fun generate(): Pair<String, String> {

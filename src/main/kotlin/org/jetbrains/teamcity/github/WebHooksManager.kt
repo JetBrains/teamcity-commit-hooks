@@ -138,15 +138,6 @@ class WebHooksManager(private val links: WebLinks,
                 return HookAddOperationResult.AlreadyExists
             }
 
-            val authData = myAuthDataStorage.create(user, info);
-
-            val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
-                    "url" to getCallbackUrl(authData),
-                    "content_type" to "json",
-                    "secret" to authData.secret
-                    // TODO: Investigate ssl option
-            ))
-
             // First, check for already existing hooks, otherwise Github will answer with code 422
             // If we cannot get hooks, we cannot add new one
             // TODO: Consider handling GitHubAccessException
@@ -155,6 +146,15 @@ class WebHooksManager(private val links: WebLinks,
             if (getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
             }
+
+            val authData = myAuthDataStorage.create(user, info, false);
+
+            val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
+                    "url" to getCallbackUrl(authData),
+                    "content_type" to "json",
+                    "secret" to authData.secret
+                    // TODO: Investigate ssl option
+            ))
 
             val created: RepositoryHook
             try {
@@ -179,6 +179,8 @@ class WebHooksManager(private val links: WebLinks,
             }
 
             addHook(created, info.server, repo)
+
+            myAuthDataStorage.store(authData)
             return HookAddOperationResult.Created
 
         }
@@ -229,15 +231,18 @@ class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
+    fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
         return CreateWebHook.doRun(info, client, user)
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
+    fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
         return GetAllWebHooks.doRun(info, client, user)
     }
 
-    @Throws(IOException::class, RequestException::class, GitHubAccessException::class) fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
+    fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
         return DeleteWebHook.doRun(info, client, user)
     }
 
