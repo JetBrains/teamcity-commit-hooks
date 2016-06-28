@@ -27,6 +27,9 @@ import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
 import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
+import org.jetbrains.teamcity.github.action.HookAddOperationResult
+import org.jetbrains.teamcity.github.action.HookDeleteOperationResult
+import org.jetbrains.teamcity.github.action.HooksGetOperationResult
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
@@ -262,10 +265,10 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         when (result) {
-            WebHooksManager.HookAddOperationResult.AlreadyExists -> {
+            HookAddOperationResult.AlreadyExists -> {
                 return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
-            WebHooksManager.HookAddOperationResult.Created -> {
+            HookAddOperationResult.Created -> {
                 return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
             }
         }
@@ -275,10 +278,10 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         when (result) {
-            WebHooksManager.HookAddOperationResult.AlreadyExists -> {
+            HookAddOperationResult.AlreadyExists -> {
                 return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
-            WebHooksManager.HookAddOperationResult.Created -> {
+            HookAddOperationResult.Created -> {
                 return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
             }
         }
@@ -289,7 +292,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
         when (result) {
-            WebHooksManager.HooksGetOperationResult.Ok -> {
+            HooksGetOperationResult.Ok -> {
                 val hook = myWebHooksManager.getHook(info)
                 if (hook != null) {
                     return gh_json(result.name, "Updated hook info for repository '${info.toString()}'", info)
@@ -304,10 +307,10 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     private fun doPingWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doGetAllWebHooks(info, ghc, user)
         when (result) {
-            WebHooksManager.HooksGetOperationResult.Ok -> {
+            HooksGetOperationResult.Ok -> {
                 val hook = myWebHooksManager.getHook(info)
                 // Ensure test message was sent
-                myWebHooksManager.TestWebHook.doRun(info, ghc, user)
+                myWebHooksManager.doTestWebHook(info, ghc, user)
                 if (hook != null) {
                     return gh_json(result.name, "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
                 } else {
@@ -321,10 +324,10 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     private fun doDeleteWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
         val result = myWebHooksManager.doUnRegisterWebHook(info, ghc, user)
         when (result) {
-            WebHooksManager.HookDeleteOperationResult.NeverExisted -> {
+            HookDeleteOperationResult.NeverExisted -> {
                 return gh_json(result.name, "Hook for repository '${info.toString()}' never existed", info)
             }
-            WebHooksManager.HookDeleteOperationResult.Removed -> {
+            HookDeleteOperationResult.Removed -> {
                 return gh_json(result.name, "Removed hook for repository '${info.toString()}'", info)
             }
         }

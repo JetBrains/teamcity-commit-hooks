@@ -13,6 +13,7 @@ import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
+import org.jetbrains.teamcity.github.action.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import java.io.IOException
 import java.util.*
@@ -48,32 +49,9 @@ class WebHooksManager(private val links: WebLinks,
         private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
     }
 
-    enum class HooksGetOperationResult {
-        Ok
-    }
-
-    enum class HookTestOperationResult {
-        NotFound,
-        Ok
-    }
-
-    enum class HookAddOperationResult {
-        AlreadyExists,
-        Created,
-    }
-
-    enum class HookDeleteOperationResult {
-        Removed,
-        NeverExisted,
-    }
-
-    interface Operation<ORT : Enum<ORT>> {
-        @Throws(GitHubAccessException::class) fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): ORT
-    }
-
-    val GetAllWebHooks = object : Operation<HooksGetOperationResult> {
+    val GetAllWebHooks = object : Action<HooksGetOperationResult, ActionContext> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HooksGetOperationResult {
             val service = RepositoryService(client)
             val repo = info.getRepositoryId()
             try {
@@ -105,11 +83,11 @@ class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    val TestWebHook = object : Operation<HookTestOperationResult> {
+    val TestWebHook = object : Action<HookTestOperationResult, ActionContext> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookTestOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookTestOperationResult {
             val service = RepositoryService(client)
-            val hook = getHook(info) ?: return HookTestOperationResult.NotFound
+            val hook = context.storage.getHook(info) ?: return HookTestOperationResult.NotFound
             try {
                 service.testHook(info.getRepositoryId(), hook.id.toInt())
             } catch(e: RequestException) {
@@ -128,9 +106,9 @@ class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    val CreateWebHook = object : Operation<HookAddOperationResult> {
+    val CreateWebHook = object : Action<HookAddOperationResult, ActionContext> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookAddOperationResult {
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
@@ -141,7 +119,7 @@ class WebHooksManager(private val links: WebLinks,
             // First, check for already existing hooks, otherwise Github will answer with code 422
             // If we cannot get hooks, we cannot add new one
             // TODO: Consider handling GitHubAccessException
-            GetAllWebHooks.doRun(info, client, user)
+            GetAllWebHooks.doRun(info, client, user, context)
 
             if (getHook(info) != null) {
                 return HookAddOperationResult.AlreadyExists
@@ -186,9 +164,9 @@ class WebHooksManager(private val links: WebLinks,
         }
     }
 
-    val DeleteWebHook = object : Operation<HookDeleteOperationResult> {
+    val DeleteWebHook = object : Action<HookDeleteOperationResult, ActionContext> {
         @Throws(GitHubAccessException::class)
-        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
+        override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookDeleteOperationResult {
             val repo = info.getRepositoryId()
             val service = RepositoryService(client)
 
@@ -200,7 +178,7 @@ class WebHooksManager(private val links: WebLinks,
             }
 
             // TODO: Consider handling GitHubAccessException
-            GetAllWebHooks.doRun(info, client, user)
+            GetAllWebHooks.doRun(info, client, user, context)
 
             hook = getHook(info)
 
@@ -233,17 +211,22 @@ class WebHooksManager(private val links: WebLinks,
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookAddOperationResult {
-        return CreateWebHook.doRun(info, client, user)
+        return CreateWebHook.doRun(info, client, user, ActionContext(myStorage))
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HooksGetOperationResult {
-        return GetAllWebHooks.doRun(info, client, user)
+        return GetAllWebHooks.doRun(info, client, user, ActionContext(myStorage))
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
     fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
-        return DeleteWebHook.doRun(info, client, user)
+        return DeleteWebHook.doRun(info, client, user, ActionContext(myStorage))
+    }
+
+    @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
+    fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, user: SUser): HookTestOperationResult {
+       return TestWebHook.doRun(info, ghc, user, ActionContext(myStorage))
     }
 
 
