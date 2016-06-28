@@ -15,6 +15,6 @@ class HMacUtilTest {
     private fun doHMacTest(key: ByteArray, message: ByteArray, expected: String) {
         val signature = HMacUtil.calculateHMac(message, key)
         println("Signature for key '${key.toString(Charset.defaultCharset())}', message '${message.toString(Charset.defaultCharset())}' is $signature")
-        Assert.assertEquals(signature, expected);
+        Assert.assertEquals(signature, expected)
     }
 }

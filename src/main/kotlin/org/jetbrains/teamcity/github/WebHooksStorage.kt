@@ -32,7 +32,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
             if (split.size < 3) throw IllegalArgumentException("Not an proper key: \"$key\"")
             val name = split[split.lastIndex]
             val owner = split[split.lastIndex - 1]
-            val server = split.dropLast(2).joinToString("/");
+            val server = split.dropLast(2).joinToString("/")
             return Triple(server, owner, name)
         }
     }
@@ -111,7 +111,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
         val hook = getHook(server, repo)
         if (hook != null) return hook
         myCacheLock.write {
-            var info: HookInfo? = myCache.read(toKey(server, repo))?.let { HookInfo.fromJson(it) };
+            var info: HookInfo? = myCache.read(toKey(server, repo))?.let { HookInfo.fromJson(it) }
             if (info != null) {
                 return info
             }

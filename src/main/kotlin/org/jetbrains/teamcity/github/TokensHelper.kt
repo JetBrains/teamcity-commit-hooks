@@ -20,7 +20,7 @@ class TokensHelper {
     companion object {
         fun getHooksAccessType(client: GitHubClientEx): Pair<HookAccessType, RepoAccessType>? {
             val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: return null
-            return getHooksAccessType(scopes);
+            return getHooksAccessType(scopes)
         }
 
         fun getHooksAccessType(scopes: List<String>): Pair<HookAccessType, RepoAccessType> {
@@ -57,7 +57,7 @@ class TokensHelper {
     }
 
     fun getConnections(project: SProject, server: String): List<OAuthConnectionDescriptor> {
-        return Util.findConnections(connectionsManager, project, server);
+        return Util.findConnections(connectionsManager, project, server)
     }
 
     fun getExistingTokens(connections: List<OAuthConnectionDescriptor>, user: SUser): Map<OAuthConnectionDescriptor, List<OAuthToken>> {

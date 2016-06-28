@@ -28,12 +28,12 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
                 val value = map.getOrPut(info, { MultiMap() })
                 if (rootInstance.parent.properties[Constants.VCS_PROPERTY_GIT_URL] == rootInstance.properties[Constants.VCS_PROPERTY_GIT_URL]) {
                     // Not parametrized url
-                    value.putValue(rootInstance.parent, rootInstance);
+                    value.putValue(rootInstance.parent, rootInstance)
                 } else {
                     value.putValue(null, rootInstance)
                 }
             }
-            return map;
+            return map
         }
 
         fun getProjects(map: MultiMap<SVcsRoot?, VcsRootInstance>): Set<SProject> {
@@ -51,7 +51,7 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
     }
 
     override fun getCategories(): MutableCollection<ItemCategory> {
-        return arrayListOf(CATEGORY);
+        return arrayListOf(CATEGORY)
     }
 
     override fun canReportItemsFor(scope: HealthStatusScope): Boolean {

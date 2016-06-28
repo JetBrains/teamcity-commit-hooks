@@ -80,7 +80,7 @@ class WebHooksManager(private val links: WebLinks,
                 val hooks = service.getHooks(repo)
                 // TODO: Check AuthData.user == user
                 val filtered = hooks.filter { it.name == "web" && it.config["url"].orEmpty().startsWith(getCallbackUrl()) && it.config["content_type"] == "json" }
-                updateHooks(info.server, repo, filtered);
+                updateHooks(info.server, repo, filtered)
             } catch(e: RequestException) {
                 when (e.status) {
                     401 -> {
@@ -147,7 +147,7 @@ class WebHooksManager(private val links: WebLinks,
                 return HookAddOperationResult.AlreadyExists
             }
 
-            val authData = myAuthDataStorage.create(user, info, false);
+            val authData = myAuthDataStorage.create(user, info, false)
 
             val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
                     "url" to getCallbackUrl(authData),
@@ -270,7 +270,7 @@ class WebHooksManager(private val links: WebLinks,
         if (authData == null) {
             return base
         }
-        return base + '/' + authData.public;
+        return base + '/' + authData.public
     }
 
     private fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {

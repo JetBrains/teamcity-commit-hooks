@@ -14,7 +14,7 @@ class WebHookPayloadDeserializeTest {
         val file = getTestFile("example-push-payload.json")
         Assertions.assertThat(file).exists().isFile()
         val input = file.readText()
-        Assertions.assertThat(input).isNotEmpty();
+        Assertions.assertThat(input).isNotEmpty()
         val event = GsonUtilsEx.fromJson(input, PushWebHookPayload::class.java)
         Assertions.assertThat(event).isNotNull()
         Assertions.assertThat(event.repository).isNotNull()
@@ -26,7 +26,7 @@ class WebHookPayloadDeserializeTest {
         val file = getTestFile("example-ping-payload.json")
         Assertions.assertThat(file).exists().isFile()
         val input = file.readText()
-        Assertions.assertThat(input).isNotEmpty();
+        Assertions.assertThat(input).isNotEmpty()
         val event = GsonUtilsEx.fromJson(input, PingWebHookPayload::class.java)
         Assertions.assertThat(event).isNotNull()
         Assertions.assertThat(event.hook).isNotNull()

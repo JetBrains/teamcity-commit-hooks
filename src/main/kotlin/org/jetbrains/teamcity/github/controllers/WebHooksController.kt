@@ -240,7 +240,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                         if (element != null) return element
                     } catch(e: GitHubAccessException) {
                         element = getErrorResult(e, connection, info, token)
-                        if (element != null) return element;
+                        if (element != null) return element
                     } catch(e: RequestException) {
                         postponedResult = error_json("Exception: ${e.message}", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         LOG.warnAndDebugDetails("Unexpected response from github server", e)
@@ -430,7 +430,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                             }
                         } catch(e: GitHubAccessException) {
                             val element = getErrorResult(e, connection, info, token)
-                            if (element != null) elements.add(element);
+                            if (element != null) elements.add(element)
                         } catch(e: RequestException) {
                             LOG.warnAndDebugDetails("Unexpected response from github server", e)
                         } catch(e: UnknownHostException) {
@@ -477,7 +477,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
         }
         val vcsRoot = myServer.vcsManager.findRootById(vcsRootId) ?: return error_json("VCS Root specified by parameter 'vcsRootId'($vcsRootId) not found", HttpServletResponse.SC_NOT_FOUND)
         try {
-            vcsRoot.modificationCheckInterval = 3600;
+            vcsRoot.modificationCheckInterval = 3600
         } catch(e: AccessDeniedException) {
             return error_json("Access Denied:" + (e.message ?: ""), HttpServletResponse.SC_FORBIDDEN)
         }

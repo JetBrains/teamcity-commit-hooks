@@ -20,7 +20,7 @@ class GitHubWebHookOutdatedHealthReport(private val WebHooksManager: WebHooksMan
     }
 
     override fun getCategories(): MutableCollection<ItemCategory> {
-        return arrayListOf(CATEGORY);
+        return arrayListOf(CATEGORY)
     }
 
     override fun canReportItemsFor(scope: HealthStatusScope): Boolean {

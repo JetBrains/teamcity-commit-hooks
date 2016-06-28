@@ -60,7 +60,7 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
      */
     override fun isAvailable(request: HttpServletRequest): Boolean {
         val superIsAvailable = super.isAvailable(request)
-        if (!superIsAvailable) return false;
+        if (!superIsAvailable) return false
         val project = getProject(request) ?: return false
         val user = SessionUser.getUser(request) ?: return false
 
@@ -122,7 +122,7 @@ class ProjectWebHooksBean(val project: SProject,
                           val oAuthConnectionsManager: OAuthConnectionsManager) {
     val hooks: SortedMap<GitHubRepositoryInfo, WebHookDetails> = TreeMap(comparator)
 
-    val form: ProjectWebHooksForm = ProjectWebHooksForm();
+    val form: ProjectWebHooksForm = ProjectWebHooksForm()
     val pager: Pager = Pager(50)
 
     companion object {
@@ -190,7 +190,7 @@ class ProjectWebHooksBean(val project: SProject,
         for (server in servers) {
             val connections = helper.getConnections(project, server)
             val tokens = helper.getExistingTokens(connections, user)
-            map.put(server, !connections.isNotEmpty() || !tokens.isNotEmpty());
+            map.put(server, !connections.isNotEmpty() || !tokens.isNotEmpty())
         }
         return map
     }

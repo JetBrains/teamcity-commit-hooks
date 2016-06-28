@@ -14,13 +14,13 @@ data class GitHubRepositoryInfo(val server: String, val owner: String, val name:
         writer.name("server").value(server)
         writer.name("owner").value(owner)
         writer.name("name").value(name)
-        writer.endObject();
+        writer.endObject()
         writer.flush()
         return sw.toString()
     }
 
     fun isHasParameterReferences(): Boolean {
-        return StringUtil.hasParameterReferences(server) || StringUtil.hasParameterReferences(owner) || StringUtil.hasParameterReferences(name);
+        return StringUtil.hasParameterReferences(server) || StringUtil.hasParameterReferences(owner) || StringUtil.hasParameterReferences(name)
     }
 
     override fun toString(): String {

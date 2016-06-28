@@ -85,13 +85,13 @@ class Util {
         fun isSuitableVcsRoot(root: VcsRoot, checkUrl: Boolean = true): Boolean {
             if (root.vcsName != Constants.VCS_NAME_GIT) return false
             val url = root.properties[Constants.VCS_PROPERTY_GIT_URL] ?: return false
-            if (!checkUrl) return true;
+            if (!checkUrl) return true
             if (StringUtil.hasParameterReferences(url)) return false
             return getGitHubInfo(url) != null
         }
 
         fun findSuitableRoots(scope: HealthStatusScope, collector: (VcsRootInstance) -> Boolean) {
-            findSuitableRoots(scope.buildTypes, false, collector);
+            findSuitableRoots(scope.buildTypes, false, collector)
         }
 
         fun findSuitableRoots(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
@@ -104,7 +104,7 @@ class Util {
                 if (!archived && bt.project.isArchived) continue
                 for (it in bt.vcsRootInstances) {
                     if (isSuitableVcsRoot(it, false)) {
-                        if (!collector(it)) return;
+                        if (!collector(it)) return
                     }
                 }
             }
