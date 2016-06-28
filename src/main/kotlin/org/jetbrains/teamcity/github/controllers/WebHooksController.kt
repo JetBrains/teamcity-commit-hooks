@@ -20,6 +20,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.PropertiesUtil
+import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
@@ -374,13 +375,13 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
         }
         // TODO: Support popup && connection
 
-        val allGitVcsInstances = HashSet<VcsRootInstance>()
-        Util.findSuitableInstances(project, recursive = recursive) {
-            allGitVcsInstances.add(it)
+        val allGitVcsRoots = HashSet<SVcsRoot>()
+        Util.findSuitableRoots(project, recursive = recursive) {
+            allGitVcsRoots.add(it)
             true
         }
 
-        val mapServerToInfos = allGitVcsInstances
+        val mapServerToInfos = allGitVcsRoots
                 .mapNotNull { Util.Companion.getGitHubInfo(it) }
                 .toHashSet()
                 // Filter by connection (if any specified)

@@ -90,13 +90,7 @@ class Util {
             if (StringUtil.hasParameterReferences(url)) return false
             return getGitHubInfo(url) != null
         }
-
-        @Deprecated("#findSuitableRoots should be used to reduce load on server due to VcsInstances calculation",
-                ReplaceWith("findSuitableRoots(scope.buildTypes, false, collector)", "org.jetbrains.teamcity.github.Util.Companion.findSuitableRoots"))
-        fun findSuitableInstances(scope: HealthStatusScope, collector: (VcsRootInstance) -> Boolean) {
-            findSuitableInstances(scope.buildTypes, false, collector)
-        }
-
+        
         @Deprecated("#findSuitableRoots should be used to reduce load on server due to VcsInstances calculation")
         fun findSuitableInstances(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
             val list = if (recursive) project.buildTypes else project.ownBuildTypes
