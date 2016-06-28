@@ -1,5 +1,6 @@
 package org.jetbrains.teamcity.github
 
+import jetbrains.buildServer.dataStructures.MultiMapToSet
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
@@ -36,12 +37,28 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
             return map
         }
 
+        fun splitRoots(vcsRoots: Set<SVcsRoot>): MultiMapToSet<GitHubRepositoryInfo, SVcsRoot> {
+            val map = MultiMapToSet<GitHubRepositoryInfo, SVcsRoot>();
+
+            for (root in vcsRoots) {
+                val info = Util.Companion.getGitHubInfo(root) ?: continue
+
+                // Ignore roots with unresolved references in url
+                if (info.isHasParameterReferences()) continue
+
+                map.add(info, root);
+            }
+            return map
+        }
+
         fun getProjects(map: MultiMap<SVcsRoot?, VcsRootInstance>): Set<SProject> {
             val result = HashSet<SProject>()
             map[null]?.forEach { result.add(it.parent.project) }
             map.keySet().filterNotNull().forEach { result.add(it.project) }
             return result
         }
+
+        fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet<SProject>())
     }
 
     override fun getType(): String = TYPE
@@ -57,53 +74,41 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
     override fun canReportItemsFor(scope: HealthStatusScope): Boolean {
         if (!scope.isItemWithSeverityAccepted(CATEGORY.severity)) return false
         var found = false
-        Util.findSuitableInstances(scope) { found = true; false }
+        Util.findSuitableRoots(scope) { found = true; false }
         return found
     }
 
 
     override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
-        val gitRootInstances = HashSet<VcsRootInstance>()
-        Util.findSuitableInstances(scope, { gitRootInstances.add(it); true })
+        val gitRoots = HashSet<SVcsRoot>()
+        Util.findSuitableRoots(scope, { gitRoots.add(it); true })
 
-        val split = split(gitRootInstances)
+        val split = splitRoots(gitRoots)
 
-        val filtered = split
-                .filterKeys {
-                    val hook = WebHooksManager.getHook(it)
+        val filtered = split.entrySet()
+                .filter {
+                    val hook = WebHooksManager.getHook(it.key)
                     hook == null || getHookStatus(hook).status == Status.OK
                 }
-                .filter { entry ->
+                .filter {
                     // Filter by known servers
-                    entry.key.server == "github.com" || getProjects(entry.value).any { project -> Util.findConnections(OAuthConnectionsManager, project, entry.key.server).isNotEmpty() }
+                    it.key.server == "github.com" || getProjects(it.value).any { project -> Util.findConnections(OAuthConnectionsManager, project, it.key.server).isNotEmpty() }
                 }
 
-        for ((info, map) in filtered) {
+        for ((info, roots) in filtered) {
             val hook = WebHooksManager.getHook(info)
             val status = getHookStatus(hook).status
             if (hook != null && status != Status.OK) {
                 // Something changes since filtering on '.filterKeys' above
                 continue
             }
-            for ((root, instances) in map.entrySet()) {
-                if (root == null) {
-                    if (hook == null) {
-                        // 'Add WebHook' part
-                        for (rootInstance in instances) {
-                            val item = WebHookAddHookHealthItem(info, rootInstance)
-                            resultConsumer.consumeForVcsRoot(rootInstance.parent, item)
-                            resultConsumer.consumeForProject(rootInstance.parent.project, item)
-                            rootInstance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
-                        }
-                    }
-                    continue
-                }
+            for (root in roots) {
                 if (hook == null) {
                     // 'Add WebHook' part
                     val item = WebHookAddHookHealthItem(info, root)
                     resultConsumer.consumeForVcsRoot(root, item)
-                    resultConsumer.consumeForProject(root.project, item)
-                    root.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
+                    root.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
+                    root.usagesInProjects.plus(root.project).toSet().forEach { resultConsumer.consumeForProject(it, item) }
                 }
             }
         }
