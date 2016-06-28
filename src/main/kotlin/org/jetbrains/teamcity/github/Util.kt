@@ -9,6 +9,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GHEOAuthProvider
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.serverSide.oauth.github.GitHubOAuthProvider
 import jetbrains.buildServer.util.StringUtil
+import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
 
@@ -90,19 +91,43 @@ class Util {
             return getGitHubInfo(url) != null
         }
 
-        fun findSuitableRoots(scope: HealthStatusScope, collector: (VcsRootInstance) -> Boolean) {
+        @Deprecated("#findSuitableRoots should be used to reduce load on server due to VcsInstances calculation",
+                ReplaceWith("findSuitableRoots(scope.buildTypes, false, collector)", "org.jetbrains.teamcity.github.Util.Companion.findSuitableRoots"))
+        fun findSuitableInstances(scope: HealthStatusScope, collector: (VcsRootInstance) -> Boolean) {
+            findSuitableInstances(scope.buildTypes, false, collector)
+        }
+
+        @Deprecated("#findSuitableRoots should be used to reduce load on server due to VcsInstances calculation")
+        fun findSuitableInstances(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
+            val list = if (recursive) project.buildTypes else project.ownBuildTypes
+            findSuitableInstances(list, archived, collector)
+        }
+
+        @Deprecated("#findSuitableRoots should be used to reduce load on server due to VcsInstances calculation")
+        private fun findSuitableInstances(buildTypes: Collection<SBuildType>, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
+            for (bt in buildTypes) {
+                if (!archived && bt.project.isArchived) continue
+                for (it in bt.vcsRootInstances) {
+                    if (isSuitableVcsRoot(it, false)) {
+                        if (!collector(it)) return
+                    }
+                }
+            }
+        }
+
+        fun findSuitableRoots(scope: HealthStatusScope, collector: (SVcsRoot) -> Boolean) {
             findSuitableRoots(scope.buildTypes, false, collector)
         }
 
-        fun findSuitableRoots(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
+        fun findSuitableRoots(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (SVcsRoot) -> Boolean) {
             val list = if (recursive) project.buildTypes else project.ownBuildTypes
             findSuitableRoots(list, archived, collector)
         }
 
-        fun findSuitableRoots(buildTypes: Collection<SBuildType>, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
+        fun findSuitableRoots(buildTypes: Collection<SBuildType>, archived: Boolean = false, collector: (SVcsRoot) -> Boolean) {
             for (bt in buildTypes) {
                 if (!archived && bt.project.isArchived) continue
-                for (it in bt.vcsRootInstances) {
+                for (it in bt.vcsRoots) {
                     if (isSuitableVcsRoot(it, false)) {
                         if (!collector(it)) return
                     }

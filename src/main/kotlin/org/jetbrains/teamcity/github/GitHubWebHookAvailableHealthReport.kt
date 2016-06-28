@@ -57,14 +57,14 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
     override fun canReportItemsFor(scope: HealthStatusScope): Boolean {
         if (!scope.isItemWithSeverityAccepted(CATEGORY.severity)) return false
         var found = false
-        Util.findSuitableRoots(scope) { found = true; false }
+        Util.findSuitableInstances(scope) { found = true; false }
         return found
     }
 
 
     override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
         val gitRootInstances = HashSet<VcsRootInstance>()
-        Util.findSuitableRoots(scope, { gitRootInstances.add(it); true })
+        Util.findSuitableInstances(scope, { gitRootInstances.add(it); true })
 
         val split = split(gitRootInstances)
 

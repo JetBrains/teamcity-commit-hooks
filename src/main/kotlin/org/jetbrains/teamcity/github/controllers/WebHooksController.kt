@@ -375,7 +375,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
         // TODO: Support popup && connection
 
         val allGitVcsInstances = HashSet<VcsRootInstance>()
-        Util.findSuitableRoots(project, recursive = recursive) {
+        Util.findSuitableInstances(project, recursive = recursive) {
             allGitVcsInstances.add(it)
             true
         }

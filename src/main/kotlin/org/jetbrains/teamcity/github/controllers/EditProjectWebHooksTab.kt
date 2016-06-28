@@ -149,7 +149,7 @@ class ProjectWebHooksBean(val project: SProject,
         val usages: MutableMap<VcsRootInstance, VcsRootUsages> = HashMap()
 
         val allGitVcsInstances = HashSet<VcsRootInstance>()
-        Util.findSuitableRoots(project, recursive = form.recursive) {
+        Util.findSuitableInstances(project, recursive = form.recursive) {
             allGitVcsInstances.add(it)
             true
         }
