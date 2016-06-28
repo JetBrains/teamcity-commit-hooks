@@ -1,10 +1,6 @@
 package org.jetbrains.teamcity.github
 
 import com.google.gson.GsonBuilder
-import com.google.gson.TypeAdapter
-import com.google.gson.stream.JsonReader
-import com.google.gson.stream.JsonToken
-import com.google.gson.stream.JsonWriter
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
@@ -12,6 +8,7 @@ import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.util.cache.SCacheImpl
 import org.eclipse.egit.github.core.RepositoryId
+import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -46,23 +43,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
                         var lastUsed: Date? = null,
                         var lastBranchRevisions: MutableMap<String, String>? = null) {
         companion object {
-            private val gson = GsonBuilder().registerTypeAdapter(Date::class.java, object : TypeAdapter<Date>() {
-                override fun read(reader: JsonReader): Date? {
-                    if (reader.peek() == JsonToken.NULL) {
-                        reader.nextNull()
-                        return null
-                    }
-                    return Date(reader.nextLong())
-                }
-
-                override fun write(out: JsonWriter, value: Date?) {
-                    if (value == null) {
-                        out.nullValue()
-                        return
-                    }
-                    out.value(value.time)
-                }
-            }).create()
+            private val gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()
 
             fun fromJson(string: String): HookInfo? = gson.fromJson(string, HookInfo::class.java)
             fun toJson(info: HookInfo): String = gson.toJson(info)
