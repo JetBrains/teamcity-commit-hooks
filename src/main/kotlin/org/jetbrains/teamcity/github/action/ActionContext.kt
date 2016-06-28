@@ -4,11 +4,10 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.WebLinks
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
-import org.jetbrains.teamcity.github.AuthDataStorage
-import org.jetbrains.teamcity.github.GitHubRepositoryInfo
-import org.jetbrains.teamcity.github.WebHooksStorage
-import org.jetbrains.teamcity.github.callbackUrl
+import org.eclipse.egit.github.core.client.RequestException
+import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
+import java.net.HttpURLConnection
 
 open class ActionContext(val storage: WebHooksStorage,
                          val authDataStorage: AuthDataStorage,
@@ -63,5 +62,17 @@ open class ActionContext(val storage: WebHooksStorage,
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
         return storage.getHook(info)
+    }
+
+    @Throws(GitHubAccessException::class)
+    fun tryHandleError(e: RequestException) {
+        when (e.status) {
+            HttpURLConnection.HTTP_INTERNAL_ERROR -> {
+                throw GitHubAccessException(GitHubAccessException.Type.InternalServerError)
+            }
+            HttpURLConnection.HTTP_UNAUTHORIZED -> {
+                throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
+            }
+        }
     }
 }

@@ -44,10 +44,8 @@ object GetAllWebHooksAction {
             context.updateHooks(info.server, repo, filtered)
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to load webhooks for repository $info: ${e.status}", e)
+            context.tryHandleError(e)
             when (e.status) {
-                HTTP_UNAUTHORIZED -> {
-                    throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
-                }
                 HTTP_NOT_FOUND, HTTP_FORBIDDEN -> {
                     // No access
                     // Probably token does not have permissions
@@ -59,10 +57,6 @@ object GetAllWebHooksAction {
                         TokensHelper.HookAccessType.READ -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
                         TokensHelper.HookAccessType.WRITE, TokensHelper.HookAccessType.ADMIN -> throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)
                     }
-                }
-                HTTP_INTERNAL_ERROR -> {
-                    // GH error, try later
-                    // TODO: Throw proper exception
                 }
             }
             throw e

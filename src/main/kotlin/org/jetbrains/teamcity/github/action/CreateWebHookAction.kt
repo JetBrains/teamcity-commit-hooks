@@ -1,5 +1,6 @@
 package org.jetbrains.teamcity.github.action
 
+import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
 import org.eclipse.egit.github.core.RepositoryHook
@@ -9,6 +10,9 @@ import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 
 object CreateWebHookAction {
+
+    private val LOG = Logger.getInstance(CreateWebHookAction::class.java.name)
+
     @Throws(GitHubAccessException::class)
     fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): Pair<HookAddOperationResult, AuthDataStorage.AuthData?> {
         val repo = info.getRepositoryId()
@@ -46,8 +50,9 @@ object CreateWebHookAction {
         try {
             created = service.createHook(repo, hook)
         } catch(e: RequestException) {
+            LOG.warnAndDebugDetails("Failed to create webhook for repository $info: ${e.status}", e)
+            context.tryHandleError(e)
             when (e.status) {
-                401 -> throw GitHubAccessException(GitHubAccessException.Type.InvalidCredentials)
                 403, 404 -> {
                     // ? No access
                     val pair = TokensHelper.getHooksAccessType(client) ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess)// Weird. No header?

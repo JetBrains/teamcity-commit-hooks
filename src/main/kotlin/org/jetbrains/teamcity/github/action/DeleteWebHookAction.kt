@@ -1,5 +1,6 @@
 package org.jetbrains.teamcity.github.action
 
+import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
 import org.eclipse.egit.github.core.RepositoryId
@@ -11,6 +12,8 @@ import org.jetbrains.teamcity.github.TokensHelper
 import org.jetbrains.teamcity.github.WebHooksStorage
 
 object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
+    private val LOG = Logger.getInstance(DeleteWebHookAction::class.java.name)
+
     @Throws(GitHubAccessException::class)
     override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookDeleteOperationResult {
         val repo = info.getRepositoryId()
@@ -40,6 +43,9 @@ object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
         try {
             service.deleteHook(repo, hook.id.toInt())
         } catch(e: RequestException) {
+            LOG.warnAndDebugDetails("Failed to delete webhook for repository $info: ${e.status}", e)
+            // TODO: There was not handel for 401. Investigate
+            context.tryHandleError(e)
             when (e.status) {
                 403, 404 -> {
                     // ? No access
