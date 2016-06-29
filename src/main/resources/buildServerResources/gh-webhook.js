@@ -96,7 +96,7 @@ BS.GitHubWebHooks = {};
             name: "Install",
             progress: "Installing Webhook",
             doHandleResult: function (json, result) {
-                this.doHideProgress(undefined);
+                this.doHideProgress();
                 var good = ["AlreadyExists", "Created"];
                 var info = json['info'];
                 var message = json['message'];
@@ -123,11 +123,14 @@ BS.GitHubWebHooks = {};
                 }
                 onActionSuccessBasic(json, result);
             },
-            doHandleRedirect:function (json) {
+            doHandleRedirect: function (json, id) {
+                WH.forcePopup[WH.getServerUrl(id)] = true;
 
+                $j("#installWebhook").text("Authorize and Install"); // TODO Tooltip?
+                BS.Util.Messages.show(id, 'GitHub authorization needed.');
             },
             doHandleError: function (json) {
-                this.doHideProgress(undefined);
+                this.doHideProgress();
                 var error = json['error'];
                 BS.Util.Messages.show('InstallWebhook', error, {verbosity: 'warn'});
                 $j('#errorRepository').text(error).show();
@@ -136,7 +139,7 @@ BS.GitHubWebHooks = {};
                 BS.Util.show('installProgress');
                 $j('#installButton').attr('disabled', true);
             },
-            doHideProgress: function (element) {
+            doHideProgress: function () {
                 BS.Util.hide('installProgress');
                 $j('#installButton').removeAttr('disabled', false)
             },
@@ -221,7 +224,7 @@ BS.GitHubWebHooks = {};
                 if (json['redirect']) {
                     BS.Log.info("Redirect response received");
                     if (action && action.doHandleRedirect) {
-                        action.doHandleRedirect(json)
+                        action.doHandleRedirect(json, id)
                     } else {
                         var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doAction('" + action.id + "', this, '" + id + "','" + projectId + "', true); return false\">Refresh access token and " + action.name + " webhook</a>";
                         BS.Util.Messages.show(id, 'GitHub authorization needed. ' + link);
