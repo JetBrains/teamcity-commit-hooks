@@ -112,12 +112,9 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
         try {
             if (action in listOf("add", "check", "delete", "ping", "install", null)) {
                 element = doHandleAction(request, action, popup)
-            } else if ("continue-add" == action) {
+            } else if ("continue" == action) {
                 element = doHandleAction(request, action, popup)
                 action = request.getParameter("original_action") ?: "add"
-            } else if ("continue-install" == action) {
-                element = doHandleAction(request, action, popup)
-                action = request.getParameter("original_action") ?: "install"
             } else if ("check-all" == action) {
                 element = doHandleCheckAllAction(request, popup)
             } else if ("get-info" == action) {
