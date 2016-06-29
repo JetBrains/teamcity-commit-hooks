@@ -199,6 +199,11 @@ BS.GitHubWebHooks = {};
         if (projectId !== undefined) {
             parameters["projectId"] = projectId
         }
+        var data_holder = $j(element).parents("[data-connection-id]");
+        if (data_holder) {
+            parameters["connectionId"] = data_holder.attr('data-connection-id');
+            parameters["connectionProjectId"] = data_holder.attr('data-connection-project-id');
+        }
         //noinspection JSUnusedGlobalSymbols
         BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
             method: "post",
@@ -578,7 +583,7 @@ BS.GitHubWebHooks = {};
         $j('#errorRepository').text("").hide();
         BS.Util.Messages.hide({group: 'messages_group_InstallWebhook'});
 
-        return WH.doAction('install', element, repository, projectId, false);
+        return WH.doAction('install', element, repository, projectId);
     }
 })(BS.GitHubWebHooks);
 

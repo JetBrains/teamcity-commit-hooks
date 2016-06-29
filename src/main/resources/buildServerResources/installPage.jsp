@@ -12,10 +12,8 @@
 <%--@elvariable id="has_tokens" type="java.lang.Boolean"--%>
 
 <div class="editProjectPage">
-    <form id="installWebhook">
+    <form id="installWebhook" data-connection-id="${connectionId}" data-connection-project-id="${connectionProjectId}">
         <input type="hidden" id="projectId" value="${currentProject.externalId}">
-        <input type="hidden" id="connectionId" value="${connectionId}">
-        <input type="hidden" id="connectionProjectId" value="${connectionProjectId}">
         <table class="runnerFormTable">
             <tr>
                 <th><label for="repository">Repository url: <l:star/></label></th>
