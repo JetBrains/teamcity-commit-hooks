@@ -126,7 +126,7 @@ BS.GitHubWebHooks = {};
             doHandleRedirect: function (json, id) {
                 WH.forcePopup[WH.getServerUrl(id)] = true;
 
-                $j("#installWebhook").text("Authorize and Install"); // TODO Tooltip?
+                $j("#installWebhookSubmit").text("Authorize and Install"); // TODO Tooltip?
                 BS.Util.Messages.show(id, 'GitHub authorization needed.');
             },
             doHandleError: function (json) {
