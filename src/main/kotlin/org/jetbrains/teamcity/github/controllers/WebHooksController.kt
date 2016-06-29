@@ -238,7 +238,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                         if ("add" == action) {
                             element = doAddWebHook(ghc, info, user)
                         } else if ("check" == action) {
-                            element = doCheckWebHook(ghc, info, user)
+                            element = doCheckWebHook(ghc, info)
                         } else if ("ping" == action) {
                             element = doPingWebHook(ghc, info, user)
                         } else if ("delete" == action) {
@@ -303,7 +303,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
+    private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement? {
         val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
         when (result) {
             HooksGetOperationResult.Ok -> {
@@ -449,7 +449,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                         LOG.info("Trying with token: ${token.oauthLogin}, connector is ${connection.id}")
                         ghc.setOAuth2Token(token.accessToken)
                         try {
-                            val element = doCheckWebHook(ghc, info, user)
+                            val element = doCheckWebHook(ghc, info)
                             if (element != null) {
                                 elements.add(element)
                             }
