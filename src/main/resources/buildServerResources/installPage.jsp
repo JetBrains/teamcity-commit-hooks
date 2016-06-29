@@ -6,6 +6,11 @@
 <jsp:useBean id="connectionId" type="java.lang.String" scope="request"/>
 <jsp:useBean id="connectionProjectId" type="java.lang.String" scope="request"/>
 <jsp:useBean id="cameFrom" type="jetbrains.buildServer.web.util.CameFromSupport" scope="request"/>
+
+<%--@elvariable id="info" type="org.jetbrains.teamcity.github.GitHubRepositoryInfo"--%>
+<%--@elvariable id="has_connections" type="java.lang.Boolean"--%>
+<%--@elvariable id="has_tokens" type="java.lang.Boolean"--%>
+
 <div class="editProjectPage">
     <form id="installWebhook">
         <input type="hidden" id="projectId" value="${currentProject.externalId}">
@@ -30,3 +35,22 @@
     <div id="installResult">
     </div>
 </div>
+<script type="text/javascript">
+    (function () {
+        if (typeof BS.ServerInfo === 'undefined') {
+            BS.ServerInfo = {
+                url: '${serverSummary.rootURL}'
+            };
+        }
+        if (typeof BS.RequestInfo === 'undefined') {
+            BS.RequestInfo = {
+                context_path: '${pageContext.request.contextPath}'
+            };
+        }
+        <c:if test="${info != null}">
+        BS.GitHubWebHooks.info['${info.identifier}'] = ${info.toJson()};
+        BS.GitHubWebHooks.forcePopup['${info.server}'] = ${not has_connections or not has_tokens};
+        </c:if>
+    })();
+</script>
+
