@@ -72,6 +72,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
 
         val cameFrom = CameFromSupport()
         cameFrom.setUrlFromRequest(request, "/admin/editProject.html?projectId=${project.externalId}")
+        cameFrom.setTitleFromRequest(request, null)
         model["cameFrom"] = cameFrom
     }
 
