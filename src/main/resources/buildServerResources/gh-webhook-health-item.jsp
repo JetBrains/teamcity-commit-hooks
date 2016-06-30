@@ -32,9 +32,8 @@
     referencing GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a>
     without configured Webhook:
     <div class="suggestionAction">
-        <c:url var="installTabUrl"
-               value="/admin/editProject.html?projectId=${VcsRoot.project.externalId}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}"/>
-        <forms:addLink href="${installTabUrl}">Install webhook</forms:addLink>
+        <c:set var="projectUrl"><admin:editProjectLink projectId="${VcsRoot.project.externalId}" withoutLink="true"/></c:set>
+        <forms:addLink href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install webhook</forms:addLink>
     </div>
 </div>
 
