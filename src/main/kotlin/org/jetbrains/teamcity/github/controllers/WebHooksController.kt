@@ -287,8 +287,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         result.second?.let {
             it.token = token
-            it.connectionId = connection.id
-            it.connectionProjectId = connection.project.externalId
+            it.connection = AuthDataStorage.ConnectionInfo(connection)
             myAuthDataStorage.store(it);
         }
         when (result.first) {

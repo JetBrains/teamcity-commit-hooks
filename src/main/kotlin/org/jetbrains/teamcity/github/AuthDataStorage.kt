@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
+import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthToken
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
@@ -22,12 +23,16 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
     }
 
+    data class ConnectionInfo(val id: String,
+                              val projectExternalId: String) {
+        constructor(connection: OAuthConnectionDescriptor) : this(connection.id, connection.project.externalId)
+    }
+
     data class AuthData(val userId: Long,
                         val secret: String,
                         val public: String,
                         val repository: GitHubRepositoryInfo,
-                        var connectionId: String? = null,
-                        var connectionProjectId: String? = null,
+                        var connection: ConnectionInfo? = null,
                         var token: OAuthToken? = null) {
         companion object {
             private val gson = GsonBuilder()
@@ -122,6 +127,12 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
             myCacheLock.write {
                 keysToRemove.forEach { myCache.invalidate(it) }
             }
+        }
+    }
+
+    fun delete(pubKey: String) {
+        myCacheLock.write {
+            myCache.invalidate(pubKey)
         }
     }
 

@@ -13,8 +13,9 @@ class AuthDataStorageTest {
         doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, UUID.randomUUID().toString(), UUID.randomUUID().toString(), GitHubRepositoryInfo("server", "owner", "repo")))
 
         val token = OAuthToken("__TOKEN__", "__SCOPE__", "__LOGIN__", 9000, 1000)
-        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, "secret", "public", GitHubRepositoryInfo("server", "owner", "repo"), "CONN_ID", "CONN_PID", token))
-        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, UUID.randomUUID().toString(), UUID.randomUUID().toString(), GitHubRepositoryInfo("server", "owner", "repo"), "CONN_ID", "CONN_PID", token))
+        val connInfo = AuthDataStorage.ConnectionInfo("CONN_ID", "CONN_PID")
+        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, "secret", "public", GitHubRepositoryInfo("server", "owner", "repo"), connInfo, token))
+        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, UUID.randomUUID().toString(), UUID.randomUUID().toString(), GitHubRepositoryInfo("server", "owner", "repo"), connInfo, token))
     }
 
     private fun doAuthDataSerializationTest(first: AuthDataStorage.AuthData) {
@@ -26,8 +27,7 @@ class AuthDataStorageTest {
         then(second.public).isEqualTo(first.public)
         then(second.repository).isEqualTo(first.repository)
         then(second.token).isEqualTo(first.token)
-        then(second.connectionId).isEqualTo(first.connectionId)
-        then(second.connectionProjectId).isEqualTo(first.connectionProjectId)
+        then(second.connection).isEqualTo(first.connection)
         then(second.toJson()).isEqualTo(first.toJson())
         then(second.hashCode()).isEqualTo(first.hashCode())
         then(second).isEqualTo(first)
