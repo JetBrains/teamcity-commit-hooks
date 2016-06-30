@@ -4,9 +4,7 @@ import jetbrains.buildServer.dataStructures.MultiMapToSet
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
-import jetbrains.buildServer.util.MultiMap
 import jetbrains.buildServer.vcs.SVcsRoot
-import jetbrains.buildServer.vcs.VcsRootInstance
 import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.controllers.getHookStatus
 import java.util.*
@@ -16,26 +14,6 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
     companion object {
         val TYPE = "GitHub.WebHookAvailable"
         val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
-
-        fun split(vcsRootInstances: Set<VcsRootInstance>): HashMap<GitHubRepositoryInfo, MultiMap<SVcsRoot?, VcsRootInstance>> {
-            val map = HashMap<GitHubRepositoryInfo, MultiMap<SVcsRoot?, VcsRootInstance>>()
-
-            for (rootInstance in vcsRootInstances) {
-                val info = Util.Companion.getGitHubInfo(rootInstance) ?: continue
-
-                // Ignore roots with unresolved references in url
-                if (info.isHasParameterReferences()) continue
-
-                val value = map.getOrPut(info, { MultiMap() })
-                if (rootInstance.parent.properties[Constants.VCS_PROPERTY_GIT_URL] == rootInstance.properties[Constants.VCS_PROPERTY_GIT_URL]) {
-                    // Not parametrized url
-                    value.putValue(rootInstance.parent, rootInstance)
-                } else {
-                    value.putValue(null, rootInstance)
-                }
-            }
-            return map
-        }
 
         fun splitRoots(vcsRoots: Set<SVcsRoot>): MultiMapToSet<GitHubRepositoryInfo, SVcsRoot> {
             val map = MultiMapToSet<GitHubRepositoryInfo, SVcsRoot>();
@@ -49,13 +27,6 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
                 map.add(info, root);
             }
             return map
-        }
-
-        fun getProjects(map: MultiMap<SVcsRoot?, VcsRootInstance>): Set<SProject> {
-            val result = HashSet<SProject>()
-            map[null]?.forEach { result.add(it.parent.project) }
-            map.keySet().filterNotNull().forEach { result.add(it.project) }
-            return result
         }
 
         fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet<SProject>())

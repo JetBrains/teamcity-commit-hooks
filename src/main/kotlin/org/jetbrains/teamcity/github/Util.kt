@@ -108,24 +108,6 @@ class Util {
             if (StringUtil.hasParameterReferences(url)) return false
             return getGitHubInfo(url) != null
         }
-        
-        @Deprecated("#findSuitableRoots should be used to reduce load on server due to VcsInstances calculation")
-        fun findSuitableInstances(project: SProject, recursive: Boolean = false, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
-            val list = if (recursive) project.buildTypes else project.ownBuildTypes
-            findSuitableInstances(list, archived, collector)
-        }
-
-        @Deprecated("#findSuitableRoots should be used to reduce load on server due to VcsInstances calculation")
-        private fun findSuitableInstances(buildTypes: Collection<SBuildType>, archived: Boolean = false, collector: (VcsRootInstance) -> Boolean) {
-            for (bt in buildTypes) {
-                if (!archived && bt.project.isArchived) continue
-                for (it in bt.vcsRootInstances) {
-                    if (isSuitableVcsRoot(it, false)) {
-                        if (!collector(it)) return
-                    }
-                }
-            }
-        }
 
         fun findSuitableRoots(scope: HealthStatusScope, collector: (SVcsRoot) -> Boolean) {
             findSuitableRoots(scope.buildTypes, false, collector)

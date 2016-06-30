@@ -12,9 +12,7 @@ import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.Pager
-import jetbrains.buildServer.vcs.LVcsRoot
 import jetbrains.buildServer.vcs.SVcsRoot
-import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
@@ -146,39 +144,26 @@ class ProjectWebHooksBean(val project: SProject,
         val keyword = form.keyword
         val keywordFiltering = !keyword.isNullOrBlank()
 
-        val usages: MutableMap<VcsRootInstance, VcsRootUsages> = HashMap()
-
-        val allGitVcsInstances = HashSet<VcsRootInstance>()
-        Util.findSuitableInstances(project, recursive = form.recursive) {
-            allGitVcsInstances.add(it)
+        val allGitVcsRoots = HashSet<SVcsRoot>()
+        Util.findSuitableRoots(project, recursive = form.recursive) {
+            allGitVcsRoots.add(it)
             true
         }
-        val split = GitHubWebHookAvailableHealthReport.split(allGitVcsInstances)
+        val split = GitHubWebHookAvailableHealthReport.splitRoots(allGitVcsRoots)
+        val filtered = split.entrySet()
                 .filter { entry ->
                     // Filter by known servers
                     entry.key.server == "github.com" || GitHubWebHookAvailableHealthReport.getProjects(entry.value).any { project -> Util.findConnections(oAuthConnectionsManager, project, entry.key.server).isNotEmpty() }
                 }
-        for (entry in split) {
+        for (entry in filtered) {
             if (keyword != null && keywordFiltering) {
                 if (!entry.key.getRepositoryUrl().contains(keyword, true)) continue
             }
 
-            val orphans = HashMap<SVcsRoot, MutableSet<VcsRootInstance>>()
-            val roots = SmartList<SVcsRoot>()
 
             val hook = webHooksManager.getHook(entry.key)
-            for ((root, instances) in entry.value.entrySet()) {
-                if (root != null) {
-                    roots.add(root)
-                } else {
-                    for (orphan in instances) {
-                        orphans.getOrPut(orphan.parent) { HashSet() }.add(orphan)
-                        val bean = VcsRootUsagesBean(orphan, project, versionedSettingsManager)
-                        usages[orphan] = bean
-                    }
-                }
-            }
-            hooks.put(entry.key, WebHookDetails(hook, roots, orphans, usages, project, versionedSettingsManager))
+            val roots = SmartList<SVcsRoot>(entry.value)
+            hooks.put(entry.key, WebHookDetails(hook, roots, project, versionedSettingsManager))
         }
     }
 
@@ -208,8 +193,6 @@ class ProjectWebHooksBean(val project: SProject,
 
 class WebHookDetails(val info: WebHooksStorage.HookInfo?,
                      val roots: List<SVcsRoot>,
-                     val instances: Map<SVcsRoot, Set<VcsRootInstance>>,
-                     val usages: Map<VcsRootInstance, VcsRootUsages>,
                      val project: SProject,
                      val versionedSettingsManager: VersionedSettingsManager
 ) {
@@ -220,25 +203,24 @@ class WebHookDetails(val info: WebHooksStorage.HookInfo?,
         if (roots.contains(root)) {
             return VcsRootUsagesBean(root, project, versionedSettingsManager)
         }
-        val instances = instances[root] ?: return null
-        val combined = VcsRootUsagesBeanCombined()
-        for (instance in instances) {
-            usages[instance]?.let { combined.add(it) }
-        }
-        return combined
+        return null
     }
 
     fun getTotalUsages(): VcsRootUsages {
         val combined = VcsRootUsagesBeanCombined()
-        for (instances in instances.values) {
-            for (instance in instances) {
-                usages[instance]?.let { combined.add(it) }
-            }
-        }
         for (root in roots) {
             getVcsRootUsages(root)?.let { combined.add(it) }
         }
         return combined
+    }
+
+    @Used("jps")
+    fun getRootsWithUsages(): Map<SVcsRoot, VcsRootUsages> {
+        val map = HashMap<SVcsRoot, VcsRootUsages>()
+        for (root in roots) {
+            getVcsRootUsages(root)?.let { map.put(root, it) }
+        }
+        return map
     }
 }
 
@@ -249,31 +231,18 @@ interface VcsRootUsages {
     val versionedSettings: Collection<SProject>
 }
 
-class VcsRootUsagesBean(val root: LVcsRoot, val project: SProject, val VersionedSettingsManager: VersionedSettingsManager) : VcsRootUsages {
+class VcsRootUsagesBean(val root: SVcsRoot, val project: SProject, val VersionedSettingsManager: VersionedSettingsManager) : VcsRootUsages {
     override val total: Int by lazy { templates.size + buildTypes.size + versionedSettings.size }
 
     override val templates: List<BuildTypeTemplate> by lazy {
-        // TODO: Implement for VcsRootInstance
         val templates = project.ownBuildTypeTemplates
         templates.filter { it.containsVcsRoot(root.id) }
     }
     override val buildTypes: List<SBuildType> by lazy {
-        val list = SmartList<SBuildType>()
-        if (root is VcsRootInstance) {
-            list.addAll(root.usages.keys)
-        } else if (root is SVcsRoot) {
-            list.addAll(root.usagesInConfigurations)
-        }
-        list
+        SmartList<SBuildType>(root.usagesInConfigurations)
     }
     override val versionedSettings: List<SProject> by lazy {
-        val list = SmartList<SProject>()
-        if (root is VcsRootInstance) {
-            list.addAll(VersionedSettingsManager.getProjectsBySettingsRootInstance(root))
-        } else if (root is SVcsRoot) {
-            list.addAll(VersionedSettingsManager.getProjectsBySettingsRoot(root))
-        }
-        list
+        SmartList<SProject>(VersionedSettingsManager.getProjectsBySettingsRoot(root))
     }
 }
 

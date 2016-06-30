@@ -16,6 +16,9 @@
 
 <div class="editProjectPage">
     <h2 class="noBorder">GitHub Webhooks</h2>
+    <p>Only GitHub Git VCS roots are shown</p>
+    <span class="smallNote" style="margin-left: 0">To configure known GitHub Enterprise servers, see <a
+            href="<c:url value="/admin/editProject.html?projectId=${currentProject.externalId}&tab=oauthConnections"/>">OAuth Integrations page</a></span>
     <c:set var="cameFromUrl" value="${param['cameFromUrl']}"/>
 
     <form action="<c:url value='/admin/editProject.html'/>" method="get" id="webHooksFilterForm" onsubmit="BS.Util.show('spinner'); return true;">
@@ -66,30 +69,19 @@
                     <tr id="webhook_${uniq_hash}_usages" class="usages usageHl" style="display: none">
                         <!--Do not use colspan because Chrome fails to compute border-top-style-->
                         <td>
-                            <c:forEach items="${entry.value.roots}" var="root">
-                                <%--@elvariable id="root" type="jetbrains.buildServer.vcs.SVcsRoot"--%>
-                                <div>
-                                    <span class="vcsRoot"><admin:vcsRootName editingScope="" cameFromUrl="${cameFromUrl}" vcsRoot="${root}"/></span>
-                                    <c:if test="${root.project.projectId != currentProject.projectId}">
-                                        belongs to <admin:projectName project="${root.project}"/>
-                                    </c:if>
-                                        <%--<div class="clearfix"></div>--%>
-                                </div>
-                            </c:forEach>
-                            <c:forEach items="${entry.value.instances}" var="e2">
+                            <c:forEach items="${entry.value.rootsWithUsages}" var="e2">
                                 <%--@elvariable id="root" type="jetbrains.buildServer.vcs.SVcsRoot"--%>
                                 <c:set var="root" value="${e2.key}"/>
                                 <%--@elvariable id="usages" type="org.jetbrains.teamcity.github.controllers.VcsRootUsages"--%>
-                                <c:set var="usages" value="${entry.value.getVcsRootUsages(root)}"/>
+                                <c:set var="usages" value="${e2.value}"/>
                                 <c:set var="uniq_hash" value="${usages.hashCode()}"/>
                                 <div class="">
                                     <span class="vcsRoot"><admin:vcsRootName editingScope="" cameFromUrl="${cameFromUrl}" vcsRoot="${root}"/></span>
                                     <c:if test="${root.project.projectId != currentProject.projectId}">
                                         belongs to <admin:projectName project="${root.project}"/>
                                     </c:if>
-                                    parametrized in
                                     <c:choose>
-                                        <c:when test="${usages == null || usages.total == 0}"><span title="This VCS root is not used">no usages</span></c:when>
+                                        <c:when test="${usages.total == 0}"><span title="This VCS root is not used">no usages</span></c:when>
                                         <c:otherwise>
                                             <a href="#" onclick="return BS.AdminActions.toggleVcsRootInstanceUsages(this, '${root.id}_${uniq_hash}');"><c:out default=""
                                                                                                                                                               value="${usages.total}"/>
@@ -97,7 +89,7 @@
                                         </c:otherwise>
                                     </c:choose>
                                 </div>
-                                <c:if test="${usages != null && usages.total > 0}">
+                                <c:if test="${usages.total > 0}">
                                     <div id="instance_${root.id}_${uniq_hash}_usages" class="usages usageHl" style="display: none">
                                         <c:if test="${not empty usages.templates}">
                                             <div class="templateUsages">
