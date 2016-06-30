@@ -17,6 +17,7 @@ BS.GitHubWebHooks = {};
             WH.forcePopup[server] = true
         } else if ("NoAccess" == result) {
             warning = true;
+        } else if ("InternalServerError" == result) {
         } else if ("UserHaveNoAccess" == result) {
             warning = true;
         } else if ("NoOAuthConnections" == result) {
