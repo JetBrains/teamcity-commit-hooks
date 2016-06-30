@@ -286,7 +286,6 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, token: OAuthToken, connection: OAuthConnectionDescriptor): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
         result.second?.let {
-            it.token = token
             it.connection = AuthDataStorage.ConnectionInfo(connection)
             myAuthDataStorage.store(it);
         }

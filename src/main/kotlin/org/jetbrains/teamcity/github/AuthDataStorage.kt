@@ -32,12 +32,10 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
                         val secret: String,
                         val public: String,
                         val repository: GitHubRepositoryInfo,
-                        var connection: ConnectionInfo? = null,
-                        var token: OAuthToken? = null) {
+                        var connection: ConnectionInfo? = null) {
         companion object {
             private val gson = GsonBuilder()
                     .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
-                    .registerTypeAdapter(OAuthToken::class.java, OAuthTokenJsonSerializer)
                     .create()
 
             fun fromJson(string: String): AuthData? = gson.fromJson(string, AuthData::class.java)
