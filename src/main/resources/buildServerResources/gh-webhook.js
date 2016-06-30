@@ -107,6 +107,7 @@ BS.GitHubWebHooks = {};
                 var repo = info['owner'] + '/' + info['name'];
                 var server = info['server'];
                 var warning = false;
+                BS.Util.Messages.hide({group: 'gh_wh_install'});
                 if (good.indexOf(result) > -1) {
                     // Good one
                     const data = json['data'];
@@ -133,6 +134,7 @@ BS.GitHubWebHooks = {};
                 WH.forcePopup[WH.getServerUrl(id)] = true;
 
                 $j("#installWebhookSubmit").attr("value", "Authorize and Install");
+                BS.Util.Messages.hide({group: 'gh_wh_install'});
                 BS.Util.Messages.show(id, 'GitHub authorization needed.', {verbosity: 'warn', group: 'gh_wh_install'});
             },
             doHandleError: function (json) {
@@ -616,11 +618,11 @@ BS.Util.Messages = BS.Util.Messages || {};
     Messages.show = function (group, text, options) {
         group = group.replace(/([:/\.])/g, '_');
         if (options === undefined) options = {};
-        options = $j.extend({}, options, {
+        options = $j.extend({}, {
             verbosity: 'info', // Either 'info' or 'warn'
             group: 'messages_group_' + group,
             id: 'message_id_' + group
-        });
+        }, options);
 
         BS.Log.info("Message: " + text);
 
