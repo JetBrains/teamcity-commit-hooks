@@ -42,7 +42,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
                         var correct: Boolean = true,
                         var lastUsed: Date? = null,
                         var lastBranchRevisions: MutableMap<String, String>? = null,
-                        var callbackUrl: String? = null) {
+                        val callbackUrl: String) {
         companion object {
             private val gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()
 

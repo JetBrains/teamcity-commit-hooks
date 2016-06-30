@@ -16,12 +16,12 @@ class WebHooksStorageTest {
 
     @Test
     fun testHookInfoSerialization() {
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc"))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", true, Date(), mutableMapOf("1" to "2", "3" to "4")))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10)))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), LinkedHashMap(mapOf("1" to "2"))))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), LinkedHashMap(mapOf("1" to "2")), "__CALLBACK_URL__"))
+        val callback = "__CALLBACK_URL__";
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", true, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), LinkedHashMap(mapOf("1" to "2")), callbackUrl = callback))
     }
 
     private fun doHookInfoSerializationTest(first: WebHooksStorage.HookInfo) {
