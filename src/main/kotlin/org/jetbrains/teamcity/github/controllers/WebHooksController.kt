@@ -58,9 +58,6 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     lateinit var myTokensHelper: TokensHelper
 
     @Autowired
-    lateinit private var myAuthDataStorage: AuthDataStorage
-
-    @Autowired
     lateinit var myProjectManager: ProjectManager
 
     private val myResultJspPath = descriptor.getPluginResourcesPath("hook-created.jsp")
@@ -236,7 +233,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                                     request.getParameter("original_action") ?: "add"
                                 } else action
                         if ("add" == action) {
-                            element = doAddWebHook(ghc, info, user)
+                            element = doAddWebHook(ghc, info, user, entry.key)
                         } else if ("check" == action) {
                             element = doCheckWebHook(ghc, info)
                         } else if ("ping" == action) {
@@ -244,7 +241,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                         } else if ("delete" == action) {
                             element = doDeleteWebHook(ghc, info, user)
                         } else if ("install" == action) {
-                            element = doInstallWebHook(ghc, info, user, token, entry.key)
+                            element = doInstallWebHook(ghc, info, user, entry.key)
                         } else {
                             element = null
                         }
@@ -270,31 +267,27 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
-        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
-        when (result.first) {
+    private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
+        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
+        when (result) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
+                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Created hook for repository '${info.toString()}'", info)
+                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
             }
         }
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, token: OAuthToken, connection: OAuthConnectionDescriptor): JsonElement? {
-        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user)
-        result.second?.let {
-            it.connection = AuthDataStorage.ConnectionInfo(connection)
-            myAuthDataStorage.store(it);
-        }
-        when (result.first) {
+    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
+        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
+        when (result) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
+                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Created hook for repository '${info.toString()}'", info)
+                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
             }
         }
     }

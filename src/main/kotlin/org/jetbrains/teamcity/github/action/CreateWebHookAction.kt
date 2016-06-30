@@ -1,6 +1,7 @@
 package org.jetbrains.teamcity.github.action
 
 import com.intellij.openapi.diagnostic.Logger
+import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
 import org.eclipse.egit.github.core.RepositoryHook
@@ -14,14 +15,14 @@ object CreateWebHookAction {
     private val LOG = Logger.getInstance(CreateWebHookAction::class.java.name)
 
     @Throws(GitHubAccessException::class)
-    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): Pair<HookAddOperationResult, AuthDataStorage.AuthData?> {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext, connection: OAuthConnectionDescriptor): HookAddOperationResult {
         val repo = info.getRepositoryId()
         val service = RepositoryService(client)
 
         var hookInfo = context.getHook(info)
         if (hookInfo != null) {
             // TODO: Check AuthData
-            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists to null
+            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists
         }
 
         // First, check for already existing hooks, otherwise Github will answer with code 422
@@ -32,10 +33,10 @@ object CreateWebHookAction {
         hookInfo = context.getHook(info)
         if (hookInfo != null) {
             // TODO: Check AuthData
-            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists to null
+            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists
         }
 
-        val authData = context.authDataStorage.create(user, info, false)
+        val authData = context.authDataStorage.create(user, info, connection, false)
 
         val callbackUrl = context.getCallbackUrl(authData)
 
@@ -64,7 +65,7 @@ object CreateWebHookAction {
                         // Already exists
                         // TODO: Handle AuthData
                         // TODO: Remove existing hook if there no auth data know here.
-                        return HookAddOperationResult.AlreadyExists to null
+                        return HookAddOperationResult.AlreadyExists
                     }
                 }
             }
@@ -82,7 +83,7 @@ object CreateWebHookAction {
         context.addHook(created, info.server, repo)
 
         context.authDataStorage.store(authData)
-        return HookAddOperationResult.Created to authData
+        return HookAddOperationResult.Created
 
     }
 

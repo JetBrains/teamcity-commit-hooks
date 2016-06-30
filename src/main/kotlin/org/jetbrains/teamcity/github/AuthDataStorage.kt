@@ -5,12 +5,10 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
-import jetbrains.buildServer.serverSide.oauth.OAuthToken
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.util.cache.SCacheImpl
-import org.jetbrains.teamcity.github.json.OAuthTokenJsonSerializer
 import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -32,7 +30,7 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
                         val secret: String,
                         val public: String,
                         val repository: GitHubRepositoryInfo,
-                        var connection: ConnectionInfo? = null) {
+                        val connection: ConnectionInfo) {
         companion object {
             private val gson = GsonBuilder()
                     .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
@@ -88,9 +86,9 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         }
     }
 
-    fun create(user: SUser, repository: GitHubRepositoryInfo, store: Boolean = true): AuthData {
+    fun create(user: SUser, repository: GitHubRepositoryInfo, connection: OAuthConnectionDescriptor, store: Boolean = true): AuthData {
         val (public, secret) = generate()
-        val data = AuthData(user.id, secret, public, repository)
+        val data = AuthData(user.id, secret, public, repository, ConnectionInfo(connection))
         if (store) {
             store(data)
         }

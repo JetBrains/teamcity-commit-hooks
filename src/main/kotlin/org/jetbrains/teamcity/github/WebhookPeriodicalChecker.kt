@@ -145,7 +145,7 @@ class WebhookPeriodicalChecker(
     }
 
     private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
-        val info = authData.connection ?: return null
+        val info = authData.connection
         val project = myProjectManager.findProjectByExternalId(info.projectExternalId)
         if (project == null) {
             LOG.warn("OAuth Connection project '${info.projectExternalId}' not found")

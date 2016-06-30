@@ -2,6 +2,7 @@ package org.jetbrains.teamcity.github
 
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.WebLinks
+import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
@@ -46,8 +47,8 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): Pair<HookAddOperationResult, AuthDataStorage.AuthData?> {
-        return CreateWebHookAction.doRun(info, client, user, this)
+    fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, connection: OAuthConnectionDescriptor): HookAddOperationResult {
+        return CreateWebHookAction.doRun(info, client, user, this, connection)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
