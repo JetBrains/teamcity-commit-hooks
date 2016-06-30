@@ -27,4 +27,6 @@
 
     <bean class="org.jetbrains.teamcity.github.AuthDataStorage" init-method="init" destroy-method="destroy"/>
 
+    <bean class="org.jetbrains.teamcity.github.WebhookPeriodicalChecker" init-method="init" destroy-method="destroy"/>
+
 </beans>
