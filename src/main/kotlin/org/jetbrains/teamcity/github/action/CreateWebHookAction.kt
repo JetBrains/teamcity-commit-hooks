@@ -80,7 +80,10 @@ object CreateWebHookAction {
             throw IllegalStateException("GitHub returned incorrect hook")
         }
 
-        context.addHook(created, info.server, repo)
+        hookInfo = context.addHook(created, info.server, repo)
+        if (hookInfo == null) {
+            throw IllegalStateException("GitHub returned incorrect hook")
+        }
 
         context.authDataStorage.store(authData)
         return HookAddOperationResult.Created

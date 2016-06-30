@@ -2,13 +2,12 @@ package org.jetbrains.teamcity.github.action
 
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
+import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
-import org.jetbrains.teamcity.github.GitHubAccessException
-import org.jetbrains.teamcity.github.GitHubRepositoryInfo
-import org.jetbrains.teamcity.github.TokensHelper
-import org.jetbrains.teamcity.github.callbackUrl
-import java.net.HttpURLConnection.*
+import org.jetbrains.teamcity.github.*
+import java.net.HttpURLConnection.HTTP_FORBIDDEN
+import java.net.HttpURLConnection.HTTP_NOT_FOUND
 
 /**
  * Fetches all webhooks points to this server for given repository
@@ -18,7 +17,7 @@ object GetAllWebHooksAction {
     private val LOG = Logger.getInstance(GetAllWebHooksAction::class.java.name)
 
     @Throws(GitHubAccessException::class)
-    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext): HooksGetOperationResult {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext): Map<RepositoryHook, WebHooksStorage.HookInfo> {
         val service = RepositoryService(client)
         val repo = info.getRepositoryId()
         try {
@@ -41,7 +40,7 @@ object GetAllWebHooksAction {
             if (active.size > 1) {
                 LOG.info("More than one (${active.size} active webhooks found for repository $info")
             }
-            context.updateHooks(info.server, repo, filtered)
+            return context.updateHooks(info.server, repo, filtered)
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to load webhooks for repository $info: ${e.status}", e)
             context.tryHandleError(e)
@@ -61,6 +60,5 @@ object GetAllWebHooksAction {
             }
             throw e
         }
-        return HooksGetOperationResult.Ok
     }
 }

@@ -10,6 +10,7 @@ import jetbrains.buildServer.vcs.RepositoryState
 import jetbrains.buildServer.vcs.RepositoryStateListener
 import jetbrains.buildServer.vcs.RepositoryStateListenerAdapter
 import jetbrains.buildServer.vcs.VcsRoot
+import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.client.RequestException
 import org.jetbrains.teamcity.github.action.*
 import java.io.IOException
@@ -52,7 +53,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx): HooksGetOperationResult {
+    fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx): Map<RepositoryHook, WebHooksStorage.HookInfo> {
         return GetAllWebHooksAction.doRun(info, client, this)
     }
 

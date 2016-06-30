@@ -29,7 +29,6 @@ import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.action.HookAddOperationResult
 import org.jetbrains.teamcity.github.action.HookDeleteOperationResult
-import org.jetbrains.teamcity.github.action.HooksGetOperationResult
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
@@ -285,33 +284,25 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement? {
-        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
-        when (result) {
-            HooksGetOperationResult.Ok -> {
-                val hook = myWebHooksManager.getHook(info)
-                if (hook != null) {
-                    return gh_json(result.name, "Updated hook info for repository '${info.toString()}'", info)
-                } else {
-                    return gh_json(result.name, "No hook found for repository '${info.toString()}'", info)
-                }
-            }
+        myWebHooksManager.doGetAllWebHooks(info, ghc)
+        val hook = myWebHooksManager.getHook(info)
+        if (hook != null) {
+            return gh_json("Ok", "Updated hook info for repository '${info.toString()}'", info)
+        } else {
+            return gh_json("Ok", "No hook found for repository '${info.toString()}'", info)
         }
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doPingWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser): JsonElement? {
-        val result = myWebHooksManager.doGetAllWebHooks(info, ghc)
-        when (result) {
-            HooksGetOperationResult.Ok -> {
-                val hook = myWebHooksManager.getHook(info)
-                // Ensure test message was sent
-                myWebHooksManager.doTestWebHook(info, ghc, user)
-                if (hook != null) {
-                    return gh_json(result.name, "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
-                } else {
-                    return gh_json(result.name, "No hook found for repository '${info.toString()}'", info)
-                }
-            }
+        myWebHooksManager.doGetAllWebHooks(info, ghc)
+        val hook = myWebHooksManager.getHook(info)
+        // Ensure test message was sent
+        myWebHooksManager.doTestWebHook(info, ghc, user)
+        if (hook != null) {
+            return gh_json("Ok", "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
+        } else {
+            return gh_json("Ok", "No hook found for repository '${info.toString()}'", info)
         }
     }
 

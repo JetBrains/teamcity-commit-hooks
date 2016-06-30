@@ -1,9 +1,5 @@
 package org.jetbrains.teamcity.github.action
 
-enum class HooksGetOperationResult {
-    Ok
-}
-
 enum class HookTestOperationResult {
     NotFound,
     Ok

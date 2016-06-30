@@ -8,6 +8,7 @@ import org.eclipse.egit.github.core.client.RequestException
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import java.net.HttpURLConnection
+import java.util.*
 
 open class ActionContext(val storage: WebHooksStorage,
                          val authDataStorage: AuthDataStorage,
@@ -26,38 +27,40 @@ open class ActionContext(val storage: WebHooksStorage,
         return base + '/' + authData.public
     }
 
-    fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>) {
+    fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>): Map<RepositoryHook, WebHooksStorage.HookInfo> {
         // TODO: Support more than one hook in storage, report that as misconfiguration
         if (filtered.isEmpty()) {
             // Remove old hooks
             storage.delete(server, repo)
-            return
+            return emptyMap()
         }
         if (!filtered.any { it.isActive }) {
             // No active webhooks, remove info
             // TODO: Investigate whether hook disabled if GitHub failed to deliver payload (TC returned error)
             storage.delete(server, repo)
-            return
+            return emptyMap()
         }
+        val result = HashMap<RepositoryHook, WebHooksStorage.HookInfo>()
         for (hook in filtered) {
             if (!hook.isActive) continue
             val info = storage.getHook(server, repo)
             if (info == null) {
-                addHook(hook, server, repo)
+                addHook(hook, server, repo)?.let { result.put(hook, it) }
             } else if (info.id != hook.id || info.url != hook.url) {
                 storage.delete(server, repo)
-                addHook(hook, server, repo)
+                addHook(hook, server, repo)?.let { result.put(hook, it) }
             }
         }
+        return result
     }
 
-    fun addHook(created: RepositoryHook, server: String, repo: RepositoryId) {
+    fun addHook(created: RepositoryHook, server: String, repo: RepositoryId): WebHooksStorage.HookInfo? {
         val callbackUrl = created.callbackUrl
         if (callbackUrl == null) {
             LOG.warn("Received RepositoryHook without callback url, ignoring it")
-            return
+            return null
         }
-        storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url, callbackUrl = callbackUrl) })
+        return storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url, callbackUrl = callbackUrl) })
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
