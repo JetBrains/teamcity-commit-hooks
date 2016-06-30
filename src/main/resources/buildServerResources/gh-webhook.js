@@ -683,7 +683,7 @@ BS.AdminActions = BS.AdminActions || {};
     AA.toggleVcsRootInstanceUsages = function (link, vcsRootInstanceId) {
         $j('#instance_' + vcsRootInstanceId + '_usages').toggle();
         var parent = $j(link).parent().toggleClass("usageHl");
-        parent.parent().find(".vcsRoot").toggleClass("bold");
+        parent.find(".vcsRoot").toggleClass("bold");
         return false;
     };
     AA.toggleWebHookUsages = function (link, id) {
