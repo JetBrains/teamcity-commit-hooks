@@ -138,7 +138,7 @@ BS.GitHubWebHooks = {};
             doHandleError: function (json) {
                 this.doHideProgress();
                 var error = json['error'];
-                BS.Util.Messages.show('InstallWebhook', error, {verbosity: 'warn', group: 'gh_wh_install'});
+                BS.Util.Messages.hide({group: 'gh_wh_install'});
                 $j('#errorRepository').text(error).show();
             },
             doShowProgress: function (element) {
