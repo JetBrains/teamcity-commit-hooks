@@ -1,3 +1,4 @@
+<%@ page import="jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemDisplayMode" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%@ taglib prefix="afn" uri="/WEB-INF/functions/authz" %>
@@ -5,6 +6,13 @@
 <%@ taglib prefix="util" uri="/WEB-INF/functions/util" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ include file="/include-internal.jsp" %>
+
+<jsp:useBean id="showMode" type="jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemDisplayMode" scope="request"/>
+<jsp:useBean id="healthStatusReportUrl" type="java.lang.String" scope="request"/>
+<jsp:useBean id="pageUrl" type="java.lang.String" scope="request"/>
+
+<c:set var="inplaceMode" value="<%=HealthStatusItemDisplayMode.IN_PLACE%>"/>
+<c:set var="cameFromUrl" value="${showMode eq inplaceMode ? pageUrl : healthStatusReportUrl}"/>
 
 <%--@elvariable id="healthStatusItem" type="jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem"--%>
 <%--@elvariable id="pluginResourcesPath" type="java.lang.String"--%>
@@ -19,14 +27,14 @@
 <c:set var="id" value="hid_${util:forJSIdentifier(GitHubInfo.identifier)}"/>
 
 <div id='${id}' class="suggestionItem" data-repository="${GitHubInfo}" data-server="${GitHubInfo.server}">
-    Found VCS root <admin:vcsRootName vcsRoot="${VcsRoot}" editingScope="editProject:${VcsRoot.project.externalId}" cameFromUrl="${pageUrl}"/>
+    Found VCS root <admin:vcsRootName vcsRoot="${VcsRoot}" editingScope="editProject:${VcsRoot.project.externalId}" cameFromUrl="${cameFromUrl}"/>
     belongs to <admin:projectName project="${VcsRoot.project}"/>
     referencing GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a>
     without configured Webhook:
     <div class="suggestionAction">
-        <c:url var="installTabUrl" value="/admin/editProject.html?projectId=${VcsRoot.project.externalId}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}"/>
-        <%--TODO: Should be button--%>
-        <a class="button" href="${installTabUrl}">Install webhook</a>
+        <c:url var="installTabUrl"
+               value="/admin/editProject.html?projectId=${VcsRoot.project.externalId}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}"/>
+        <forms:addLink href="${installTabUrl}">Install webhook</forms:addLink>
     </div>
 </div>
 
