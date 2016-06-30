@@ -19,13 +19,13 @@
                 <th><label for="repository">Repository url: <l:star/></label></th>
                 <td>
                     <forms:textField name="repository" className="longField" maxlength="80" value="${empty repository ? '' : repository}"/>
+                    <%--TODO: Add completion from list of project github vcs roots--%>
                     <span class="error" id="errorRepository"></span>
                 </td>
             </tr>
         </table>
         <div class="saveButtonsBlock">
             <forms:submit id="installWebhookSubmit" name="installWebhookSubmit" label="Install" onclick="BS.GitHubWebHooks.doInstallForm(this); return false;"/>
-            <%--TODO: Add 'return back' cancel button--%>
             <forms:cancel cameFromSupport="${cameFrom}"/>
             <forms:saving id="installProgress" style="float: none; margin-left: 0.5em;" savingTitle="Installing Webhook..."/>
         </div>
