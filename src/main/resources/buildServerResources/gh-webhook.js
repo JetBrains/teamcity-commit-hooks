@@ -347,7 +347,7 @@ BS.GitHubWebHooks = {};
                 p = false;
             } else {
                 var fp = WH.forcePopup[server];
-                if (fp === undefined) fp = true;
+                if (fp === undefined) fp = false;
                 p = fp;
             }
         } else {
