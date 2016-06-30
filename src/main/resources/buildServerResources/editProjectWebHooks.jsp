@@ -69,7 +69,7 @@
                     <tr id="webhook_${uniq_hash}_usages" class="usages usageHl" style="display: none">
                         <!--Do not use colspan because Chrome fails to compute border-top-style-->
                         <td>
-                            <c:forEach items="${entry.value.rootsWithUsages}" var="e2">
+                            <c:forEach items="${entry.value.usagesMap}" var="e2">
                                 <%--@elvariable id="root" type="jetbrains.buildServer.vcs.SVcsRoot"--%>
                                 <c:set var="root" value="${e2.key}"/>
                                 <%--@elvariable id="usages" type="org.jetbrains.teamcity.github.controllers.VcsRootUsages"--%>

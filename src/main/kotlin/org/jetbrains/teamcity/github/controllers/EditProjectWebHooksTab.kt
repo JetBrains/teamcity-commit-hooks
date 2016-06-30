@@ -197,30 +197,21 @@ class WebHookDetails(val info: WebHooksStorage.HookInfo?,
                      val versionedSettingsManager: VersionedSettingsManager
 ) {
     @Used("jps")
-    val totalUsagesCount: Int by lazy { getTotalUsages().total }
+    val totalUsagesCount: Int by lazy { totalUsages.total }
 
-    fun getVcsRootUsages(root: SVcsRoot): VcsRootUsages? {
-        if (roots.contains(root)) {
-            return VcsRootUsagesBean(root, project, versionedSettingsManager)
-        }
-        return null
-    }
-
-    fun getTotalUsages(): VcsRootUsages {
-        val combined = VcsRootUsagesBeanCombined()
+    val usagesMap: Map<SVcsRoot, VcsRootUsages> by lazy {
+        val map = HashMap<SVcsRoot, VcsRootUsages>()
         for (root in roots) {
-            getVcsRootUsages(root)?.let { combined.add(it) }
+            map.put(root, VcsRootUsagesBean(root, project, versionedSettingsManager))
         }
-        return combined
+        map
     }
 
     @Used("jps")
-    fun getRootsWithUsages(): Map<SVcsRoot, VcsRootUsages> {
-        val map = HashMap<SVcsRoot, VcsRootUsages>()
-        for (root in roots) {
-            getVcsRootUsages(root)?.let { map.put(root, it) }
-        }
-        return map
+    private val totalUsages: VcsRootUsages by lazy {
+        val combined = VcsRootUsagesBeanCombined()
+        usagesMap.values.forEach { combined.add(it) }
+        combined
     }
 }
 
