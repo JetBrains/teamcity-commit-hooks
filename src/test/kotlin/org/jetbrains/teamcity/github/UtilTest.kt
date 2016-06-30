@@ -32,6 +32,36 @@ class UtilTest {
         doFailedUrlParsingTest("https://git-wip-us.apache.org/repos/asf/ant.git ")
     }
 
+    @Test
+    fun testIsSameUrl() {
+        val GHE = "http://teamcity-github-enterprise.labs.intellij.net"
+        val GH = "https://github.com"
+
+        doTestSameUrl(GHE, GHE, true)
+        doTestSameUrl(GH, GH, true)
+        doTestSameUrl(GH, "github.com", true)
+        doTestSameUrl("github.com", GH, true)
+        doTestSameUrl("github.com", "github.com", true)
+
+        doTestSameUrl(GHE, "teamcity-github-enterprise.labs.intellij.net", true)
+
+        doTestSameUrl(GH, "", false)
+        doTestSameUrl(GHE, "", false)
+
+        doTestSameUrl(GH, "a", false)
+        doTestSameUrl(GHE, "a", false)
+
+        doTestSameUrl(GH, "git", false)
+        doTestSameUrl(GHE, "git", false)
+
+        doTestSameUrl(GH, "abra:cadab:ra", false)
+        doTestSameUrl(GHE, "olo\b\nlo", false)
+    }
+
+    private fun doTestSameUrl(github: String, input: String, expected: Boolean) {
+        Assert.assertEquals(Util.isSameUrl(input, github), expected)
+    }
+
     private fun doSuccessUrlParsingTest(url: String, server: String, owner: String, name: String) {
         val info = Util.parseGitRepoUrl(url)
         Assert.assertNotNull(info)

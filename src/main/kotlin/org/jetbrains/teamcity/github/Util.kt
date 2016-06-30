@@ -12,6 +12,9 @@ import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
+import java.net.MalformedURLException
+import java.net.URI
+import java.net.URL
 
 class Util {
     companion object {
@@ -79,8 +82,23 @@ class Util {
         }
 
         fun isSameUrl(host: String, url: String): Boolean {
-            // TODO: Improve somehow
-            return url.contains(host, true)
+            val uri = URI(url)
+            val u: URL
+            try {
+                if (uri.scheme == null) {
+                    u = URL("http://$url")
+                } else u = uri.toURL()
+            } catch(e: MalformedURLException) {
+                return host == url
+            }
+            if (u.host == host) return true
+            val u2: URL
+            try {
+                u2 = URL(host)
+                return u.host == u2.host
+            } catch(e: Exception) {
+                return false
+            }
         }
 
         fun isSuitableVcsRoot(root: VcsRoot, checkUrl: Boolean = true): Boolean {
