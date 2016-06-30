@@ -155,19 +155,15 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     private fun doHandleAction(request: HttpServletRequest, action: String, popup: Boolean): JsonElement {
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
-        val inId = request.getParameter("id") ?: return error_json("Required parameter 'Repository Url' is missing", HttpServletResponse.SC_BAD_REQUEST)
+        val inId = request.getParameter("id")?.trim() ?: return error_json("Required parameter 'Repository Url' is missing", HttpServletResponse.SC_BAD_REQUEST)
         val inProjectId = request.getParameter("projectId")
 
         if (inId.isNullOrBlank()) return error_json("Required parameter 'Repository Url' is empty", HttpServletResponse.SC_BAD_REQUEST)
 
         var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId)
 
-        val info: GitHubRepositoryInfo
-        val project: SProject
+        val (project, info) = getRepositoryInfo(inProjectId, inId)
 
-        val pair = getRepositoryInfo(inProjectId, inId)
-        project = pair.first
-        info = pair.second
         LOG.info("Trying to create web hook for repository with id '$inId', repository info is '$info', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
 
         if (connection != null && !Util.isConnectionToServer(connection, info.server)) {
