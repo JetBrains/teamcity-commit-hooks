@@ -47,7 +47,11 @@
         }
         <c:if test="${info != null}">
         BS.GitHubWebHooks.info['${info.identifier}'] = ${info.toJson()};
-        BS.GitHubWebHooks.forcePopup['${info.server}'] = ${not has_connections or not has_tokens};
+        var forcePopup = ${not has_connections or not has_tokens};
+        BS.GitHubWebHooks.forcePopup['${info.server}'] = forcePopup;
+        if (forcePopup) {
+            $j("#installWebhookSubmit").attr("value", "Authorize and Install");
+        }
         </c:if>
     })();
 </script>

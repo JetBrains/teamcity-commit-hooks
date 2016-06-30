@@ -4,7 +4,7 @@ BS.GitHubWebHooks = {};
     WH.data = {};
     WH.forcePopup = {};
 
-    function onActionSuccessBasic(json, result) {
+    function onActionSuccessBasic(json, result, messageOptions) {
         var info = json['info'];
         var message = json['message'];
         var repo = info['owner'] + '/' + info['name'];
@@ -29,7 +29,11 @@ BS.GitHubWebHooks = {};
             warning = true;
         }
         var group = server + '/' + repo;
-        BS.Util.Messages.show(group, message, warning ? {verbosity: 'warn'} : {});
+        var opts = messageOptions || {};
+        if (warning) {
+            opts.verbosity = 'warn'
+        }
+        BS.Util.Messages.show(group, message, opts);
         return true;
     }
 
@@ -109,30 +113,32 @@ BS.GitHubWebHooks = {};
                     if (data !== undefined) {
                         var repository = data['repository'];
                         WH.data[repository] = data;
-                        renderOne(data, $j('#webHooksTable'))
                     }
+                    WH.forcePopup[server] = false;
+                    $j("#installWebhookSubmit").attr("value", "Install");
                     var group = server + '/' + info['owner'] + '/' + info['name'];
-                    BS.Util.Messages.show(group, message, warning ? {verbosity: 'warn'} : {});
+                    BS.Util.Messages.show(group, message);
                     return
                 }
                 if ("TokenScopeMismatch" == result) {
                     message = "Token you provided have no access to repository '" + repo + "', try again";
                     warning = true;
                     // TODO: Add link to refresh/request token (via popup window)
+                    $j("#installWebhookSubmit").attr("value", "Authorize and Install");
                     WH.forcePopup[server] = true
                 }
-                onActionSuccessBasic(json, result);
+                onActionSuccessBasic(json, result, {group: 'gh_wh_install'});
             },
             doHandleRedirect: function (json, id) {
                 WH.forcePopup[WH.getServerUrl(id)] = true;
 
-                $j("#installWebhookSubmit").attr("value", "Authorize and Install"); // TODO Tooltip?
-                BS.Util.Messages.show(id, 'GitHub authorization needed.');
+                $j("#installWebhookSubmit").attr("value", "Authorize and Install");
+                BS.Util.Messages.show(id, 'GitHub authorization needed.', {verbosity: 'warn', group: 'gh_wh_install'});
             },
             doHandleError: function (json) {
                 this.doHideProgress();
                 var error = json['error'];
-                BS.Util.Messages.show('InstallWebhook', error, {verbosity: 'warn'});
+                BS.Util.Messages.show('InstallWebhook', error, {verbosity: 'warn', group: 'gh_wh_install'});
                 $j('#errorRepository').text(error).show();
             },
             doShowProgress: function (element) {
@@ -160,8 +166,8 @@ BS.GitHubWebHooks = {};
         }
         return true;
     };
-    WH.doWebHookAction = function (action, element, type, id, popup, projectId) {
-        // if (!WH.checkLocation()) return;
+    WH.doWebHookAction = function (action, element, id, popup, projectId) {
+        if (!WH.checkLocation()) return;
         //var progress = $$("# .progress").show();
 
         // Enforce popup for server if needed
@@ -169,7 +175,7 @@ BS.GitHubWebHooks = {};
         var info = WH.info[id];
         if (info) {
             server = info['server'];
-        } else if (type == "repository") {
+        } else {
             server = WH.getServerUrl(id);
         }
         if (server && WH.forcePopup[server]) {
@@ -177,11 +183,11 @@ BS.GitHubWebHooks = {};
         }
 
         if (popup) {
-            var url = window.base_uri + '/oauth/github/webhooks.html?action=' + action.id + '&popup=true&id=' + id + '&type=' + type;
+            var url = window.base_uri + '/oauth/github/webhooks.html?action=' + action.id + '&popup=true&id=' + id;
             if (projectId !== undefined) {
                 url = url + "&projectId=" + projectId
             }
-            BS.Util.popupWindow(url, 'webhook_' + action.id + '_' + type + '_' + id);
+            BS.Util.popupWindow(url, 'webhook_' + action.id + '_' + id);
             return
         }
 
@@ -195,7 +201,6 @@ BS.GitHubWebHooks = {};
         }
         var parameters = {
             "action": action.id,
-            "type": type,
             "id": id,
             "popup": popup,
         };
@@ -228,10 +233,10 @@ BS.GitHubWebHooks = {};
                     } else {
                         var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doAction('" + action.id + "', this, '" + id + "','" + projectId + "', true); return false\">Refresh access token and " + action.name + " webhook</a>";
                         BS.Util.Messages.show(id, 'GitHub authorization needed. ' + link);
-                        //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + type + '_' + id);
+                        //BS.Util.popupWindow(json['redirect'], 'add_webhook_' + id);
                         $j(that).append(link);
                         $(that).onclick = function () {
-                            WH.doWebHookAction(action, that, type, id, true, projectId);
+                            WH.doWebHookAction(action, that, id, true, projectId);
                             return false
                         };
                         BS.Log.info($(that).onclick);
@@ -281,14 +286,19 @@ BS.GitHubWebHooks = {};
             BS.Log.warn("There no 'doHandleResult' function defined for action '" + action.id + "'");
             return "There no 'doHandleResult' function defined for action '" + action.id + "'"
         }
-        BS.Log.warn("Unknown action type: " + json['action']);
+        BS.Log.warn("Unknown action: " + json['action']);
     };
 
     WH.callback = function (json) {
         if (json['error']) {
-            BS.Log.error("Sad :( Something went wrong: " + json['error']);
-            // Todo: show popup dialog with rich HTML instead of alert
-            alert(json['error']);
+            var action = WH.actions[json['action']];
+            if (action && action.doHandleError) {
+                action.doHandleError(json)
+            } else {
+                BS.Log.error("Sad :( Something went wrong: " + json['error']);
+                // Todo: show popup dialog with rich HTML instead of alert
+                alert(json['error']);
+            }
         } else if (json['result']) {
             var res = json['result'];
             WH.processResult(json, res);
@@ -331,13 +341,19 @@ BS.GitHubWebHooks = {};
             projectId = data_holder.attr('data-project-id');
         }
         if (popup === undefined) {
-            var fp = WH.forcePopup[WH.getServerUrl(repository)];
-            if (fp === undefined) fp = true;
-            p = fp
+            var server = WH.getServerUrl(repository);
+            if (!server) {
+                // Seems input is incorrect, do not show popup
+                p = false;
+            } else {
+                var fp = WH.forcePopup[server];
+                if (fp === undefined) fp = true;
+                p = fp;
+            }
         } else {
             p = popup
         }
-        WH.doWebHookAction(action, element, "repository", repository, p, projectId);
+        WH.doWebHookAction(action, element, repository, p, projectId);
         return false;
     };
     WH.checkAll = function (element, projectId, recursive) {
@@ -585,6 +601,11 @@ BS.GitHubWebHooks = {};
 
         $j('#errorRepository').text("").hide();
         BS.Util.Messages.hide({group: 'messages_group_InstallWebhook'});
+
+        // TODO: Validate input
+        // if (!repository || repository.length == 0) {
+        //     $j('#errorRepository').text("Repository is empty").show();
+        // }
 
         return WH.doAction('install', element, repository, projectId);
     }
