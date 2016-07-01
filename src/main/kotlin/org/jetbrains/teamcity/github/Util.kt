@@ -11,7 +11,6 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubOAuthProvider
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRoot
-import jetbrains.buildServer.vcs.VcsRootInstance
 import java.net.MalformedURLException
 import java.net.URI
 import java.net.URL
