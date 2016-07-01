@@ -170,7 +170,6 @@ BS.GitHubWebHooks = {};
         return true;
     };
     WH.doWebHookAction = function (action, element, id, popup, projectId) {
-        if (!WH.checkLocation()) return;
         //var progress = $$("# .progress").show();
 
         // Enforce popup for server if needed
@@ -186,6 +185,7 @@ BS.GitHubWebHooks = {};
         }
 
         if (popup) {
+            if (!WH.checkLocation()) return;
             var url = window.base_uri + '/oauth/github/webhooks.html?action=' + action.id + '&popup=true&id=' + id;
             if (projectId !== undefined) {
                 url = url + "&projectId=" + projectId
