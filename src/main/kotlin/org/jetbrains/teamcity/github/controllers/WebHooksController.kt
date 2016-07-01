@@ -271,12 +271,14 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
+        val id = myWebHooksManager.getHook(info)!!.id
+        val url = "${info.getRepositoryUrl()}/settings/hooks/$id"
         when (result) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
+                return gh_json(result.name, "Hook for repository '${info.toString()}' <a href=\"$url\">already exists</a>, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
+                return gh_json(result.name, "Created <a href=\"$url\">hook</a> for repository '${info.toString()}'", info)
             }
         }
     }
