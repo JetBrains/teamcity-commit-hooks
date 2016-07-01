@@ -14,7 +14,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-class WebHooksStorage(private val myCacheProvider: CacheProvider,
+class WebHooksStorage(cacheProvider: CacheProvider,
                       private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
     companion object {
         private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
@@ -53,7 +53,7 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
     }
 
 
-    private val myCache = myCacheProvider.getOrCreateCache("WebHooksCache", String::class.java)
+    private val myCache = cacheProvider.getOrCreateCache("WebHooksCache", String::class.java)
 
 
     private val myCacheLock = ReentrantReadWriteLock()
@@ -90,20 +90,6 @@ class WebHooksStorage(private val myCacheProvider: CacheProvider,
 
     fun destroy(): Unit {
         myServerEventDispatcher.removeListener(myServerListener)
-    }
-
-    fun store(info: GitHubRepositoryInfo, hook: HookInfo) {
-        store(info.server, info.getRepositoryId(), hook)
-    }
-
-    fun store(server: String, repo: RepositoryId, hook: HookInfo) {
-        myCacheLock.write {
-            myCache.write(toKey(server, repo), hook.toJson())
-        }
-    }
-
-    fun add(info: GitHubRepositoryInfo, builder: () -> HookInfo) {
-        add(info.server, info.getRepositoryId(), builder)
     }
 
     /**

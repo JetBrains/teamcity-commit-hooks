@@ -109,6 +109,7 @@ BS.GitHubWebHooks = {};
                 var server = info['server'];
                 var warning = false;
                 BS.Util.Messages.hide({group: 'gh_wh_install'});
+                var opts = {group: 'gh_wh_install'};
                 if (good.indexOf(result) > -1) {
                     // Good one
                     const data = json['data'];
@@ -119,17 +120,19 @@ BS.GitHubWebHooks = {};
                     WH.forcePopup[server] = false;
                     $j("#installWebhookSubmit").attr("value", "Install");
                     var group = server + '/' + info['owner'] + '/' + info['name'];
-                    BS.Util.Messages.show(group, message);
+                    BS.Util.Messages.show(group, message, opts);
                     return
                 }
                 if ("TokenScopeMismatch" == result) {
                     message = "Token you provided have no access to repository '" + repo + "', try again";
-                    warning = true;
                     // TODO: Add link to refresh/request token (via popup window)
                     $j("#installWebhookSubmit").attr("value", "Authorize and Install");
-                    WH.forcePopup[server] = true
+                    WH.forcePopup[server] = true;
+                    opts.verbosity = 'warn';
+                    BS.Util.Messages.show(group, message, opts);
+                    return
                 }
-                onActionSuccessBasic(json, result, {group: 'gh_wh_install'});
+                onActionSuccessBasic(json, result, opts);
             },
             doHandleRedirect: function (json, id) {
                 WH.forcePopup[WH.getServerUrl(id)] = true;
@@ -196,7 +199,6 @@ BS.GitHubWebHooks = {};
 
         var that = element;
 
-        // TODO: Proper message
         if (action.doShowProgress) {
             action.doShowProgress(element)
         } else {
