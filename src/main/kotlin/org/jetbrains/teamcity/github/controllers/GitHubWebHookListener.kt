@@ -222,7 +222,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             return HttpServletResponse.SC_BAD_REQUEST to "User installed webhook no longer registered in TeamCity. Remove and reinstall webhook."
         }
 
-        val foundVcsInstances = findSuitableVcsRootInstances(info, null)
+        val foundVcsInstances = findSuitableVcsRootInstances(info)
         doScheduleCheckForPendingChanges(foundVcsInstances, user)
         return HttpServletResponse.SC_ACCEPTED to "Scheduled check for pending changes in ${foundVcsInstances.size} vcs root ${StringUtil.pluralize("instance", foundVcsInstances.size)}"
     }
@@ -243,13 +243,14 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         })
     }
 
-    fun findSuitableVcsRootInstances(info: GitHubRepositoryInfo, vcsRootId: String?): List<VcsRootInstance> {
-        val roots = HashSet<VcsRootInstance>()
+    fun findSuitableVcsRootInstances(info: GitHubRepositoryInfo): List<VcsRootInstance> {
+        val instances = HashSet<VcsRootInstance>()
         for (bt in ProjectManager.allBuildTypes) {
             if (bt.project.isArchived) continue
-            roots.addAll(bt.vcsRootInstances)
+            val roots = bt.vcsRoots.filter { Util.isSuitableVcsRoot(it, false) }
+            roots.map { bt.getVcsRootInstanceForParent(it) }.filterNotNull().filter { Util.isSuitableVcsRoot(it, true) }.toCollection(instances)
         }
-        return roots.filter { info == Util.getGitHubInfo(it) && (vcsRootId == null || it.parent.externalId == vcsRootId) }
+        return instances.filter { info == Util.getGitHubInfo(it) }
     }
 
     private fun setModificationCheckInterval(info: GitHubRepositoryInfo) {
