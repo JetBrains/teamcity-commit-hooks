@@ -16,7 +16,7 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
         val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
 
         fun splitRoots(vcsRoots: Set<SVcsRoot>): MultiMapToSet<GitHubRepositoryInfo, SVcsRoot> {
-            val map = MultiMapToSet<GitHubRepositoryInfo, SVcsRoot>();
+            val map = MultiMapToSet<GitHubRepositoryInfo, SVcsRoot>()
 
             for (root in vcsRoots) {
                 val info = Util.Companion.getGitHubInfo(root) ?: continue
@@ -24,7 +24,7 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
                 // Ignore roots with unresolved references in url
                 if (info.isHasParameterReferences()) continue
 
-                map.add(info, root);
+                map.add(info, root)
             }
             return map
         }

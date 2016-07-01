@@ -127,7 +127,7 @@ class WebhookPeriodicalChecker(
                         }
                         GitHubAccessException.Type.InternalServerError -> {
                             LOG.info("Cannot check hooks status for repository $info: Error on GitHub side. Will try later")
-                            ignoredServers.add(info.server);
+                            ignoredServers.add(info.server)
                             break@tokens
                         }
                     }

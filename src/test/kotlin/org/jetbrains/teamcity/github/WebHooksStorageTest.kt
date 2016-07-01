@@ -16,7 +16,7 @@ class WebHooksStorageTest {
 
     @Test
     fun testHookInfoSerialization() {
-        val callback = "__CALLBACK_URL__";
+        val callback = "__CALLBACK_URL__"
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", callbackUrl = callback))
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", true, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, callbackUrl = callback))
