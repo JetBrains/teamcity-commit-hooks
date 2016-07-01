@@ -179,6 +179,16 @@
 
     <script type="text/javascript">
         (function () {
+            if (typeof BS.ServerInfo === 'undefined') {
+                BS.ServerInfo = {
+                    url: '${serverSummary.rootURL}'
+                };
+            }
+            if (typeof BS.RequestInfo === 'undefined') {
+                BS.RequestInfo = {
+                    context_path: '${pageContext.request.contextPath}'
+                };
+            }
             <c:forEach items="${webHooksBean.enforcePopupData}" var="entry">
             BS.GitHubWebHooks.forcePopup['${entry.key}'] = ${entry.value};
             </c:forEach>
