@@ -21,7 +21,7 @@ object TestWebHookAction : Action<HookTestOperationResult, ActionContext> {
             service.testHook(info.getRepositoryId(), hook.id.toInt())
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to test(ping) webhook for repository $info: ${e.status}", e)
-            context.tryHandleError(e)
+            context.handleCommonErrors(e)
             when (e.status) {
                 403, 404 -> {
                     // ? No access

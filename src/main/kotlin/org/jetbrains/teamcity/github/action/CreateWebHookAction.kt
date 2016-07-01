@@ -52,7 +52,7 @@ object CreateWebHookAction {
             created = service.createHook(repo, hook)
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to create webhook for repository $info: ${e.status}", e)
-            context.tryHandleError(e)
+            context.handleCommonErrors(e)
             when (e.status) {
                 403, 404 -> {
                     // ? No access

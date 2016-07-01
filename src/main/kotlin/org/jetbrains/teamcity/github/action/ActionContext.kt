@@ -68,7 +68,7 @@ open class ActionContext(val storage: WebHooksStorage,
     }
 
     @Throws(GitHubAccessException::class)
-    fun tryHandleError(e: RequestException) {
+    fun handleCommonErrors(e: RequestException) {
         when (e.status) {
             HttpURLConnection.HTTP_INTERNAL_ERROR -> {
                 throw GitHubAccessException(GitHubAccessException.Type.InternalServerError)

@@ -43,7 +43,7 @@ object GetAllWebHooksAction {
             return context.updateHooks(info.server, repo, filtered)
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to load webhooks for repository $info: ${e.status}", e)
-            context.tryHandleError(e)
+            context.handleCommonErrors(e)
             when (e.status) {
                 HTTP_NOT_FOUND, HTTP_FORBIDDEN -> {
                     // No access

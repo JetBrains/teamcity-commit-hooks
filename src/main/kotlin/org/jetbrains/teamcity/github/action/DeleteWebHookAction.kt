@@ -45,7 +45,7 @@ object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to delete webhook for repository $info: ${e.status}", e)
             // TODO: There was not handel for 401. Investigate
-            context.tryHandleError(e)
+            context.handleCommonErrors(e)
             when (e.status) {
                 403, 404 -> {
                     // ? No access
