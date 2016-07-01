@@ -29,7 +29,6 @@ import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.action.HookAddOperationResult
 import org.jetbrains.teamcity.github.action.HookDeleteOperationResult
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import java.io.IOException
@@ -39,25 +38,15 @@ import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-class WebHooksController(private val descriptor: PluginDescriptor, server: SBuildServer) : BaseController(server) {
+class WebHooksController(descriptor: PluginDescriptor,
+                         val myWebControllerManager: WebControllerManager,
+                         val myOAuthConnectionsManager: OAuthConnectionsManager,
+                         val myOAuthTokensStorage: OAuthTokensStorage,
+                         val myWebHooksManager: WebHooksManager,
+                         val myTokensHelper: TokensHelper,
+                         val myProjectManager: ProjectManager,
+                         server: SBuildServer) : BaseController(server) {
 
-    @Autowired
-    lateinit var myWebControllerManager: WebControllerManager
-
-    @Autowired
-    lateinit var myOAuthConnectionsManager: OAuthConnectionsManager
-
-    @Autowired
-    lateinit var myOAuthTokensStorage: OAuthTokensStorage
-
-    @Autowired
-    lateinit var myWebHooksManager: WebHooksManager
-
-    @Autowired
-    lateinit var myTokensHelper: TokensHelper
-
-    @Autowired
-    lateinit var myProjectManager: ProjectManager
 
     private val myResultJspPath = descriptor.getPluginResourcesPath("hook-created.jsp")
 
@@ -208,10 +197,10 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                 )
             }
 
-            for (entry in tokens) {
-                val ghc: GitHubClientEx = GitHubClientFactory.createGitHubClient(entry.key.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
-                for (token in entry.value) {
-                    LOG.info("Trying with token: ${token.oauthLogin}, connector is ${entry.key.id}")
+            for ((key, value) in tokens) {
+                val ghc: GitHubClientEx = GitHubClientFactory.createGitHubClient(key.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
+                for (token in value) {
+                    LOG.info("Trying with token: ${token.oauthLogin}, connector is ${key.id}")
                     ghc.setOAuth2Token(token.accessToken)
                     val element: JsonElement?
 
@@ -222,7 +211,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                                     request.getParameter("original_action") ?: "add"
                                 } else action
                         if ("add" == action) {
-                            element = doAddWebHook(ghc, info, user, entry.key)
+                            element = doAddWebHook(ghc, info, user, key)
                         } else if ("check" == action) {
                             element = doCheckWebHook(ghc, info)
                         } else if ("ping" == action) {
@@ -230,7 +219,7 @@ class WebHooksController(private val descriptor: PluginDescriptor, server: SBuil
                         } else if ("delete" == action) {
                             element = doDeleteWebHook(ghc, info, user)
                         } else if ("install" == action) {
-                            element = doInstallWebHook(ghc, info, user, entry.key)
+                            element = doInstallWebHook(ghc, info, user, key)
                         } else {
                             element = null
                         }
@@ -543,8 +532,8 @@ private fun url(url: String, params: Map<String, Any>): String {
     val sb = StringBuilder()
     sb.append(url)
     if (!params.isEmpty()) sb.append('?')
-    for (e in params.entries) {
-        sb.append(e.key).append('=').append(WebUtil.encode(e.value.toString())).append('&')
+    for ((key, value) in params) {
+        sb.append(key).append('=').append(WebUtil.encode(value.toString())).append('&')
     }
     return sb.toString()
 }
