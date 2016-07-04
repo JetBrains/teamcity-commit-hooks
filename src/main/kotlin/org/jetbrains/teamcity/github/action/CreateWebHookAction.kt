@@ -9,6 +9,7 @@ import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
+import org.jetbrains.teamcity.github.controllers.Status
 
 object CreateWebHookAction {
 
@@ -103,7 +104,10 @@ object CreateWebHookAction {
                     DeleteWebHookAction.doRun(info, client, user, context)
                 } catch(ignored: GitHubAccessException) {
                 }
-                context.storage.delete(info)
+                context.storage.update(info) {
+                    it.correct = false
+                    it.status = Status.INCORRECT
+                }
             } else {
                 return true
             }
