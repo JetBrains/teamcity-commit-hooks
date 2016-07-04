@@ -1,6 +1,8 @@
 package org.jetbrains.teamcity.github
 
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
@@ -46,12 +48,33 @@ class WebHooksStorage(cacheProvider: CacheProvider,
                         var lastBranchRevisions: MutableMap<String, String>? = null,
                         val callbackUrl: String) {
         companion object {
-            private val gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()
+            val gson: Gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()!!
+            private val listType = object : TypeToken<List<HookInfo>>() {}.type
 
-            fun fromJson(string: String): HookInfo? = gson.fromJson(string, HookInfo::class.java)
+            private fun oneFromJson(string: String): HookInfo? = gson.fromJson(string, HookInfo::class.java)
+            private fun listFromJson(string: String): List<HookInfo> = gson.fromJson(string, listType) ?: emptyList()
+
+            fun fromJson(json: String): List<HookInfo> {
+                if (json.startsWith("{")) {
+                    return listOf(HookInfo.oneFromJson(json)).filterNotNull()
+                } else if (json.startsWith("[")) {
+                    return HookInfo.listFromJson(json)
+                } else {
+                    throw IllegalArgumentException("Unexpected content: ${json}")
+                }
+            }
+
+            fun toJson(hooks: List<HookInfo>): String {
+                return gson.toJson(hooks)
+            }
         }
 
+        @Deprecated("")
         fun toJson(): String = gson.toJson(this)
+
+        fun isSame(other: HookInfo): Boolean {
+            return id == other.id && url == other.url && callbackUrl == other.callbackUrl
+        }
     }
 
 
@@ -98,16 +121,22 @@ class WebHooksStorage(cacheProvider: CacheProvider,
      * Adds hooks if it not existed previously
      */
     fun add(server: String, repo: RepositoryId, builder: () -> HookInfo): HookInfo {
-        val hook = getHook(server, repo)
+        val toAdd = builder()
+
+        val hooks = getHooks(server, repo)
+        val hook = hooks.firstOrNull { it.isSame(toAdd) }
         if (hook != null) return hook
+
         myCacheLock.write {
-            var info: HookInfo? = myCache.read(toKey(server, repo))?.let { HookInfo.fromJson(it) }
-            if (info != null) {
-                return info
-            }
-            info = builder()
-            myCache.write(toKey(server, repo), info.toJson())
-            return info
+            @Suppress("NAME_SHADOWING")
+            val hooks = getHooks(server, repo).toMutableList()
+            @Suppress("NAME_SHADOWING")
+            val hook = hooks.firstOrNull { it.isSame(toAdd) }
+            if (hook != null) return hook
+
+            hooks.add(toAdd)
+            myCache.write(toKey(server, repo), HookInfo.toJson(hooks))
+            return toAdd
         }
     }
 
@@ -127,22 +156,34 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
     fun update(server: String, repo: RepositoryId, update: (HookInfo) -> Unit): Boolean {
         myCacheLock.write {
-            val hook = myCache.read(toKey(server, repo))?.let { HookInfo.fromJson(it) } ?: return false
-            update(hook)
-            myCache.write(toKey(server, repo), hook.toJson())
+            val hooks = myCache.read(toKey(server, repo))?.let { HookInfo.fromJson(it) }?.toMutableList() ?: return false
+            for (hook in hooks) {
+                update(hook)
+            }
+            myCache.write(toKey(server, repo), HookInfo.toJson(hooks))
             return true
         }
     }
 
+    @Deprecated("")
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
         return getHook(info.server, info.getRepositoryId())
     }
 
+    @Deprecated("")
     fun getHook(server: String, repo: RepositoryId): WebHooksStorage.HookInfo? {
-        // TODO: Populate map in background
-        myCacheLock.read {
-            return myCache.read(toKey(server, repo))?.let { HookInfo.fromJson(it) }
-        }
+        return getHooks(server, repo).firstOrNull()
+    }
+
+    fun getHooks(info: GitHubRepositoryInfo): List<WebHooksStorage.HookInfo> {
+        return getHooks(info.server, info.getRepositoryId())
+    }
+
+    fun getHooks(server: String, repo: RepositoryId): List<WebHooksStorage.HookInfo> {
+        val read = myCacheLock.read {
+            myCache.read(toKey(server, repo))
+        } ?: return emptyList()
+        return HookInfo.fromJson(read)
     }
 
     fun isHasIncorrectHooks(): Boolean {
@@ -151,9 +192,9 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
         for (key in keys) {
             myCacheLock.read {
-                val info = myCache.read(key)?.let { HookInfo.fromJson(it) }
-                if (info != null) {
-                    if (info.status.bad) return true
+                val hooks = myCache.read(key)?.let { HookInfo.fromJson(it) }
+                if (hooks != null) {
+                    if (hooks.any { it.status.bad }) return true
                 }
             }
         }
@@ -167,11 +208,12 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         val result = ArrayList<Pair<GitHubRepositoryInfo, WebHooksStorage.HookInfo>>()
         for (key in keys) {
             myCacheLock.read {
-                val info = myCache.read(key)?.let { HookInfo.fromJson(it) }
-                if (info != null) {
-                    if (info.status.bad) {
+                val hooks = myCache.read(key)?.let { HookInfo.fromJson(it) }
+                if (hooks != null) {
+                    val bad = hooks.filter { it.status.bad }
+                    if (bad.isNotEmpty()) {
                         val (server, owner, name) = fromKey(key)
-                        result.add(GitHubRepositoryInfo(server, owner, name) to info)
+                        bad.map { GitHubRepositoryInfo(server, owner, name) to it }.toCollection(result)
                     }
                 }
             }
@@ -186,10 +228,10 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         val result = ArrayList<Pair<GitHubRepositoryInfo, WebHooksStorage.HookInfo>>()
         for (key in keys) {
             myCacheLock.read {
-                val info = myCache.read(key)?.let { HookInfo.fromJson(it) }
-                if (info != null) {
+                val hooks = myCache.read(key)?.let { HookInfo.fromJson(it) }
+                if (hooks != null) {
                     val (server, owner, name) = fromKey(key)
-                    result.add(GitHubRepositoryInfo(server, owner, name) to info)
+                    hooks.map { GitHubRepositoryInfo(server, owner, name) to it }.toCollection(result)
                 }
             }
         }

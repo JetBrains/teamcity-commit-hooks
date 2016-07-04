@@ -8,6 +8,11 @@ import java.util.*
 
 class WebHooksStorageTest {
 
+    companion object {
+        val callback = "__CALLBACK_URL__"
+    }
+
+
     @Test
     fun testKeyTransformation() {
         doKeyTest("github.com", "JetBrains", "kotlin", "github.com/JetBrains/kotlin")
@@ -17,7 +22,6 @@ class WebHooksStorageTest {
 
     @Test
     fun testHookInfoSerialization() {
-        val callback = "__CALLBACK_URL__"
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.OK, callbackUrl = callback))
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.DISABLED, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.INCORRECT, callbackUrl = callback))
@@ -25,8 +29,31 @@ class WebHooksStorageTest {
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.WAITING_FOR_SERVER_RESPONSE, Date(10), LinkedHashMap(mapOf("1" to "2")), callbackUrl = callback))
     }
 
+    @Test
+    fun testHookInfoListSerialization() {
+        val first = WebHooksStorage.HookInfo(1, "__A__", Status.OK, callbackUrl = callback)
+        val second = WebHooksStorage.HookInfo(2, "__B__", Status.INCORRECT, callbackUrl = callback)
+        val json = WebHooksStorage.HookInfo.toJson(listOf(first, second))
+        val list: List<WebHooksStorage.HookInfo>? = WebHooksStorage.HookInfo.fromJson(json)
+        then(list).containsOnly(first, second).isEqualTo(listOf(first, second))
+    }
+
+    @Test
+    fun testBothDeserialization() {
+        val first = WebHooksStorage.HookInfo(1, "__A__", Status.OK, callbackUrl = callback)
+        val second = WebHooksStorage.HookInfo(2, "__B__", Status.INCORRECT, callbackUrl = callback)
+        val list = listOf(first, second)
+
+        val json = WebHooksStorage.HookInfo.toJson(list)
+        then(json).isNotNull()
+        then(WebHooksStorage.HookInfo.fromJson(json)).isNotNull().isEqualTo(list)
+
+        val singleList = WebHooksStorage.HookInfo.fromJson(first.toJson())
+        then(singleList).isEqualTo(listOf(first))
+    }
+
     private fun doHookInfoSerializationTest(first: WebHooksStorage.HookInfo) {
-        val second = WebHooksStorage.HookInfo.fromJson(first.toJson())
+        val second = WebHooksStorage.HookInfo.fromJson(first.toJson()).firstOrNull()
         then(second).isNotNull()
         second!!
         then(second.id).isEqualTo(first.id)
