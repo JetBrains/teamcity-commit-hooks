@@ -284,6 +284,9 @@ data class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo
             Status.OK -> listOf("Delete", "Check")
             Status.WAITING_FOR_SERVER_RESPONSE -> listOf("Delete", "Ping", "Check")
             Status.INCORRECT -> listOf("Add", "Check")
+            Status.MISSING -> listOf("Add", "Check")
+            Status.DISABLED -> listOf("Delete", "Ping", "Check") // TODO: 'Enable'
+            Status.PAYLOAD_DELIVERY_FAILED -> listOf("Delete", "Ping", "Check")
         }
     }
 }
@@ -293,7 +296,10 @@ enum class Status {
     NOT_FOUND,
     OK,
     WAITING_FOR_SERVER_RESPONSE,
-    INCORRECT
+    INCORRECT,
+    PAYLOAD_DELIVERY_FAILED,
+    MISSING,
+    DISABLED
 }
 
 fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
