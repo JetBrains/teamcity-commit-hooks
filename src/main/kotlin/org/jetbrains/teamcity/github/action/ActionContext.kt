@@ -37,7 +37,6 @@ open class ActionContext(val storage: WebHooksStorage,
             }
             return emptyMap()
         }
-        // TODO: Investigate whether hook disabled if GitHub failed to deliver payload (TC returned error)
         val result = HashMap<RepositoryHook, WebHooksStorage.HookInfo>()
         val hooks = storage.getHooks(server, repo).toMutableList()
 
