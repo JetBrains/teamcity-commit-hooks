@@ -46,9 +46,11 @@ open class ActionContext(val storage: WebHooksStorage,
             val info = storage.getHook(server, repo)
             if (info == null) {
                 addHook(hook, server, repo)?.let { result.put(hook, it) }
-            } else if (info.id != hook.id || info.url != hook.url) {
+            } else if (info.id != hook.id || info.url != hook.url || info.callbackUrl != hook.callbackUrl) {
                 storage.delete(server, repo)
                 addHook(hook, server, repo)?.let { result.put(hook, it) }
+            } else {
+                result.put(hook, info)
             }
         }
         return result
