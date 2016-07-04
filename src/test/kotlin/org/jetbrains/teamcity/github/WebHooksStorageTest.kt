@@ -2,6 +2,7 @@ package org.jetbrains.teamcity.github
 
 import org.assertj.core.api.BDDAssertions.then
 import org.eclipse.egit.github.core.RepositoryId
+import org.jetbrains.teamcity.github.controllers.Status
 import org.testng.annotations.Test
 import java.util.*
 
@@ -17,11 +18,11 @@ class WebHooksStorageTest {
     @Test
     fun testHookInfoSerialization() {
         val callback = "__CALLBACK_URL__"
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", true, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", false, Date(10), LinkedHashMap(mapOf("1" to "2")), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.OK, callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.DISABLED, true, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.INCORRECT, false, callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.MISSING, false, Date(10), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.WAITING_FOR_SERVER_RESPONSE, true, Date(10), LinkedHashMap(mapOf("1" to "2")), callbackUrl = callback))
     }
 
     private fun doHookInfoSerializationTest(first: WebHooksStorage.HookInfo) {

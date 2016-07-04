@@ -312,5 +312,5 @@ fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
     if (hook.lastUsed == null) {
         return WebHooksStatus(Status.WAITING_FOR_SERVER_RESPONSE, hook)
     }
-    return WebHooksStatus(Status.OK, hook)
+    return WebHooksStatus(hook.status, hook)
 }

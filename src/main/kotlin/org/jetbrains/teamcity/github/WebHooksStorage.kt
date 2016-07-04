@@ -8,6 +8,7 @@ import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.util.cache.SCacheImpl
 import org.eclipse.egit.github.core.RepositoryId
+import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -39,6 +40,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
     data class HookInfo(val id: Long,
                         val url: String, // API URL
+                        var status: Status,
                         var correct: Boolean = true,
                         var lastUsed: Date? = null,
                         var lastBranchRevisions: MutableMap<String, String>? = null,
@@ -113,7 +115,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         delete(info.server, info.getRepositoryId())
     }
 
-    fun delete(server: String, repo: RepositoryId) {
+    private fun delete(server: String, repo: RepositoryId) {
         myCacheLock.write {
             myCache.invalidate(toKey(server, repo))
         }
