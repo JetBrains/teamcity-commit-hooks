@@ -10,6 +10,7 @@ import org.jetbrains.teamcity.github.GitHubAccessException
 import org.jetbrains.teamcity.github.GitHubRepositoryInfo
 import org.jetbrains.teamcity.github.TokensHelper
 import org.jetbrains.teamcity.github.WebHooksStorage
+import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 
 object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
     private val LOG = Logger.getInstance(DeleteWebHookAction::class.java.name)
@@ -22,7 +23,7 @@ object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
         var hook = context.getHook(info)
 
         if (hook != null) {
-            delete(client, hook, info, repo, service, context)
+            delete(client, hook, info, service, context)
             return HookDeleteOperationResult.Removed
         }
 
@@ -32,16 +33,16 @@ object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
         hook = context.getHook(info)
 
         if (hook != null) {
-            delete(client, hook, info, repo, service, context)
+            delete(client, hook, info, service, context)
             return HookDeleteOperationResult.Removed
         }
 
         return HookDeleteOperationResult.NeverExisted
     }
 
-    private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, repo: RepositoryId, service: RepositoryService, context: ActionContext) {
+    private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryService, context: ActionContext) {
         try {
-            service.deleteHook(repo, hook.id.toInt())
+            service.deleteHook(info.getRepositoryId(), hook.id.toInt())
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to delete webhook for repository $info: ${e.status}", e)
             // TODO: There was not handel for 401. Investigate
@@ -57,6 +58,7 @@ object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
             }
             throw e
         }
-        context.storage.delete(info.server, repo)
+        context.storage.delete(info)
+        GitHubWebHookListener.getPubKeyFromRequestPath(hook.callbackUrl)?.let { context.authDataStorage.delete(it) }
     }
 }
