@@ -29,7 +29,7 @@ open class ActionContext(val storage: WebHooksStorage,
     }
 
     fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>): Map<RepositoryHook, WebHooksStorage.HookInfo> {
-        // TODO: Support more than one hook in storage, report that as misconfiguration
+        // TODO: Report more than one active webhook in storage as misconfiguration
         if (filtered.isEmpty()) {
             // Mark old hooks as removed
             storage.update(server, repo) {
@@ -37,28 +37,38 @@ open class ActionContext(val storage: WebHooksStorage,
             }
             return emptyMap()
         }
-        if (!filtered.any { it.isActive }) {
-            // No active webhooks, mark infos as disabled
-            // TODO: Investigate whether hook disabled if GitHub failed to deliver payload (TC returned error)
-            storage.update(server, repo) {
-//                it.correct = false
-                it.status = Status.DISABLED
-            }
-            return emptyMap()
-        }
+        // TODO: Investigate whether hook disabled if GitHub failed to deliver payload (TC returned error)
         val result = HashMap<RepositoryHook, WebHooksStorage.HookInfo>()
-        for (hook in filtered) {
-            if (!hook.isActive) continue
-            val info = storage.getHook(server, repo)
-            if (info == null) {
-                result.put(hook, addHook(hook, server, repo)!!)
-            } else if (info.id != hook.id || info.url != hook.url || info.callbackUrl != hook.callbackUrl) {
-                storage.update(server, repo) {
-                    it.status = Status.MISSING
+        val hooks = storage.getHooks(server, repo).toMutableList()
+
+        val missing = hooks.any { hi ->
+            !filtered.any { rh -> hi.isSame(rh) }
+        }
+        if (missing) {
+            storage.update(server, repo) { hi ->
+                val rh = filtered.firstOrNull { rh -> hi.isSame(rh) }
+                if (rh == null) {
+                    hi.status = Status.MISSING
+                } else if (!rh.isActive) {
+                    // TODO: Should check that status is OK?
+                    hi.status = Status.DISABLED
+                } else {
+                    // TODO: Should update status?
                 }
+            }
+        }
+
+        for (hook in filtered) {
+            if (hooks.isEmpty()) {
                 result.put(hook, addHook(hook, server, repo)!!)
             } else {
-                result.put(hook, info)
+                val same = hooks.firstOrNull { it.isSame(hook) }
+                if (same != null) {
+                    result.put(hook, same)
+                    continue
+                } else {
+                    result.put(hook, addHook(hook, server, repo)!!)
+                }
             }
         }
         return result

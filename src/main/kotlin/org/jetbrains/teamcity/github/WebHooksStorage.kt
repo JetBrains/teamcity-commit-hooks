@@ -9,6 +9,7 @@ import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.util.cache.SCacheImpl
+import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
 import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.controllers.bad
@@ -74,6 +75,10 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
         fun isSame(other: HookInfo): Boolean {
             return id == other.id && url == other.url && callbackUrl == other.callbackUrl
+        }
+
+        fun isSame(hook: RepositoryHook): Boolean {
+            return id == hook.id && url == hook.url && callbackUrl == hook.callbackUrl
         }
     }
 
