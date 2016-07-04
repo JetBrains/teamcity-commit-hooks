@@ -19,10 +19,10 @@ class WebHooksStorageTest {
     fun testHookInfoSerialization() {
         val callback = "__CALLBACK_URL__"
         doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.OK, callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.DISABLED, true, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.INCORRECT, false, callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.MISSING, false, Date(10), callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.WAITING_FOR_SERVER_RESPONSE, true, Date(10), LinkedHashMap(mapOf("1" to "2")), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.DISABLED, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.INCORRECT, callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.MISSING, Date(10), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.WAITING_FOR_SERVER_RESPONSE, Date(10), LinkedHashMap(mapOf("1" to "2")), callbackUrl = callback))
     }
 
     private fun doHookInfoSerializationTest(first: WebHooksStorage.HookInfo) {
@@ -30,7 +30,6 @@ class WebHooksStorageTest {
         then(second).isNotNull()
         second!!
         then(second.id).isEqualTo(first.id)
-        then(second.correct).isEqualTo(first.correct)
         then(second.lastUsed).isEqualTo(first.lastUsed)
         then(second.lastBranchRevisions).isEqualTo(first.lastBranchRevisions)
         then(second.url).isEqualTo(first.url)

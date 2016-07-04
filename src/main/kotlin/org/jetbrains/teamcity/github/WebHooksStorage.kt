@@ -42,7 +42,6 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     data class HookInfo(val id: Long,
                         val url: String, // API URL
                         var status: Status,
-                        var correct: Boolean = true,
                         var lastUsed: Date? = null,
                         var lastBranchRevisions: MutableMap<String, String>? = null,
                         val callbackUrl: String) {

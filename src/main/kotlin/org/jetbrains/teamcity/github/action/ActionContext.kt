@@ -80,7 +80,7 @@ open class ActionContext(val storage: WebHooksStorage,
         } else {
             status = Status.WAITING_FOR_SERVER_RESPONSE
         }
-        return storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url, status, true, callbackUrl = callbackUrl) })
+        return storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url, status, callbackUrl = callbackUrl) })
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
