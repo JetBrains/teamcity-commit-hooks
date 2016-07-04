@@ -9,6 +9,7 @@ import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.users.UserModelEx
+import jetbrains.buildServer.util.StringUtil
 import org.jetbrains.teamcity.github.action.GetAllWebHooksAction
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import java.util.*
@@ -42,10 +43,15 @@ class WebhookPeriodicalChecker(
     }
 
     private fun doCheck() {
+        LOG.info("Periodical GitHub Webhooks checker started")
         val ignoredServers = ArrayList<String>()
 
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
-
+        if (toCheck.isEmpty()) {
+            LOG.debug("No webhooks configured found")
+        } else {
+            LOG.debug("Will check ${toCheck.size} ${StringUtil.pluralize("webhook", toCheck.size)}")
+        }
         while (toCheck.isNotEmpty()) {
             val pair = toCheck.pop()
             val (info, hook) = pair
@@ -96,6 +102,7 @@ class WebhookPeriodicalChecker(
             tokens@for (token in tokens) {
                 ghc.setOAuth2Token(token.accessToken)
                 try {
+                    LOG.debug("Checking webhook status for '$info' repository")
                     GetAllWebHooksAction.doRun(info, ghc, myWebHooksManager)
                     // TODO: Check&remember latest delivery status. If something wrong - report health item
                     success = true
@@ -139,9 +146,11 @@ class WebhookPeriodicalChecker(
             }
 
             if (ghc.remainingRequests in 0..10) {
+                LOG.debug("Reaching request quota limit (${ghc.remainingRequests}/${ghc.requestLimit}) for server '${info.server}', will try checking it's webhooks later")
                 ignoredServers.add(info.server)
             }
         }
+        LOG.info("Periodical GitHub Webhooks checker finished")
     }
 
     private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
