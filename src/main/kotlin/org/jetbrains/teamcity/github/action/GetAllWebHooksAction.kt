@@ -33,7 +33,7 @@ object GetAllWebHooksAction {
             }
             val active = filtered.filter { it.isActive }
             if (filtered.size > 0) {
-                LOG.debug("Found ${filtered.size} webhook for repository $info; ${active.size} - active; ${hooks.size - filtered.size} - other hooks")
+                LOG.debug("Found ${filtered.size} webhook${filtered.size.s} for repository $info; ${active.size} - active; ${hooks.size - filtered.size} - other")
             } else {
                 LOG.debug("No webhooks found for repository $info")
             }
