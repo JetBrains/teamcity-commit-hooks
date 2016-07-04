@@ -6,11 +6,14 @@ import jetbrains.buildServer.serverSide.executors.ExecutorServices
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
+import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
+import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.util.StringUtil
 import org.jetbrains.teamcity.github.action.GetAllWebHooksAction
+import org.jetbrains.teamcity.github.action.TestWebHookAction
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import java.util.*
 import java.util.concurrent.ScheduledFuture
@@ -47,6 +50,7 @@ class WebhookPeriodicalChecker(
         val ignoredServers = ArrayList<String>()
 
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
+        val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, SUser>>()
         if (toCheck.isEmpty()) {
             LOG.debug("No webhooks configured found")
         } else {
@@ -103,8 +107,37 @@ class WebhookPeriodicalChecker(
                 ghc.setOAuth2Token(token.accessToken)
                 try {
                     LOG.debug("Checking webhook status for '$info' repository")
-                    GetAllWebHooksAction.doRun(info, ghc, myWebHooksManager)
+                    val loaded = GetAllWebHooksAction.doRun(info, ghc, myWebHooksManager)
                     // TODO: Check&remember latest delivery status. If something wrong - report health item
+                    if (loaded.isEmpty()) {
+                        LOG.debug("No details loaded for '$info' repo webhooks, seems all of them are incorrect or removed")
+                        forget(info, pubKey)
+                    } else {
+                        for ((key, value) in loaded) {
+                            val lastResponse = key.lastResponse
+                            if (lastResponse == null) {
+                                LOG.debug("No last response info for hook ${key.url!!}")
+                                // Lets ask GH to send us ping request, so next time there would be some 'lastResponse'
+                                toPing.add(Triple(info, ghc to token.accessToken, user))
+                                continue
+                            }
+                            when (lastResponse.code) {
+                                in 200..299 -> LOG.debug("Last response is OK")
+                                in 400..599 -> {
+                                    LOG.debug("Last payload delivery failed")
+                                    myWebHooksStorage.update(info) {
+                                        it.correct = false
+                                    }
+                                } // TODO: Add health item
+                                else -> {
+                                    LOG.debug("Unexpected payload delivery response code: ${lastResponse.code}")
+                                    myWebHooksStorage.update(info) {
+                                        it.correct = false
+                                    }
+                                } // TODO: Add health item ???
+                            }
+                        }
+                    }
                     success = true
                     break@tokens
                 } catch(e: GitHubAccessException) {
@@ -145,12 +178,30 @@ class WebhookPeriodicalChecker(
                 toCheck.add(pair)
             }
 
-            if (ghc.remainingRequests in 0..10) {
-                LOG.debug("Reaching request quota limit (${ghc.remainingRequests}/${ghc.requestLimit}) for server '${info.server}', will try checking it's webhooks later")
-                ignoredServers.add(info.server)
-            }
+            checkQuotaLimit(ghc, ignoredServers, info)
         }
+
+        for ((info, pair, user) in toPing) {
+            if (ignoredServers.contains(info.server)) continue
+            val ghc = pair.first
+            ghc.setOAuth2Token(pair.second)
+            try {
+                TestWebHookAction.doRun(info, ghc, user, myWebHooksManager)
+            } catch(e: GitHubAccessException) {
+                // Ignore
+            }
+            checkQuotaLimit(ghc, ignoredServers, info)
+        }
+
+
         LOG.info("Periodical GitHub Webhooks checker finished")
+    }
+
+    private fun checkQuotaLimit(ghc: GitHubClientEx, ignoredServers: ArrayList<String>, info: GitHubRepositoryInfo) {
+        if (ghc.remainingRequests in 0..10) {
+            LOG.debug("Reaching request quota limit (${ghc.remainingRequests}/${ghc.requestLimit}) for server '${info.server}', will try checking it's webhooks later")
+            ignoredServers.add(info.server)
+        }
     }
 
     private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
