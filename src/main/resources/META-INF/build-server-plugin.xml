@@ -29,4 +29,6 @@
 
     <bean class="org.jetbrains.teamcity.github.WebhookPeriodicalChecker" init-method="init" destroy-method="destroy"/>
 
+    <bean class="org.jetbrains.teamcity.github.controllers.ForceWebhooksCheckController" init-method="register"/>
+
 </beans>

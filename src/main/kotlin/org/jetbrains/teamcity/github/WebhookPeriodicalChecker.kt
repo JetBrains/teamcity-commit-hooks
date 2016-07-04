@@ -45,14 +45,14 @@ class WebhookPeriodicalChecker(
         myTask?.cancel(false)
     }
 
-    private fun doCheck() {
+    fun doCheck() {
         LOG.info("Periodical GitHub Webhooks checker started")
         val ignoredServers = ArrayList<String>()
 
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
         val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, SUser>>()
         if (toCheck.isEmpty()) {
-            LOG.debug("No webhooks configured found")
+            LOG.debug("No configured webhooks found")
         } else {
             LOG.debug("Will check ${toCheck.size} ${StringUtil.pluralize("webhook", toCheck.size)}")
         }
