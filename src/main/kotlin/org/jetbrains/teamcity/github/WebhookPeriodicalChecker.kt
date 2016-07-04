@@ -184,7 +184,6 @@ class WebhookPeriodicalChecker(
                                 in 200..299 -> {
                                     LOG.debug("Last response is OK")
                                     myWebHooksStorage.update(info) {
-                                        it.correct = true
                                         it.status = if (!key.isActive) Status.DISABLED else Status.OK
                                     }
                                 }
@@ -289,7 +288,6 @@ class WebhookPeriodicalChecker(
         val hook = myWebHooksStorage.getHook(info)
         if (hook != null) {
             myWebHooksStorage.update(info) {
-                it.correct = false
                 it.status = status
             }
         }

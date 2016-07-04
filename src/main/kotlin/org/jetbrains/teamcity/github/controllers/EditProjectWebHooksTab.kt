@@ -287,6 +287,7 @@ data class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo
             Status.MISSING -> listOf("Add", "Check")
             Status.DISABLED -> listOf("Delete", "Ping", "Check") // TODO: 'Enable'
             Status.PAYLOAD_DELIVERY_FAILED -> listOf("Delete", "Ping", "Check")
+            Status.OUTDATED -> listOf("Ping", "Delete", "Check")
         }
     }
 }
@@ -299,15 +300,18 @@ enum class Status {
     INCORRECT,
     PAYLOAD_DELIVERY_FAILED,
     MISSING,
-    DISABLED
+    DISABLED,
+    OUTDATED // We haven't received event, but found some changes via vcs.
 }
+
+val Status.bad: Boolean
+    get() {
+        return this in listOf<Status>(Status.INCORRECT, Status.MISSING)
+    }
 
 fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
     if (hook == null) {
         return WebHooksStatus(Status.NOT_FOUND, hook)
-    }
-    if (!hook.correct) {
-        return WebHooksStatus(Status.INCORRECT, hook)
     }
     if (hook.lastUsed == null) {
         return WebHooksStatus(Status.WAITING_FOR_SERVER_RESPONSE, hook)

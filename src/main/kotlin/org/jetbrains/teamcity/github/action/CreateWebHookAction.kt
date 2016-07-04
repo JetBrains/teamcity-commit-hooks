@@ -105,7 +105,6 @@ object CreateWebHookAction {
                 } catch(ignored: GitHubAccessException) {
                 }
                 context.storage.update(info) {
-                    it.correct = false
                     it.status = Status.INCORRECT
                 }
             } else {

@@ -13,6 +13,7 @@ import jetbrains.buildServer.vcs.VcsRoot
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.client.RequestException
 import org.jetbrains.teamcity.github.action.*
+import org.jetbrains.teamcity.github.controllers.Status
 import java.io.IOException
 import java.util.*
 
@@ -29,7 +30,7 @@ class WebHooksManager(links: WebLinks,
             if (!isBranchesInfoUpToDate(hook, newState.branchRevisions, info)) {
                 // Mark hook as outdated, probably incorrectly configured
                 storage.update(info) {
-                    it.correct = false
+                    it.status = Status.OUTDATED
                 }
             }
         }
@@ -76,7 +77,7 @@ class WebHooksManager(links: WebLinks,
                 @Suppress("NAME_SHADOWING")
                 val used = it.lastUsed
                 if (used == null || used.before(date)) {
-                    it.correct = true
+                    it.status = Status.OK
                     it.lastUsed = date
                 }
             }
@@ -86,7 +87,7 @@ class WebHooksManager(links: WebLinks,
     fun updateBranchRevisions(info: GitHubRepositoryInfo, map: Map<String, String>) {
         val hook = getHook(info) ?: return
         storage.update(info) {
-            it.correct = true
+            it.status = Status.OK
             val lbr = hook.lastBranchRevisions ?: HashMap()
             lbr.putAll(map)
             it.lastBranchRevisions = lbr

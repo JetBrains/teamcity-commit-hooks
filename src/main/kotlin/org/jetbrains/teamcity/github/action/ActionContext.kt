@@ -33,7 +33,6 @@ open class ActionContext(val storage: WebHooksStorage,
         if (filtered.isEmpty()) {
             // Mark old hooks as removed
             storage.update(server, repo) {
-                it.correct = false
                 it.status = Status.MISSING
             }
             return emptyMap()
@@ -55,7 +54,6 @@ open class ActionContext(val storage: WebHooksStorage,
                 result.put(hook, addHook(hook, server, repo)!!)
             } else if (info.id != hook.id || info.url != hook.url || info.callbackUrl != hook.callbackUrl) {
                 storage.update(server, repo) {
-                    it.correct = false
                     it.status = Status.MISSING
                 }
                 result.put(hook, addHook(hook, server, repo)!!)

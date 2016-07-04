@@ -9,6 +9,7 @@ import jetbrains.buildServer.util.cache.CacheProvider
 import jetbrains.buildServer.util.cache.SCacheImpl
 import org.eclipse.egit.github.core.RepositoryId
 import org.jetbrains.teamcity.github.controllers.Status
+import org.jetbrains.teamcity.github.controllers.bad
 import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -153,7 +154,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             myCacheLock.read {
                 val info = myCache.read(key)?.let { HookInfo.fromJson(it) }
                 if (info != null) {
-                    if (!info.correct) return true
+                    if (info.status.bad) return true
                 }
             }
         }
@@ -169,7 +170,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             myCacheLock.read {
                 val info = myCache.read(key)?.let { HookInfo.fromJson(it) }
                 if (info != null) {
-                    if (!info.correct) {
+                    if (info.status.bad) {
                         val (server, owner, name) = fromKey(key)
                         result.add(GitHubRepositoryInfo(server, owner, name) to info)
                     }
