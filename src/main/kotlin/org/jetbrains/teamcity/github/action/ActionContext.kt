@@ -94,7 +94,7 @@ open class ActionContext(val storage: WebHooksStorage,
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
-        return storage.getHook(info)
+        return storage.getHooks(info).firstOrNull()
     }
 
     @Throws(GitHubAccessException::class)

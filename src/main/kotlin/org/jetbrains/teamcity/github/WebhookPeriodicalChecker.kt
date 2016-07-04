@@ -80,7 +80,7 @@ class WebhookPeriodicalChecker(
                 .map { it.key to it.value }.toMap()
 
         for ((info, roots) in filtered) {
-            val hook = incorrectHooks.firstOrNull { it.first == info }?.second ?: myWebHooksStorage.getHook(info)
+            val hook = incorrectHooks.firstOrNull { it.first == info }?.second ?: myWebHooksStorage.getHooks(info).firstOrNull()
             val id = info.server + "#" + (hook?.id ?: "")
 
             val reason = myIncorrectHooks[info] ?: "Unknown reason"
@@ -285,11 +285,8 @@ class WebhookPeriodicalChecker(
 
     private fun report(info: GitHubRepositoryInfo, pubKey: String, reason: String, status: Status = Status.INCORRECT) {
         myIncorrectHooks.put(info, reason)
-        val hook = myWebHooksStorage.getHook(info)
-        if (hook != null) {
-            myWebHooksStorage.update(info) {
-                it.status = status
-            }
+        myWebHooksStorage.update(info) {
+            it.status = status
         }
     }
 

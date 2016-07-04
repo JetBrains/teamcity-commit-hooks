@@ -170,16 +170,6 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    @Deprecated("")
-    fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
-        return getHook(info.server, info.getRepositoryId())
-    }
-
-    @Deprecated("")
-    fun getHook(server: String, repo: RepositoryId): WebHooksStorage.HookInfo? {
-        return getHooks(server, repo).firstOrNull()
-    }
-
     fun getHooks(info: GitHubRepositoryInfo): List<WebHooksStorage.HookInfo> {
         return getHooks(info.server, info.getRepositoryId())
     }

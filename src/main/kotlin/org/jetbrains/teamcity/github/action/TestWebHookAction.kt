@@ -8,6 +8,7 @@ import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.GitHubAccessException
 import org.jetbrains.teamcity.github.GitHubRepositoryInfo
 import org.jetbrains.teamcity.github.TokensHelper
+import org.jetbrains.teamcity.github.controllers.bad
 
 object TestWebHookAction : Action<HookTestOperationResult, ActionContext> {
     private val LOG = Logger.getInstance(TestWebHookAction::class.java.name)
@@ -16,7 +17,8 @@ object TestWebHookAction : Action<HookTestOperationResult, ActionContext> {
     @Throws(GitHubAccessException::class)
     override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookTestOperationResult {
         val service = RepositoryService(client)
-        val hook = context.storage.getHook(info) ?: return HookTestOperationResult.NotFound
+        val hooks = context.storage.getHooks(info).filter { !it.status.bad }
+        val hook = hooks.firstOrNull() ?: return HookTestOperationResult.NotFound
         try {
             service.testHook(info.getRepositoryId(), hook.id.toInt())
         } catch(e: RequestException) {
