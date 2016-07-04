@@ -3,6 +3,7 @@ package org.jetbrains.teamcity.github
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.executors.ExecutorServices
+import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
@@ -12,6 +13,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.util.StringUtil
+import jetbrains.buildServer.vcs.SVcsRoot
 import org.jetbrains.teamcity.github.action.GetAllWebHooksAction
 import org.jetbrains.teamcity.github.action.TestWebHookAction
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
@@ -29,13 +31,22 @@ class WebhookPeriodicalChecker(
         private val myExecutorServices: ExecutorServices,
         private val myOAuthTokensStorage: OAuthTokensStorage,
         private val myTokensHelper: TokensHelper
-) {
+) : HealthStatusReport() {
+
 
     private var myTask: ScheduledFuture<*>? = null
 
     companion object {
         private val LOG = Logger.getInstance(WebhookPeriodicalChecker::class.java.name)
+        val TYPE = "GitHub.WebHookIncorrect"
+        val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Incorrect", "GitHub repo webhook is misconfigured or outdated", ItemSeverity.INFO)
     }
+
+    override fun getType(): String = TYPE
+
+    override fun getDisplayName(): String = "GitHub misconfigured/outdated webhooks"
+
+    override fun getCategories(): MutableCollection<ItemCategory> = arrayListOf(CATEGORY)
 
     fun init() {
         myTask = myExecutorServices.normalExecutorService.scheduleWithFixedDelay({ doCheck() }, 1, 60, TimeUnit.MINUTES)
@@ -45,9 +56,55 @@ class WebhookPeriodicalChecker(
         myTask?.cancel(false)
     }
 
+    override fun canReportItemsFor(scope: HealthStatusScope): Boolean {
+        if (!scope.isItemWithSeverityAccepted(CATEGORY.severity)) return false
+        if (myIncorrectHooks.isEmpty() && !myWebHooksStorage.isHasIncorrectHooks()) return false
+        var found = false
+        Util.findSuitableRoots(scope) { found = true; false }
+        return found
+    }
+
+    override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
+        if (!canReportItemsFor(scope)) return
+        val gitRoots = HashSet<SVcsRoot>()
+        Util.findSuitableRoots(scope, { gitRoots.add(it); true })
+
+        val incorrectHooks = myWebHooksStorage.getIncorrectHooks()
+        val incorrectHooksInfos = incorrectHooks.map { it.first }.toHashSet()
+
+        val split = GitHubWebHookAvailableHealthReport.splitRoots(gitRoots)
+
+        val filtered = split.entrySet()
+                .filter { it.key in myIncorrectHooks.keys || it.key in incorrectHooksInfos }
+                .map { it.key to it.value }.toMap()
+
+        for ((info, roots) in filtered) {
+            val hook = incorrectHooks.firstOrNull { it.first == info }?.second ?: myWebHooksStorage.getHook(info)
+            val id = info.server + "#" + (hook?.id ?: "")
+
+            val reason = myIncorrectHooks[info] ?: "Unknown reason"
+
+            val item = HealthStatusItem("GH.WH.I.$id", CATEGORY, mapOf(
+                    "GitHubInfo" to info,
+                    "HookInfo" to hook,
+                    "Projects" to GitHubWebHookAvailableHealthReport.getProjects(roots),
+                    "Usages" to roots,
+                    "Reason" to reason
+            ))
+
+            for (it in roots) {
+                resultConsumer.consumeForVcsRoot(it, item)
+                it.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
+                it.usagesInProjects.plus(it.project).toSet().forEach { resultConsumer.consumeForProject(it, item) }
+            }
+        }
+    }
+
     fun doCheck() {
         LOG.info("Periodical GitHub Webhooks checker started")
         val ignoredServers = ArrayList<String>()
+
+        myIncorrectHooks.clear()
 
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
         val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, SUser>>()
@@ -61,7 +118,7 @@ class WebhookPeriodicalChecker(
             val (info, hook) = pair
             val callbackUrl = hook.callbackUrl
             val pubKey = GitHubWebHookListener.getPubKeyFromRequestPath(callbackUrl)
-            if (pubKey == null) {
+            if (pubKey == null || pubKey.isBlank()) {
                 LOG.warn("Callback url (${hook.callbackUrl}) of hook '${hook.url}' does not contains security check public key")
                 forget(info, pubKey)
                 continue
@@ -69,28 +126,28 @@ class WebhookPeriodicalChecker(
             val authData = myAuthDataStorage.find(pubKey)
             if (authData == null) {
                 LOG.warn("Cannot find auth data for hook '${hook.url}'")
-                forget(info, pubKey)
+                report(info, pubKey, "Callback url is incorrect or internal storage corrupted")
                 continue
             }
 
             val connection = getConnection(authData)
             if (connection == null) {
                 LOG.warn("OAuth Connection for repository '$info' not found")
-                forget(info, pubKey)
+                report(info, pubKey, "OAuth connection used to install webhook is unavailable")
                 continue
             }
 
             val user = myUserModel.findUserById(authData.userId)
             if (user == null) {
-                LOG.warn("User '${authData.userId}' which created hook for repository '$info', no longer exists")
-                forget(info, pubKey)
+                LOG.warn("TeamCity user '${authData.userId}' which created webhook for repository '$info' no longer exists")
+                report(info, pubKey, "TeamCity user '${authData.userId}' which created webhook no longer exists")
                 continue
             }
 
             val tokens = myTokensHelper.getExistingTokens(listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
             if (tokens.isEmpty()) {
                 LOG.warn("No OAuth tokens to access repository '$info'")
-                forget(info, pubKey)
+                report(info, pubKey, "No OAuth tokens found to access repository")
                 continue
             }
 
@@ -111,7 +168,7 @@ class WebhookPeriodicalChecker(
                     // TODO: Check&remember latest delivery status. If something wrong - report health item
                     if (loaded.isEmpty()) {
                         LOG.debug("No details loaded for '$info' repo webhooks, seems all of them are incorrect or removed")
-                        forget(info, pubKey)
+                        report(info, pubKey, "Webhook not found on server, seems it has been incorrectly configured or removed")
                     } else {
                         for ((key, value) in loaded) {
                             val lastResponse = key.lastResponse
@@ -155,7 +212,7 @@ class WebhookPeriodicalChecker(
                         GitHubAccessException.Type.UserHaveNoAccess -> {
                             LOG.warn("User (TC:${user.describe(false)}, GH:${token.oauthLogin}) have no access to repository $info, cannot check hook status")
                             if (tokens.map { it.oauthLogin }.distinct().size == 1) {
-                                forget(info, pubKey)
+                                report(info, pubKey, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook have no longer access to repository")
                             } else {
                                 // TODO: ??? Seems TC user has many tokens with different GH users
                             }
@@ -219,9 +276,21 @@ class WebhookPeriodicalChecker(
         return connection
     }
 
+    private val myIncorrectHooks: MutableMap<GitHubRepositoryInfo, String> = HashMap()
+
     private fun forget(info: GitHubRepositoryInfo, pubKey: String?) {
         myWebHooksStorage.delete(info)
         pubKey?.let { myAuthDataStorage.delete(it) }
+    }
+
+    private fun report(info: GitHubRepositoryInfo, pubKey: String, reason: String) {
+        myIncorrectHooks.put(info, reason)
+        val hook = myWebHooksStorage.getHook(info)
+        if (hook != null) {
+            myWebHooksStorage.update(info) {
+                it.correct = false
+            }
+        }
     }
 
 }
