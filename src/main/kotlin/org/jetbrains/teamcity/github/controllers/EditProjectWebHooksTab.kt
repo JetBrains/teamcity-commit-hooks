@@ -293,20 +293,31 @@ data class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo
 }
 
 enum class Status {
-    NO_INFO,
-    NOT_FOUND,
-    OK,
-    WAITING_FOR_SERVER_RESPONSE,
-    INCORRECT,
-    PAYLOAD_DELIVERY_FAILED,
-    MISSING,
-    DISABLED,
-    OUTDATED // We haven't received event, but found some changes via vcs.
+    NO_INFO, // Cannot load details from GitHub due to auth problems
+
+    NOT_FOUND, // UI only, to provide 'Add' action
+
+    INCORRECT, // Something wrong on our side
+    MISSING, // Deleted on GitHub side
+
+    OK, // Works fine
+    WAITING_FOR_SERVER_RESPONSE, // Waiting for first payload to be received
+
+    DISABLED, // Disabled on GitHub side
+
+    PAYLOAD_DELIVERY_FAILED, // GitHub failed to deliver payload, probably TC server not accessible from GH
+    OUTDATED // We haven't received payload, but found some changes after manual checking for changes. Related to PAYLOAD_DELIVERY_FAILED
 }
 
 val Status.bad: Boolean
     get() {
         return this in listOf<Status>(Status.INCORRECT, Status.MISSING)
+    }
+
+// TODO: Support more 'good' statuses?
+val Status.good: Boolean
+    get() {
+        return this in listOf<Status>(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE)
     }
 
 fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
