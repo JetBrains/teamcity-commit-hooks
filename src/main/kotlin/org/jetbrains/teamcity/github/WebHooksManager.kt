@@ -26,11 +26,12 @@ class WebHooksManager(links: WebLinks,
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {
             if (!Util.isSuitableVcsRoot(root)) return
             val info = Util.getGitHubInfo(root) ?: return
-            val hook = getHook(info) ?: return
-            if (!isBranchesInfoUpToDate(hook, newState.branchRevisions, info)) {
-                // Mark hook as outdated, probably incorrectly configured
+            if (storage.getHooks(info).any { !isBranchesInfoUpToDate(it, newState.branchRevisions, info) }) {
                 storage.update(info) {
-                    it.status = Status.OUTDATED
+                    if (!isBranchesInfoUpToDate(it, newState.branchRevisions, info)) {
+                        // Mark hook as outdated, probably incorrectly configured
+                        it.status = Status.OUTDATED
+                    }
                 }
             }
         }
@@ -69,26 +70,20 @@ class WebHooksManager(links: WebLinks,
     }
 
     fun updateLastUsed(info: GitHubRepositoryInfo, date: Date) {
-        // We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
-        val hook = getHook(info) ?: return
-        val used = hook.lastUsed
-        if (used == null || used.before(date)) {
-            storage.update(info) {
-                @Suppress("NAME_SHADOWING")
-                val used = it.lastUsed
-                if (used == null || used.before(date)) {
-                    it.status = Status.OK
-                    it.lastUsed = date
-                }
+        // TODO: We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
+        storage.update(info) {
+            val used = it.lastUsed
+            if (used == null || used.before(date)) {
+                it.status = Status.OK
+                it.lastUsed = date
             }
         }
     }
 
     fun updateBranchRevisions(info: GitHubRepositoryInfo, map: Map<String, String>) {
-        val hook = getHook(info) ?: return
         storage.update(info) {
             it.status = Status.OK
-            val lbr = hook.lastBranchRevisions ?: HashMap()
+            val lbr = it.lastBranchRevisions ?: HashMap()
             lbr.putAll(map)
             it.lastBranchRevisions = lbr
         }
