@@ -194,6 +194,12 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         }
         updateLastUsed(info)
         setModificationCheckInterval(info)
+
+        val foundVcsInstances = findSuitableVcsRootInstances(info)
+        if (foundVcsInstances.isEmpty()) {
+            return HttpServletResponse.SC_NOT_FOUND to "There are no VCS roots referencing '$info' repository"
+        }
+
         return HttpServletResponse.SC_ACCEPTED to "Acknowledged"
     }
 
@@ -224,6 +230,9 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
         val foundVcsInstances = findSuitableVcsRootInstances(info)
         doScheduleCheckForPendingChanges(foundVcsInstances, user)
+        if (foundVcsInstances.isEmpty()) {
+            return HttpServletResponse.SC_NOT_FOUND to "There are no VCS roots referencing '$info' repository"
+        }
         return HttpServletResponse.SC_ACCEPTED to "Scheduled check for pending changes in ${foundVcsInstances.size} vcs root ${StringUtil.pluralize("instance", foundVcsInstances.size)}"
     }
 
