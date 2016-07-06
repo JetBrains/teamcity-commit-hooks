@@ -5,8 +5,6 @@ import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.vcs.SVcsRoot
-import org.jetbrains.teamcity.github.controllers.Status
-import org.jetbrains.teamcity.github.controllers.getHookStatus
 import java.util.*
 
 class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksManager,
@@ -58,8 +56,7 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
 
         val filtered = split.entrySet()
                 .filter {
-                    val hook = WebHooksManager.getHook(it.key)
-                    hook == null || getHookStatus(hook).status == Status.OK
+                    WebHooksManager.storage.getHooks(it.key).isEmpty()
                 }
                 .filter {
                     // Filter by known servers
@@ -67,20 +64,16 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
                 }
 
         for ((info, roots) in filtered) {
-            val hook = WebHooksManager.getHook(info)
-            val status = getHookStatus(hook).status
-            if (hook != null && status != Status.OK) {
-                // Something changes since filtering on '.filterKeys' above
+            if (WebHooksManager.storage.getHooks(info).isNotEmpty()) {
+                // Something changes since filtering on '.filter' above
                 continue
             }
             for (root in roots) {
-                if (hook == null) {
-                    // 'Add WebHook' part
-                    val item = WebHookAddHookHealthItem(info, root)
-                    resultConsumer.consumeForVcsRoot(root, item)
-                    root.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
-                    root.usagesInProjects.plus(root.project).toSet().forEach { resultConsumer.consumeForProject(it, item) }
-                }
+                // 'Add WebHook' part
+                val item = WebHookAddHookHealthItem(info, root)
+                resultConsumer.consumeForVcsRoot(root, item)
+                root.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
+                root.usagesInProjects.plus(root.project).toSet().forEach { resultConsumer.consumeForProject(it, item) }
             }
         }
     }
