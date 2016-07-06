@@ -25,6 +25,7 @@ import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
+import org.eclipse.egit.github.core.client.RequestException
 import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.action.HookAddOperationResult
@@ -60,7 +61,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
         private val LOG = Logger.getInstance(WebHooksController::class.java.name)
 
-        class RequestException private constructor(val element: JsonElement) : Exception() {
+        class MyRequestException private constructor(val element: JsonElement) : Exception() {
             constructor(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int) : this(error_json(message, code)) {
             }
         }
@@ -110,7 +111,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                 LOG.warn("Unknown action '$action'")
                 return null
             }
-        } catch(e: RequestException) {
+        } catch(e: MyRequestException) {
             element = e.element
         }
         if (element is JsonObject) {
@@ -139,7 +140,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         return mav
     }
 
-    @Throws(RequestException::class)
+    @Throws(MyRequestException::class)
     private fun doHandleAction(request: HttpServletRequest, action: String, popup: Boolean): JsonElement {
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
@@ -339,6 +340,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         return null
     }
 
+    @Throws(MyRequestException::class)
     private fun doHandleCheckAllAction(request: HttpServletRequest, popup: Boolean): JsonElement {
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
@@ -475,7 +477,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         return result
     }
 
-    @Throws(RequestException::class)
+    @Throws(MyRequestException::class)
     private fun getConnection(request: HttpServletRequest, inProjectId: String?): OAuthConnectionDescriptor? {
         val inConnectionId = request.getParameter("connectionId")
         val inConnectionProjectId = request.getParameter("connectionProjectId") ?: inProjectId
@@ -485,23 +487,23 @@ class WebHooksController(descriptor: PluginDescriptor,
         val connectionOwnerProject = myProjectManager.findProjectByExternalId(inConnectionProjectId)
         @Suppress("IfNullToElvis")
         if (connectionOwnerProject == null) {
-            throw RequestException("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
+            throw MyRequestException("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
         }
         val connection = myOAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
         @Suppress("IfNullToElvis")
         if (connection == null) {
-            throw RequestException("There no connection with id '$inConnectionId' found in project ${connectionOwnerProject.fullName}", HttpServletResponse.SC_NOT_FOUND)
+            throw MyRequestException("There no connection with id '$inConnectionId' found in project ${connectionOwnerProject.fullName}", HttpServletResponse.SC_NOT_FOUND)
         }
         return connection
     }
 
-    @Throws(RequestException::class)
+    @Throws(MyRequestException::class)
     fun getRepositoryInfo(inProjectId: String?, inId: String): Pair<SProject, GitHubRepositoryInfo> {
         if (inProjectId.isNullOrEmpty()) {
-            throw RequestException("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
+            throw MyRequestException("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
-        val project = myProjectManager.findProjectByExternalId(inProjectId) ?: throw RequestException("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
-        val info = Util.Companion.getGitHubInfo(inId) ?: throw RequestException("Malformed GitHub repository url", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+        val project = myProjectManager.findProjectByExternalId(inProjectId) ?: throw MyRequestException("There no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
+        val info = Util.Companion.getGitHubInfo(inId) ?: throw MyRequestException("Malformed GitHub repository url", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
         return project to info
     }
 
