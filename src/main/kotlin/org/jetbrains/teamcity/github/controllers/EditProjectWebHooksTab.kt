@@ -158,15 +158,13 @@ class ProjectWebHooksBean(val project: SProject,
                     // Filter by known servers
                     entry.key.server == "github.com" || GitHubWebHookAvailableHealthReport.getProjects(entry.value).any { project -> Util.findConnections(oAuthConnectionsManager, project, entry.key.server).isNotEmpty() }
                 }
-        for (entry in filtered) {
+        for ((info, roots) in filtered) {
             if (keyword != null && keywordFiltering) {
-                if (!entry.key.getRepositoryUrl().contains(keyword, true)) continue
+                if (!info.getRepositoryUrl().contains(keyword, true)) continue
             }
 
-
-            val hook = webHooksManager.getHook(entry.key)
-            val roots = SmartList<SVcsRoot>(entry.value)
-            hooks.put(entry.key, WebHookDetails(hook, roots, project, versionedSettingsManager))
+            val hook = webHooksManager.getHook(info)
+            hooks.put(info, WebHookDetails(hook, roots.toList(), project, versionedSettingsManager))
         }
     }
 
