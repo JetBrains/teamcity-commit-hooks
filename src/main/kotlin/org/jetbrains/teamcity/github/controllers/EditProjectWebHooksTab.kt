@@ -30,6 +30,7 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
                              val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
         val TAB_TITLE_PREFIX = "GitHub Webhooks"
+        val TAB_ENABLE_INERNAL_PROPERTY = "teamcity.github-webhooks.table-project-tab.enabled"
     }
 
     init {
@@ -57,6 +58,8 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
      * Available only if there's at least one github repository in project and subprojects
      */
     override fun isAvailable(request: HttpServletRequest): Boolean {
+        if (!TeamCityProperties.getBoolean(TAB_ENABLE_INERNAL_PROPERTY)) return false
+
         val superIsAvailable = super.isAvailable(request)
         if (!superIsAvailable) return false
         val project = getProject(request) ?: return false
