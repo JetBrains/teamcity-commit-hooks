@@ -95,7 +95,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
         val element: JsonElement
         try {
-            if (action in listOf("add", "check", "delete", "ping", "install", null)) {
+            if (action in listOf("add", "check", "delete", "ping", "install")) {
                 element = doHandleAction(request, action, popup)
             } else if ("continue" == action) {
                 element = doHandleAction(request, action, popup)
@@ -106,7 +106,8 @@ class WebHooksController(descriptor: PluginDescriptor,
                 element = doHandleGetInfoAction(request)
             } else {
                 LOG.warn("Unknown action '$action'")
-                return null
+                response.status = HttpServletResponse.SC_NOT_FOUND
+                return simpleView("Unknown action '$action'")
             }
         } catch(e: MyRequestException) {
             element = e.element
