@@ -312,13 +312,13 @@ enum class Status {
 
 val Status.bad: Boolean
     get() {
-        return this in listOf<Status>(Status.INCORRECT, Status.MISSING)
+        return this in listOf(Status.INCORRECT, Status.MISSING)
     }
 
 // TODO: Support more 'good' statuses?
 val Status.good: Boolean
     get() {
-        return this in listOf<Status>(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE)
+        return this in listOf(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE)
     }
 
 fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
