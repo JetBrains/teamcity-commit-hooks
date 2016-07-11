@@ -172,6 +172,11 @@ BS.GitHubWebHooks = {};
         }
         return true;
     };
+    function isSameServer(first, second) {
+        if (!first || !second) return false;
+        return first.indexOf(second) > -1
+    }
+
     WH.doWebHookAction = function (action, element, id, popup, projectId) {
         //var progress = $$("# .progress").show();
 
@@ -214,8 +219,11 @@ BS.GitHubWebHooks = {};
         }
         var data_holder = $j(element).parents("[data-connection-id]");
         if (data_holder) {
-            parameters["connectionId"] = data_holder.attr('data-connection-id');
-            parameters["connectionProjectId"] = data_holder.attr('data-connection-project-id');
+            var conn_server = data_holder.attr('data-connection-server');
+            if (isSameServer(server, conn_server)) {
+                parameters["connectionId"] = data_holder.attr('data-connection-id');
+                parameters["connectionProjectId"] = data_holder.attr('data-connection-project-id');
+            }
         }
         //noinspection JSUnusedGlobalSymbols
         BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {

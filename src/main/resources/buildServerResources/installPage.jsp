@@ -12,13 +12,16 @@
 <%--@elvariable id="has_tokens" type="java.lang.Boolean"--%>
 
 <div class="editProjectPage">
-    <form id="installWebhook" data-connection-id="${connectionId}" data-connection-project-id="${connectionProjectId}">
+    <form id="installWebhook"
+          data-connection-id="<c:out value="${connectionId}"/>"
+          data-connection-project-id="<c:out value="${connectionProjectId}"/>"
+          data-connection-server="<c:out value="${empty info ? '' : info.server}"/>">
         <input type="hidden" id="projectId" value="${currentProject.externalId}">
         <table class="runnerFormTable">
             <tr>
                 <th><label for="repository">Repository url: <l:star/></label></th>
                 <td>
-                    <forms:textField name="repository" className="longField" maxlength="80" value="${empty repository ? '' : repository}"/>
+                    <forms:textField name="repository" className="longField" maxlength="80" value="${repository}"/>
                     <%--TODO: Add completion from list of project github vcs roots--%>
                     <span class="error" id="errorRepository"></span>
                 </td>
