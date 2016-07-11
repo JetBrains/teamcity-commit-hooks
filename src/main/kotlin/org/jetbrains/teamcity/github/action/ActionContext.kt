@@ -53,6 +53,9 @@ open class ActionContext(val storage: WebHooksStorage,
                     hi.status = Status.DISABLED
                 } else {
                     // TODO: Should update status?
+                    if (hi.status in listOf(Status.MISSING, Status.DISABLED)) {
+                        hi.status = Status.WAITING_FOR_SERVER_RESPONSE
+                    }
                 }
             }
         }
