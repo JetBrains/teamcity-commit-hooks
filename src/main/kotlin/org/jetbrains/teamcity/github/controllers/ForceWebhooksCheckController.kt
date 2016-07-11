@@ -15,6 +15,7 @@ class ForceWebhooksCheckController(private val WebControllerManager: WebControll
     }
 
     fun register(): Unit {
+        if (!jetbrains.buildServer.DevelopmentMode.isEnabled) return
         setSupportedMethods(WebContentGenerator.METHOD_POST, WebContentGenerator.METHOD_GET)
         WebControllerManager.registerController(PATH, this)
     }
