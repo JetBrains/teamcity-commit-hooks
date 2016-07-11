@@ -165,7 +165,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         } else {
             connections = getConnections(info.server, project)
             if (connections.isEmpty()) {
-                return gh_json("NoOAuthConnections", "No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, configure it first", info)
+                return gh_json("NoOAuthConnections", getNoOAuthConnectionMessage(info, project, request), info)
             }
             // Let's use connection from most nested project. (connections sorted in reverse project hierarchy order)
             connection = connections.first()
@@ -243,6 +243,29 @@ class WebHooksController(descriptor: PluginDescriptor,
         }
 
         return postponedResult ?: gh_json("", "", info)
+    }
+
+    private fun getNoOAuthConnectionMessage(info: GitHubRepositoryInfo, project: SProject, request: HttpServletRequest): String {
+        val createOAuthConnectionUrl = getUrlToCreateOAuthConnection(request, project, info.server)
+        return "No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, <a href=\"$createOAuthConnectionUrl\">configure it first</a>"
+    }
+
+    private fun getUrlToCreateOAuthConnection(request: HttpServletRequest, project: SProject, server: String): String {
+        val params = LinkedHashMap<String, Any>()
+        params["projectId"] = project.externalId
+        params["tab"] = "oauthConnections"
+        val currentPageUrl = request.getParameter("currentPageUrl")
+        if (currentPageUrl != null) {
+            params["afterAddUrl"] = currentPageUrl
+        };
+        val hash: String
+        if (Util.isSameUrl(server, "github.com")) {
+            hash = "addDialog=GitHub"
+        } else {
+            hash = "addDialog=GHE&gitHubUrl=${WebUtil.encode(server)}"
+        }
+        val createOAuthConnectionUrl = url(request.contextPath + "/admin/editProject.html", params) + "#$hash";
+        return createOAuthConnectionUrl
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
@@ -385,7 +408,7 @@ class WebHooksController(descriptor: PluginDescriptor,
             val connections = if (connection != null) listOf(connection) else getConnections(server, project)
             if (connections.isEmpty()) {
                 for (info in infos) {
-                    val message = "No OAuth connection found for GitHub server '${info.server}' in project '${project.fullName}' and it parents, configure it first"
+                    val message = getNoOAuthConnectionMessage(info, project, request)
                     val obj = gh_json("NoOAuthConnections", message, info)
                     obj.addProperty("error", message)
                     obj.addProperty("user_action_required", true)
