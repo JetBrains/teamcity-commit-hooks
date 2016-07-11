@@ -155,6 +155,17 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
+    fun delete(info: GitHubRepositoryInfo, deleteFilter: (HookInfo) -> Boolean) {
+        if (!getHooks(info).any { deleteFilter(it) }) return
+
+        val key = toKey(info.server, info.getRepositoryId())
+        myCacheLock.write {
+            val hooks = myCache.read(key)?.let { HookInfo.fromJson(it) }?.toMutableList() ?: return
+            myCache.write(key, HookInfo.toJson(hooks.filter { !deleteFilter(it) }))
+        }
+    }
+
+
     fun update(info: GitHubRepositoryInfo, update: (HookInfo) -> Unit): Boolean {
         return update(info.server, info.getRepositoryId(), update)
     }
