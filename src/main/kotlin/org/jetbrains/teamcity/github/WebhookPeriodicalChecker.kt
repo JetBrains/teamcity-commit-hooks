@@ -1,5 +1,7 @@
 package org.jetbrains.teamcity.github
 
+import com.google.common.cache.Cache
+import com.google.common.cache.CacheBuilder
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.executors.ExecutorServices
@@ -59,7 +61,7 @@ class WebhookPeriodicalChecker(
 
     override fun canReportItemsFor(scope: HealthStatusScope): Boolean {
         if (!scope.isItemWithSeverityAccepted(CATEGORY.severity)) return false
-        if (myIncorrectHooks.isEmpty() && !myWebHooksStorage.isHasIncorrectHooks()) return false
+        if (myIncorrectHooks.size() == 0L && !myWebHooksStorage.isHasIncorrectHooks()) return false
         var found = false
         Util.findSuitableRoots(scope) { found = true; false }
         return found
@@ -75,15 +77,16 @@ class WebhookPeriodicalChecker(
 
         val split = GitHubWebHookAvailableHealthReport.splitRoots(gitRoots)
 
+        val myIncorrectHooksKeys = myIncorrectHooks.asMap().keys.toHashSet()
         val filtered = split.entrySet()
-                .filter { it.key in myIncorrectHooks.keys || it.key in incorrectHooksInfos }
+                .filter { it.key in myIncorrectHooksKeys || it.key in incorrectHooksInfos }
                 .map { it.key to it.value }.toMap()
 
         for ((info, roots) in filtered) {
             val hook = incorrectHooks.firstOrNull { it.first == info }?.second ?: myWebHooksStorage.getHooks(info).firstOrNull()
             val id = info.server + "#" + (hook?.id ?: "")
 
-            val reason = myIncorrectHooks[info] ?: "Unknown reason"
+            val reason = myIncorrectHooks.getIfPresent(info) ?: "Unknown reason"
 
             val item = HealthStatusItem("GH.WH.I.$id", CATEGORY, mapOf(
                     "GitHubInfo" to info,
@@ -104,8 +107,6 @@ class WebhookPeriodicalChecker(
     fun doCheck() {
         LOG.info("Periodical GitHub Webhooks checker started")
         val ignoredServers = ArrayList<String>()
-
-        myIncorrectHooks.clear()
 
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
         val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, SUser>>()
@@ -281,7 +282,7 @@ class WebhookPeriodicalChecker(
         return connection
     }
 
-    private val myIncorrectHooks: MutableMap<GitHubRepositoryInfo, String> = HashMap()
+    private val myIncorrectHooks: Cache<GitHubRepositoryInfo, String> = CacheBuilder.newBuilder().expireAfterWrite(120, TimeUnit.MINUTES).build()
 
     private fun report(info: GitHubRepositoryInfo, pubKey: String, reason: String, status: Status = Status.INCORRECT) {
         myIncorrectHooks.put(info, reason)
