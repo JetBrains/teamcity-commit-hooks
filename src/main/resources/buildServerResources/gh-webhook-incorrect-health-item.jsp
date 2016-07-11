@@ -16,19 +16,21 @@
 <%--@elvariable id="pluginResourcesPath" type="java.lang.String"--%>
 <%--@elvariable id="has_connections" type="java.lang.Boolean"--%>
 <%--@elvariable id="has_tokens" type="java.lang.Boolean"--%>
+<%--@elvariable id="Project" type="jetbrains.buildServer.serverSide.SProject"--%>
 
 <c:set var="GitHubInfo" value="${healthStatusItem.additionalData['GitHubInfo']}"/>
 <c:set var="HookInfo" value="${healthStatusItem.additionalData['HookInfo']}"/>
 <c:set var="Reason" value="${healthStatusItem.additionalData['Reason']}"/>
-<c:set var="Project" value="${healthStatusItem.additionalData['Project']}"/>
 <%--@elvariable id="GitHubInfo" type="org.jetbrains.teamcity.github.GitHubRepositoryInfo"--%>
 <%--@elvariable id="HookInfo" type="org.jetbrains.teamcity.github.WebHooksStorage.HookInfo"--%>
-<%--@elvariable id="Project" type="jetbrains.buildServer.serverSide.SProject"--%>
 <%--@elvariable id="Reason" type="java.lang.String"--%>
 
 <c:set var="id" value="hid_i_${util:forJSIdentifier(GitHubInfo.identifier)}"/>
 
-<div id='${id}' class="suggestionItem" data-repository="${GitHubInfo}" data-server="${GitHubInfo.server}">
+<div id='${id}' class="suggestionItem"
+     data-repository="<c:out value="${GitHubInfo}"/>"
+     data-server="<c:out value="${GitHubInfo.server}"/>"
+     data-project-id="<c:out value="${Project.externalId}"/>">
     <c:if test="${HookInfo != null}"><a href="<c:out value="${GitHubInfo.repositoryUrl}/settings/hooks/${HookInfo.id}"/>">Webhook</a></c:if>
     <c:if test="${HookInfo == null}">Webhook</c:if>
     for GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a>
@@ -37,6 +39,8 @@
         <c:set var="projectUrl"><admin:editProjectLink projectId="${Project}" withoutLink="true"/></c:set>
         <forms:addLink
                 href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install webhook</forms:addLink>
+        <br>
+        <a class="" onclick="return BS.GitHubWebHooks.doAction('delete', this);">Remove webhook</a>
     </div>
 </div>
 
