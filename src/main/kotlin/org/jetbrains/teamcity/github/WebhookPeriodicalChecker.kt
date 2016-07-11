@@ -84,7 +84,12 @@ class WebhookPeriodicalChecker(
 
         for ((info, roots) in filtered) {
             val hook = incorrectHooks.firstOrNull { it.first == info }?.second ?: myWebHooksStorage.getHooks(info).firstOrNull()
-            val id = info.server + "#" + (hook?.id ?: "")
+            if (hook == null) {
+                // Completely removed, even from our storage. Let's forget about it
+                myIncorrectHooks.invalidate(info)
+                continue
+            }
+            val id = info.server + "#" + hook.id
 
             val reason = myIncorrectHooks.getIfPresent(info) ?: "Unknown reason"
 
