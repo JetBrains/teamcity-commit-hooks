@@ -36,7 +36,7 @@
     for GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a>
     is outdated or misconfigured: <c:out value="${Reason}"/>
     <div class="suggestionAction">
-        <c:set var="projectUrl"><admin:editProjectLink projectId="${Project}" withoutLink="true"/></c:set>
+        <c:set var="projectUrl"><admin:editProjectLink projectId="${Project.externalId}" withoutLink="true"/></c:set>
         <forms:addLink
                 href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install webhook</forms:addLink>
         <br>
