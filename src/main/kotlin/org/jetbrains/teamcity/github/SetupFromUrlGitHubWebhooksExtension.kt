@@ -2,7 +2,6 @@ package org.jetbrains.teamcity.github
 
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.SBuildType
-import jetbrains.buildServer.serverSide.auth.SecurityContext
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
@@ -16,14 +15,13 @@ import java.util.*
 class SetupFromUrlGitHubWebhooksExtension(
         private val myWebHooksManager: WebHooksManager,
         private val myOAuthConnectionsManager: OAuthConnectionsManager,
-        private val myTokensHelper: TokensHelper,
-        private val mySecurityContext: SecurityContext
+        private val myTokensHelper: TokensHelper
 ) : SetupFromUrlExtension {
     companion object {
         private val LOG = Logger.getInstance(SetupFromUrlGitHubWebhooksExtension::class.java.name)
     }
 
-    override fun afterCreate(buildType: SBuildType) {
+    override fun afterCreate(buildType: SBuildType, user: SUser) {
         val gitRoots = HashSet<SVcsRoot>()
         Util.findSuitableRoots(listOf(buildType)) {
             gitRoots.add(it)
@@ -44,16 +42,6 @@ class SetupFromUrlGitHubWebhooksExtension(
 
         val affectedRootsCount = filtered.values.sumBy { it.size }
         LOG.info("Will try to install hooks to ${filtered.size} ${filtered.size.pluralize("repository")} (used in $affectedRootsCount vcs ${affectedRootsCount.pluralize("root")})")
-
-        val authorityHolder = mySecurityContext.authorityHolder
-
-        if (authorityHolder !is SUser) {
-            LOG.warn("AuthorityHolder is not a user, cannot install webhook${filtered.size.s}")
-            // TODO: Somehow handle such case
-            return
-        }
-
-        val user: SUser = authorityHolder
 
         infos@for (info in filtered.keys) {
             val connections = myTokensHelper.getConnections(buildType.project, info.server)
