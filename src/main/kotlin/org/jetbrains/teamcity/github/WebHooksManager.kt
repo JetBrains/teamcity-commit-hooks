@@ -69,23 +69,27 @@ class WebHooksManager(links: WebLinks,
         return TestWebHookAction.doRun(info, ghc, user, this)
     }
 
-    fun updateLastUsed(info: GitHubRepositoryInfo, date: Date) {
+    fun updateLastUsed(info: GitHubRepositoryInfo, date: Date, hookInfo: WebHooksStorage.HookInfo) {
         // TODO: We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
         storage.update(info) {
-            val used = it.lastUsed
-            if (used == null || used.before(date)) {
+            if (it.isSame(hookInfo)) {
+                val used = it.lastUsed
                 it.status = Status.OK
-                it.lastUsed = date
+                if (used == null || used.before(date)) {
+                    it.lastUsed = date
+                }
             }
         }
     }
 
-    fun updateBranchRevisions(info: GitHubRepositoryInfo, map: Map<String, String>) {
+    fun updateBranchRevisions(info: GitHubRepositoryInfo, map: Map<String, String>, hookInfo: WebHooksStorage.HookInfo) {
         storage.update(info) {
-            it.status = Status.OK
-            val lbr = it.lastBranchRevisions ?: HashMap()
-            lbr.putAll(map)
-            it.lastBranchRevisions = lbr
+            if (it.isSame(hookInfo)) {
+                it.status = Status.OK
+                val lbr = it.lastBranchRevisions ?: HashMap()
+                lbr.putAll(map)
+                it.lastBranchRevisions = lbr
+            }
         }
     }
 
@@ -115,5 +119,9 @@ class WebHooksManager(links: WebLinks,
 
     fun isHasIncorrectHooks() = storage.isHasIncorrectHooks()
     fun getIncorrectHooks() = storage.getIncorrectHooks()
+
+    fun getHookForPubKey(info: GitHubRepositoryInfo, pubKey: String): WebHooksStorage.HookInfo? {
+        return storage.getHooks(info).firstOrNull { it.callbackUrl.endsWith(pubKey) }
+    }
 
 }
