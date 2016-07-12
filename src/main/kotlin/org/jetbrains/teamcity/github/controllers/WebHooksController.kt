@@ -284,10 +284,10 @@ class WebHooksController(descriptor: PluginDescriptor,
         val url = "${info.getRepositoryUrl()}/settings/hooks/${result.second.id}"
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Hook for repository '${info.toString()}' <a href=\"$url\">already exists</a>, updated info", info)
+                return gh_json(result.first.name, "Hook for repository <a href=\"${info.getRepositoryUrl()}\">${info.toString()}</a> <a href=\"$url\">already exists</a>, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Created <a href=\"$url\">hook</a> for repository '${info.toString()}'", info)
+                return gh_json(result.first.name, "Created <a href=\"$url\">hook</a> for repository <a href=\"${info.getRepositoryUrl()}\">${info.toString()}</a>", info)
             }
         }
     }
