@@ -178,7 +178,6 @@ class WebhookPeriodicalChecker(
                 try {
                     LOG.debug("Checking webhook status for '$info' repository")
                     val loaded = GetAllWebHooksAction.doRun(info, ghc, myWebHooksManager)
-                    // TODO: Check&remember latest delivery status. If something wrong - report health item
                     if (loaded.isEmpty()) {
                         LOG.debug("No details loaded for '$info' repo webhooks, seems all of them are incorrect or removed")
                         report(info, "Webhook not found on server, seems it has been incorrectly configured or removed", Status.MISSING)
@@ -208,7 +207,7 @@ class WebhookPeriodicalChecker(
                                 else -> {
                                     val reason = "Unexpected payload delivery response: (${lastResponse.code}) ${lastResponse.message}"
                                     LOG.debug(reason)
-                                    report(info, reason)
+                                    report(info, reason, Status.PAYLOAD_DELIVERY_FAILED)
                                 }
                             }
                         }
