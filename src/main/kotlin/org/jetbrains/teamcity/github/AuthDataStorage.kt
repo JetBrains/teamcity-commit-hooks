@@ -15,7 +15,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-class AuthDataStorage(private val myCacheProvider: CacheProvider,
+class AuthDataStorage(cacheProvider: CacheProvider,
                       private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
     companion object {
         private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
@@ -42,7 +42,7 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
         fun toJson(): String = gson.toJson(this)
     }
 
-    private val myCache = myCacheProvider.getOrCreateCache("WebHooksAuthCache", String::class.java)
+    private val myCache = cacheProvider.getOrCreateCache("WebHooksAuthCache", String::class.java)
 
     private val myCacheLock = ReentrantReadWriteLock()
 
@@ -97,10 +97,14 @@ class AuthDataStorage(private val myCacheProvider: CacheProvider,
 
     fun store(data: AuthData) {
         myCacheLock.write {
-            myCacheLock.write {
-                myCache.invalidate(data.public)
-                myCache.write(data.public, data.toJson())
-            }
+            myCache.invalidate(data.public)
+            myCache.write(data.public, data.toJson())
+        }
+    }
+
+    fun remove(data: AuthData) {
+        myCacheLock.write {
+            myCache.invalidate(data.public)
         }
     }
 
