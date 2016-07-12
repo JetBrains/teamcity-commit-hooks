@@ -280,7 +280,7 @@ data class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo
     @Used("jps")
     fun getActions(): List<String> {
         return when (status) {
-            Status.NO_INFO -> listOf("Check") // or "Connect"
+            Status.NO_INFO -> listOf("Check")
             Status.NOT_FOUND -> listOf("Add")
             Status.OK -> listOf("Delete", "Check")
             Status.WAITING_FOR_SERVER_RESPONSE -> listOf("Delete", "Ping", "Check")

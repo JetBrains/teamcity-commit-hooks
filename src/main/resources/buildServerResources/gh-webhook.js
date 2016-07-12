@@ -93,11 +93,6 @@ BS.GitHubWebHooks = {};
                 onActionSuccess(json, result, ["Removed", "NeverExisted"]);
             }
         },
-        connect: {
-            id: "connect",
-            name: "Connect",
-            progress: "????CONNECT????"
-        },
         install: {
             "id": "install",
             name: "Install",
@@ -136,7 +131,7 @@ BS.GitHubWebHooks = {};
                 }
                 onActionSuccessBasic(json, result, opts);
             },
-            doHandleRedirect: function (json, id) {
+            doHandleRedirect: function (json, id, element) {
                 WH.forcePopup[WH.getServerUrl(id)] = true;
 
                 $j("#installWebhookSubmit").attr("value", "Authorize and Install");
@@ -244,7 +239,7 @@ BS.GitHubWebHooks = {};
                 if (json['redirect']) {
                     BS.Log.info("Redirect response received");
                     if (action && action.doHandleRedirect) {
-                        action.doHandleRedirect(json, id)
+                        action.doHandleRedirect(json, id, that)
                     } else {
                         var link = "<a href='#' onclick=\"BS.GitHubWebHooks.doAction('" + action.id + "', this, '" + id + "','" + projectId + "', true); return false\">Refresh access token and " + action.name + " webhook</a>";
                         BS.Util.Messages.show(id, 'GitHub authorization needed. ' + link);
@@ -259,67 +254,41 @@ BS.GitHubWebHooks = {};
                         $j(that).text("Refresh token and add webhook");
                         BS.Log.info($(that).innerHTML);
                     }
-                } else if (json['error']) {
-                    var action = WH.actions[json['action']];
-                    if (action && action.doHandleError) {
-                        action.doHandleError(json)
-                    } else {
-                        BS.Log.error("Sad :( Something went wrong: " + json['error']);
-                    }
-                } else if (json['result']) {
-                    var res = json['result'];
-                    //if ("TokenScopeMismatch" == res) {
-                    //    WH.showMessage("Token you provided have no access to repository");
-                    //    // TODO: Add link to refresh/request token (via popup window)
-                    //    that.onclick = function (x) {
-                    //        WH.addWebHook(x, '${Type}', '${Id}', true);
-                    //        return false
-                    //    };
-                    //    //("<a href='#' onclick='BS.GitHubWebHooks.addWebHook(this, '${Type}', '${Id}', false); return false'>Refresh access token</a>");
-                    //    that.innerHTML = "Refresh token and add WebHook"
-                    //} else {
-                    WH.processResult(json, res);
-                    //}
                 } else {
-                    BS.Log.error("Unexpected response: " + json.toString())
+                    WH.doHandle(json, action)
                 }
                 WH.refreshReports();
             }
         });
     };
 
-    WH.addConnection = function (element, projectId, serverUrl) {
-        document.location.href = window.base_uri + "/admin/editProject.html?projectId=" + projectId + "&tab=oauthConnections#"
-    };
-
-    WH.processResult = function (json, res) {
-        var action = WH.actions[json['action']];
-        if (action) {
-            if (action.doHandleResult) {
-                return action.doHandleResult(json, res)
-            }
-            BS.Log.warn("There no 'doHandleResult' function defined for action '" + action.id + "'");
-            return "There no 'doHandleResult' function defined for action '" + action.id + "'"
-        }
-        BS.Log.warn("Unknown action: " + json['action']);
-    };
-
-    WH.callback = function (json) {
+    WH.doHandle = function (json, action) {
         if (json['error']) {
-            var action = WH.actions[json['action']];
             if (action && action.doHandleError) {
                 action.doHandleError(json)
             } else {
-                BS.Log.error("Sad :( Something went wrong: " + json['error']);
-                // Todo: show popup dialog with rich HTML instead of alert
-                alert(json['error']);
+                BS.Log.error("Something went wrong: " + json['error']);
+                BS.Messages.show("WH.Callback", json['error'], {verbosity: 'warn'});
             }
         } else if (json['result']) {
             var res = json['result'];
-            WH.processResult(json, res);
+            if (action) {
+                return action.doHandleResult(json, res)
+            }
+            BS.Log.warn("Unknown action: " + json['action']);
         } else {
             BS.Log.error("Unexpected response: " + JSON.stringify(json))
         }
+    };
+
+    WH.callback = function (json) {
+        var action = WH.actions[json['action']];
+        if (action && action.doShowProgress && action.doHideProgress) {
+            action.doHideProgress();
+        } else {
+            BS.ProgressPopup.hidePopup(0, true);
+        }
+        WH.doHandle(json, action);
         WH.refreshReports();
     };
 
@@ -502,7 +471,6 @@ BS.GitHubWebHooks = {};
         line.find("[data-view=status]").html(getStatusDiv(status, error));
         line.find("[data-view=actions]").html(getActionsHtml(actions));
         line.find("[data-view=link]").html(getLinkHtml(repository, hook));
-        // TODO: Show warning icon if there one. Maybe error in status field is enough
     }
 
     WH.refresh = function (element, repositories, table) {
