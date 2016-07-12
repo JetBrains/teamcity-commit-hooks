@@ -134,7 +134,7 @@ class WebhookPeriodicalChecker(
             val authData = myAuthDataStorage.find(pubKey)
             if (authData == null) {
                 LOG.warn("Cannot find auth data for hook '${hook.url}'")
-                report(info, pubKey, "Callback url is incorrect or internal storage corrupted")
+                report(info, pubKey, "Webhook callback url is incorrect or internal storage was corrupted")
                 continue
             }
 
