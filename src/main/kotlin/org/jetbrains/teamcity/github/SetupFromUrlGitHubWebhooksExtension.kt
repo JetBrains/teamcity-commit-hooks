@@ -60,6 +60,7 @@ class SetupFromUrlGitHubWebhooksExtension(
                             HookAddOperationResult.Created -> LOG.info("Added webhook for '$info'")
                             HookAddOperationResult.AlreadyExists -> LOG.info("Webhook for '$info' was already there")
                         }
+                        // TODO: Show message in UI once webhook successfully installed
                         continue@infos
                     } catch(e: Exception) {
                         LOG.warnAndDebugDetails("Failed to install webhook for repository '$info' using token of GH user '${token.oauthLogin}'", e)
