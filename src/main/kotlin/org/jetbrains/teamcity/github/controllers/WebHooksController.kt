@@ -10,7 +10,6 @@ import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildServer
 import jetbrains.buildServer.serverSide.SProject
-import jetbrains.buildServer.serverSide.auth.AccessDeniedException
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthToken
@@ -105,8 +104,6 @@ class WebHooksController(descriptor: PluginDescriptor,
                 element = doHandleCheckAllAction(request, popup)
             } else if ("get-info" == action) {
                 element = doHandleGetInfoAction(request)
-            } else if ("set-cci" == action) {
-                element = doSetCCIAction(request)
             } else {
                 LOG.warn("Unknown action '$action'")
                 return null
@@ -474,28 +471,6 @@ class WebHooksController(descriptor: PluginDescriptor,
         }
         val result = JsonObject()
         result.add("result", array)
-        return result
-    }
-
-    private fun doSetCCIAction(request: HttpServletRequest): JsonElement {
-        SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
-        val inVcsRootId = request.getParameter("vcsRootId") ?: return error_json("Missing required parameter 'vcsRootId'", HttpServletResponse.SC_BAD_REQUEST)
-        val vcsRootId: Long
-        try {
-            vcsRootId = inVcsRootId.toLong()
-        } catch(e: NumberFormatException) {
-            return error_json("Parameter 'vcsRootId' should be long number, got: $inVcsRootId", HttpServletResponse.SC_BAD_REQUEST)
-        }
-        val vcsRoot = myServer.vcsManager.findRootById(vcsRootId) ?: return error_json("VCS Root specified by parameter 'vcsRootId'($vcsRootId) not found", HttpServletResponse.SC_NOT_FOUND)
-        try {
-            vcsRoot.modificationCheckInterval = 3600
-        } catch(e: AccessDeniedException) {
-            return error_json("Access Denied:" + (e.message ?: ""), HttpServletResponse.SC_FORBIDDEN)
-        }
-        val result = JsonObject()
-        result.addProperty("result", "Ok")
-        result.addProperty("vcsRootId", vcsRootId)
-        result.addProperty("message", "VCS Root ${vcsRoot.vcsDisplayName} Changes Checking interval set to 1 hour.")
         return result
     }
 

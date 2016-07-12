@@ -584,32 +584,6 @@ BS.GitHubWebHooks = {};
         BS.WarningPopup.showWarning(element, {x: -65, y: 20}, text);
     };
 
-    WH.setVcsPoolInterval = function (element, vcsRootId, projectId) {
-        // TODO: Proper message
-        BS.ProgressPopup.showProgress(element, "Updating Changes Checking Interval", {shift: {x: -65, y: 20}, zIndex: 100});
-        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
-            method: "post",
-            parameters: {
-                "action": "set-cci",
-                "vcsRootId": vcsRootId,
-                "projectId": projectId
-            },
-            onComplete: function (transport) {
-                BS.ProgressPopup.hidePopup(0, true);
-                var json = transport.responseJSON;
-                if (json['error']) {
-                    BS.Log.error("Sad :( Something went wrong: " + json['error']);
-                    BS.Util.Messages.show("vcs-roots", json['error'], {verbosity: 'warn'});
-                } else if (json['message']) {
-                    BS.Util.Messages.show("vcs-roots", json['message'], {verbosity: 'warn'});
-                } else {
-                    BS.Log.error("Unexpected response: " + json.toString())
-                }
-                WH.refreshReports();
-            }
-        });
-    };
-
     WH.doInstallForm = function (element) {
         var repository = $j('input#repository').val();
         var projectId = $j('input#projectId').val();
@@ -617,10 +591,10 @@ BS.GitHubWebHooks = {};
         $j('#errorRepository').text("").hide();
         BS.Util.Messages.hide({group: 'messages_group_InstallWebhook'});
 
-        // TODO: Validate input
-        // if (!repository || repository.length == 0) {
-        //     $j('#errorRepository').text("Repository is empty").show();
-        // }
+        if (!repository || repository.length == 0) {
+            $j('#errorRepository').text("Repository url is empty").show();
+            return false;
+        }
 
         return WH.doAction('install', element, repository, projectId);
     }
