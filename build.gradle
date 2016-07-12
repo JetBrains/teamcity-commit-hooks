@@ -7,7 +7,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.8.2'
+        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.9.1'
         classpath group: 'org.jetbrains.kotlin', name: 'kotlin-gradle-plugin', version: "${kotlinVersion}"
     }
 }
@@ -66,21 +66,35 @@ test {
 teamcity {
     version = TeamCityVersion
 
-    descriptor {
-        name = project.name
-        displayName = 'GitHub Integration'
-        version = project.version
-        vendorName = 'JetBrains, s.r.o.'
-        vendorUrl = 'https://www.jetbrains.com/'
-        description = 'TeamCity GitHub Integration Plugin'
+    server {
+        descriptor {
+            name = project.name
+            displayName = 'GitHub Integration'
+            version = project.version
+            vendorName = 'JetBrains, s.r.o.'
+            vendorUrl = 'https://www.jetbrains.com/'
+            description = 'TeamCity GitHub Integration Plugin'
 
-        useSeparateClassloader = true
+            useSeparateClassloader = true
+        }
+
+        environments {
+            teamcityDev {
+                homeDir = file(teamcityDir)
+                dataDir = file(teamcityDataDir)
+                javaHome = file(teamcityJavaHome)
+                serverOptions '-Xdebug'
+                serverOptions '-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5500'
+
+                serverOptions '-Dteamcity.oauthConnections.enabled=true'
+
+                serverOptions '-Dteamcity.development.mode=true'
+                serverOptions '-Dteamcity.development.shadowCopyClasses=true'
+            }
+
+        }
     }
 
-    homeDir = file(teamcityDir)
-    dataDir = file(teamcityDataDir)
-    javaHome = file(teamcityJavaHome)
-    serverOptions = '-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5500 -Dteamcity.oauthConnections.enabled=true -Dteamcity.development.mode=true -Dteamcity.development.shadowCopyClasses=true'
 }
 
 idea {
@@ -89,8 +103,6 @@ idea {
         downloadSources = true
     }
 }
-
-deployPlugin.dependsOn(build)
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.14'
