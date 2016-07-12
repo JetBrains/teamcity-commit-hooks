@@ -27,7 +27,11 @@ if (PluginVersion == null || "" == PluginVersion) {
 
 ext {
     teamcityDir = "$rootDir/servers/TeamCity-${TeamCityVersion}"
-    teamcityDataDir = "$rootDir/data/" + (TeamCityVersion =~ /(\d+\.\d+).*/)[0][1]
+    teamcityDataDir = "$rootDir/data/" + (
+            (TeamCityVersion ==~ /(\d+\.\d+).*/) ?
+            ((TeamCityVersion =~ /(\d+\.\d+).*/)[0][1])
+            : TeamCityVersion
+    )
     teamcityJavaHome = System.properties['java.home']
 }
 
