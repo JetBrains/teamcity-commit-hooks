@@ -140,28 +140,28 @@ class WebhookPeriodicalChecker(
             val authData = myAuthDataStorage.find(pubKey)
             if (authData == null) {
                 LOG.warn("Cannot find auth data for hook '${hook.url}'")
-                report(info, pubKey, "Webhook callback url is incorrect or internal storage was corrupted")
+                report(info, "Webhook callback url is incorrect or internal storage was corrupted")
                 continue
             }
 
             val connection = getConnection(authData)
             if (connection == null) {
                 LOG.warn("OAuth Connection for repository '$info' not found")
-                report(info, pubKey, "OAuth connection used to install webhook is unavailable", Status.NO_INFO)
+                report(info, "OAuth connection used to install webhook is unavailable", Status.NO_INFO)
                 continue
             }
 
             val user = myUserModel.findUserById(authData.userId)
             if (user == null) {
                 LOG.warn("TeamCity user '${authData.userId}' which created webhook for repository '$info' no longer exists")
-                report(info, pubKey, "TeamCity user '${authData.userId}' which created webhook no longer exists", Status.NO_INFO)
+                report(info, "TeamCity user '${authData.userId}' which created webhook no longer exists", Status.NO_INFO)
                 continue
             }
 
             val tokens = myTokensHelper.getExistingTokens(listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
             if (tokens.isEmpty()) {
                 LOG.warn("No OAuth tokens to access repository '$info'")
-                report(info, pubKey, "No OAuth tokens found to access repository", Status.NO_INFO)
+                report(info, "No OAuth tokens found to access repository", Status.NO_INFO)
                 continue
             }
 
@@ -182,7 +182,7 @@ class WebhookPeriodicalChecker(
                     // TODO: Check&remember latest delivery status. If something wrong - report health item
                     if (loaded.isEmpty()) {
                         LOG.debug("No details loaded for '$info' repo webhooks, seems all of them are incorrect or removed")
-                        report(info, pubKey, "Webhook not found on server, seems it has been incorrectly configured or removed", Status.MISSING)
+                        report(info, "Webhook not found on server, seems it has been incorrectly configured or removed", Status.MISSING)
                     } else {
                         for ((key, value) in loaded) {
                             val lastResponse = key.lastResponse
@@ -204,12 +204,12 @@ class WebhookPeriodicalChecker(
                                 in 400..599 -> {
                                     val reason = "Last payload delivery failed: (${lastResponse.code}) ${lastResponse.message}"
                                     LOG.debug(reason)
-                                    report(info, pubKey, reason, Status.PAYLOAD_DELIVERY_FAILED)
+                                    report(info, reason, Status.PAYLOAD_DELIVERY_FAILED)
                                 }
                                 else -> {
                                     val reason = "Unexpected payload delivery response: (${lastResponse.code}) ${lastResponse.message}"
                                     LOG.debug(reason)
-                                    report(info, pubKey, reason)
+                                    report(info, reason)
                                 }
                             }
                         }
@@ -231,7 +231,7 @@ class WebhookPeriodicalChecker(
                         GitHubAccessException.Type.UserHaveNoAccess -> {
                             LOG.warn("User (TC:${user.describe(false)}, GH:${token.oauthLogin}) have no access to repository $info, cannot check hook status")
                             if (tokens.map { it.oauthLogin }.distinct().size == 1) {
-                                report(info, pubKey, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook have no longer access to repository", Status.NO_INFO)
+                                report(info, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook have no longer access to repository", Status.NO_INFO)
                             } else {
                                 // TODO: ??? Seems TC user has many tokens with different GH users
                             }
@@ -297,7 +297,7 @@ class WebhookPeriodicalChecker(
 
     private val myIncorrectHooks: Cache<GitHubRepositoryInfo, String> = CacheBuilder.newBuilder().expireAfterWrite(120, TimeUnit.MINUTES).build()
 
-    private fun report(info: GitHubRepositoryInfo, pubKey: String, reason: String, status: Status = Status.INCORRECT) {
+    private fun report(info: GitHubRepositoryInfo, reason: String, status: Status = Status.INCORRECT) {
         myIncorrectHooks.put(info, reason)
         myWebHooksStorage.update(info) {
             it.status = status
