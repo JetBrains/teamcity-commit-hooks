@@ -106,16 +106,7 @@ open class ActionContext(val storage: WebHooksStorage,
             LOG.warn("Received RepositoryHook without callback url, ignoring it")
             return null
         }
-        val status: Status
-        if (created.lastResponse != null) {
-            if (created.lastResponse.code in 200..299) {
-                status = Status.OK
-            } else {
-                status = Status.PAYLOAD_DELIVERY_FAILED
-            }
-        } else {
-            status = Status.WAITING_FOR_SERVER_RESPONSE
-        }
+        val status = created.getStatus()
         return storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url, status, callbackUrl = callbackUrl) })
     }
 
