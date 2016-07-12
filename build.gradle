@@ -50,7 +50,6 @@ dependencies {
     provided(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${TeamCityVersion}")
     provided(group: 'org.jetbrains.teamcity', name: 'oauth', version: "${TeamCityVersion}")
     provided(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${TeamCityVersion}")
-//    provided(group: 'org.jetbrains.teamcity.plugins', name: 'git', version: "${TeamCityVersion}")
     compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
 
     testCompile 'org.assertj:assertj-core:2.2.0'
@@ -75,10 +74,6 @@ teamcity {
         description = 'TeamCity GitHub Integration Plugin'
 
         useSeparateClassloader = true
-
-//        parameters {
-//            parameter 'param', 'value'
-//        }
     }
 
     homeDir = file(teamcityDir)
