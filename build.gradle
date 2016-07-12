@@ -19,12 +19,15 @@ apply plugin: 'idea'
 
 group = 'org.jetbrains.teamcity.github'
 
-version = "1.0-SNAPSHOT"
+if (PluginVersion == null || "" == PluginVersion) {
+    version = TeamCityVersion
+} else {
+    version = "$PluginVersion"
+}
 
 ext {
-    teamcityVersion = '10.0-SNAPSHOT'
-    teamcityDir = "$rootDir/servers/TeamCity-${teamcityVersion}"
-    teamcityDataDir = "$rootDir/data/" + (teamcityVersion =~ /(\d+\.\d+).*/)[0][1]
+    teamcityDir = "$rootDir/servers/TeamCity-${TeamCityVersion}"
+    teamcityDataDir = "$rootDir/data/" + (TeamCityVersion =~ /(\d+\.\d+).*/)[0][1]
     teamcityJavaHome = System.properties['java.home']
 }
 
@@ -44,10 +47,10 @@ dependencies {
     provided('org.eclipse.mylyn.github:org.eclipse.egit.github.core:4.1.0.201509280440-r') {
         transitive = false
     }
-    provided(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${teamcityVersion}")
-    provided(group: 'org.jetbrains.teamcity', name: 'oauth', version: "${teamcityVersion}")
-    provided(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${teamcityVersion}")
-//    provided(group: 'org.jetbrains.teamcity.plugins', name: 'git', version: "${teamcityVersion}")
+    provided(group: 'org.jetbrains.teamcity.internal', name: 'server', version: "${TeamCityVersion}")
+    provided(group: 'org.jetbrains.teamcity', name: 'oauth', version: "${TeamCityVersion}")
+    provided(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${TeamCityVersion}")
+//    provided(group: 'org.jetbrains.teamcity.plugins', name: 'git', version: "${TeamCityVersion}")
     compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
 
     testCompile 'org.assertj:assertj-core:2.2.0'
@@ -61,7 +64,7 @@ test {
 }
 
 teamcity {
-    version = teamcityVersion
+    version = TeamCityVersion
 
     descriptor {
         name = project.name
