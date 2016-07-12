@@ -7,15 +7,12 @@ import jetbrains.buildServer.serverSide.oauth.OAuthToken
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
-import org.springframework.beans.factory.annotation.Autowired
 import java.util.*
 
-class TokensHelper {
-
-    @Autowired
-    lateinit var connectionsManager: OAuthConnectionsManager
-    @Autowired
-    lateinit var storage: OAuthTokensStorage
+class TokensHelper(
+        private val connectionsManager: OAuthConnectionsManager,
+        private val storage: OAuthTokensStorage
+) {
 
     companion object {
         fun getHooksAccessType(client: GitHubClientEx): Pair<HookAccessType, RepoAccessType>? {
@@ -48,9 +45,7 @@ class TokensHelper {
             when (accessType) {
                 HookAccessType.NO_ACCESS -> return false
                 HookAccessType.READ -> return false
-
-                // TODO: Write is not enough for 'delete' action
-                HookAccessType.WRITE -> return true
+                HookAccessType.WRITE -> return true // Though write is not enough for 'delete' action, we can disable webhook
                 HookAccessType.ADMIN -> return true
             }
         }
