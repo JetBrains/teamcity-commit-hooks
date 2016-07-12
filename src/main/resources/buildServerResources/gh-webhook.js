@@ -10,7 +10,9 @@ BS.GitHubWebHooks = {};
         var repo = info['owner'] + '/' + info['name'];
         var server = info['server'];
         var warning = false;
-        if ("TokenScopeMismatch" == result) {
+        if ("NotFound" == result) {
+            warning = true;
+        } else if ("TokenScopeMismatch" == result) {
             message = "Token you provided have no access to repository '" + repo + "', try again";
             warning = true;
             // TODO: Add link to refresh/request token (via popup window)

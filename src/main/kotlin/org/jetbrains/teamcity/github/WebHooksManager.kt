@@ -65,7 +65,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, hook: WebHooksStorage.HookInfo): HookTestOperationResult {
+    fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, hook: WebHooksStorage.HookInfo) {
         return TestWebHookAction.doRun(info, ghc, this, hook)
     }
 

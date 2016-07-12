@@ -30,7 +30,6 @@ import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.action.HookAddOperationResult
 import org.jetbrains.teamcity.github.action.HookDeleteOperationResult
-import org.jetbrains.teamcity.github.action.HookTestOperationResult
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import java.io.IOException
@@ -312,16 +311,13 @@ class WebHooksController(descriptor: PluginDescriptor,
     private fun doTestWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement? {
         myWebHooksManager.doGetAllWebHooks(info, ghc)
         val hook = myWebHooksManager.getHook(info)
-        // Ensure test message was sent
-        val result = hook?.let { myWebHooksManager.doTestWebHook(info, ghc, hook) }
-        when (result) {
-            null, HookTestOperationResult.NotFound -> {
-                return gh_json(HookTestOperationResult.NotFound.name, "No hook found for repository '${info.toString()}'", info)
-            }
-            HookTestOperationResult.Ok -> {
-                return gh_json(result.name, "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
-            }
+        @Suppress("IfNullToElvis")
+        if (hook == null) {
+            return gh_json("NotFound", "No hook found for repository '${info.toString()}'", info)
         }
+        // Ensure test message was sent
+        myWebHooksManager.doTestWebHook(info, ghc, hook)
+        return gh_json("Ok", "Asked server '${info.server}' to resend 'ping' event for repository '${info.getRepositoryId()}'", info)
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
