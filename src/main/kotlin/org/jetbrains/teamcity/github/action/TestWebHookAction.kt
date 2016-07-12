@@ -2,27 +2,23 @@ package org.jetbrains.teamcity.github.action
 
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
-import jetbrains.buildServer.users.SUser
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.GitHubAccessException
 import org.jetbrains.teamcity.github.GitHubRepositoryInfo
 import org.jetbrains.teamcity.github.TokensHelper
-import org.jetbrains.teamcity.github.controllers.bad
+import org.jetbrains.teamcity.github.WebHooksStorage
 
-object TestWebHookAction : Action<HookTestOperationResult, ActionContext> {
+object TestWebHookAction {
     private val LOG = Logger.getInstance(TestWebHookAction::class.java.name)
 
-
     @Throws(GitHubAccessException::class)
-    override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookTestOperationResult {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext, hook: WebHooksStorage.HookInfo): HookTestOperationResult {
         val service = RepositoryService(client)
-        val hooks = context.storage.getHooks(info).filter { !it.status.bad }
-        val hook = hooks.firstOrNull() ?: return HookTestOperationResult.NotFound
         try {
             service.testHook(info.getRepositoryId(), hook.id.toInt())
         } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Failed to test(ping) webhook for repository $info: ${e.status}", e)
+            LOG.warnAndDebugDetails("Failed to test (redeliver latest 'push' event) webhook for repository $info: ${e.status}", e)
             context.handleCommonErrors(e)
             when (e.status) {
                 403, 404 -> {

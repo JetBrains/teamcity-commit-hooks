@@ -12,7 +12,6 @@ import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
-import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.SVcsRoot
@@ -120,7 +119,7 @@ class WebhookPeriodicalChecker(
         val ignoredServers = ArrayList<String>()
 
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
-        val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, SUser>>()
+        val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, WebHooksStorage.HookInfo>>()
         if (toCheck.isEmpty()) {
             LOG.debug("No configured webhooks found")
         } else {
@@ -189,7 +188,7 @@ class WebhookPeriodicalChecker(
                             if (lastResponse == null) {
                                 LOG.debug("No last response info for hook ${key.url!!}")
                                 // Lets ask GH to send us ping request, so next time there would be some 'lastResponse'
-                                toPing.add(Triple(info, ghc to token.accessToken, user))
+                                toPing.add(Triple(info, ghc to token.accessToken, value))
                                 continue
                             }
                             when (lastResponse.code) {
@@ -257,12 +256,12 @@ class WebhookPeriodicalChecker(
             checkQuotaLimit(ghc, ignoredServers, info)
         }
 
-        for ((info, pair, user) in toPing) {
+        for ((info, pair, hi) in toPing) {
             if (ignoredServers.contains(info.server)) continue
             val ghc = pair.first
             ghc.setOAuth2Token(pair.second)
             try {
-                TestWebHookAction.doRun(info, ghc, user, myWebHooksManager)
+                TestWebHookAction.doRun(info, ghc, myWebHooksManager, hi)
             } catch(e: GitHubAccessException) {
                 // Ignore
             }

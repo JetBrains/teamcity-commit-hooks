@@ -2,7 +2,6 @@ package org.jetbrains.teamcity.github.action
 
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
-import jetbrains.buildServer.users.SUser
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.GitHubAccessException
@@ -12,11 +11,11 @@ import org.jetbrains.teamcity.github.WebHooksStorage
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import org.jetbrains.teamcity.github.controllers.Status
 
-object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
+object DeleteWebHookAction {
     private val LOG = Logger.getInstance(DeleteWebHookAction::class.java.name)
 
     @Throws(GitHubAccessException::class)
-    override fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext): HookDeleteOperationResult {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext): HookDeleteOperationResult {
         // 0. Check whether there any hooks for repo in local cache. Return of none in cache.
         var hooks = context.storage.getHooks(info)
         if (hooks.isEmpty()) return HookDeleteOperationResult.NeverExisted

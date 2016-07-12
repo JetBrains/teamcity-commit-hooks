@@ -60,13 +60,13 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser): HookDeleteOperationResult {
-        return DeleteWebHookAction.doRun(info, client, user, this)
+    fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx): HookDeleteOperationResult {
+        return DeleteWebHookAction.doRun(info, client, this)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, user: SUser): HookTestOperationResult {
-        return TestWebHookAction.doRun(info, ghc, user, this)
+    fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, hook: WebHooksStorage.HookInfo): HookTestOperationResult {
+        return TestWebHookAction.doRun(info, ghc, this, hook)
     }
 
     fun updateLastUsed(info: GitHubRepositoryInfo, date: Date, hookInfo: WebHooksStorage.HookInfo) {

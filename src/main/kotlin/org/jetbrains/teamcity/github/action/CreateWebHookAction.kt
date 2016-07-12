@@ -24,7 +24,7 @@ object CreateWebHookAction {
         var result: Pair<HookAddOperationResult, WebHooksStorage.HookInfo>? = null
 
         for (hook in context.storage.getHooks(info)) {
-            if (checkExisting(client, context, hook, info, user)) result = HookAddOperationResult.AlreadyExists to hook
+            if (checkExisting(client, context, hook, info)) result = HookAddOperationResult.AlreadyExists to hook
         }
         if (result != null) return result
 
@@ -34,7 +34,7 @@ object CreateWebHookAction {
 
         // Check for already existing hooks, otherwise Github we may create another hook for repository
         for (hook in context.storage.getHooks(info)) {
-            if (checkExisting(client, context, hook, info, user)) result = HookAddOperationResult.AlreadyExists to hook
+            if (checkExisting(client, context, hook, info)) result = HookAddOperationResult.AlreadyExists to hook
         }
         if (result != null) return result
 
@@ -97,14 +97,14 @@ object CreateWebHookAction {
 
     }
 
-    private fun checkExisting(client: GitHubClientEx, context: ActionContext, hookInfo: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, user: SUser): Boolean {
+    private fun checkExisting(client: GitHubClientEx, context: ActionContext, hookInfo: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo): Boolean {
         val pubKey = getPubKey(hookInfo.callbackUrl)
         val authData = pubKey?.let { context.authDataStorage.find(it) }
         if (authData == null) {
             // Unknown webhook or old callback url format, remove from GitHub and local cache
             // Possible cause: local cache was cleared, old callback url format.
             try {
-                DeleteWebHookAction.doRun(info, client, user, context)
+                DeleteWebHookAction.doRun(info, client, context)
                 context.storage.delete(info)
             } catch(ignored: GitHubAccessException) {
                 context.storage.update(info) {
