@@ -199,7 +199,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             return HttpServletResponse.SC_SERVICE_UNAVAILABLE to message
         }
         updateLastUsed(info, hookInfo)
-        setModificationCheckInterval(info)
 
         val foundVcsInstances = findSuitableVcsRootInstances(info)
         if (foundVcsInstances.isEmpty()) {
@@ -266,16 +265,5 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             roots.map { bt.getVcsRootInstanceForParent(it) }.filterNotNull().filter { Util.isSuitableVcsRoot(it, true) }.toCollection(instances)
         }
         return instances.filter { info == Util.getGitHubInfo(it) }
-    }
-
-    private fun setModificationCheckInterval(info: GitHubRepositoryInfo) {
-        // It's worth to update intervals for all git vcs roots with same url ('info')
-        val roots = VcsManager.allRegisteredVcsRoots.filter { info == Util.Companion.getGitHubInfo(it) }
-        for (root in roots) {
-            val value = TimeUnit.HOURS.toSeconds(12).toInt()
-            if (root.isUseDefaultModificationCheckInterval || root.modificationCheckInterval < value) {
-                root.modificationCheckInterval = value
-            }
-        }
     }
 }
