@@ -190,7 +190,9 @@ class WebhookPeriodicalChecker(
                                 in 200..299 -> {
                                     LOG.debug("Last response is OK")
                                     myWebHooksStorage.update(info) {
-                                        it.status = if (!key.isActive) Status.DISABLED else Status.OK
+                                        if (it.isSame(key)) {
+                                            it.status = if (!key.isActive) Status.DISABLED else Status.OK
+                                        }
                                     }
                                 }
                                 in 400..599 -> {
