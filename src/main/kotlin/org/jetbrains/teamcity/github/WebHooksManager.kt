@@ -117,8 +117,8 @@ class WebHooksManager(links: WebLinks,
         return true
     }
 
-    fun getHookForPubKey(info: GitHubRepositoryInfo, pubKey: String): WebHooksStorage.HookInfo? {
-        return storage.getHooks(info).firstOrNull { it.callbackUrl.endsWith(pubKey) }
+    fun getHookForPubKey(authData: AuthDataStorage.AuthData): WebHooksStorage.HookInfo? {
+        return storage.getHooks(authData.repository).firstOrNull { it.callbackUrl.endsWith(authData.public) }
     }
 
 }

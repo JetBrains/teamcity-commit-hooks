@@ -14,7 +14,6 @@ import jetbrains.buildServer.users.impl.UserEx
 import jetbrains.buildServer.util.FileUtil
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.OperationRequestor
-import jetbrains.buildServer.vcs.VcsManager
 import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.WebUtil
@@ -28,7 +27,6 @@ import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.*
-import java.util.concurrent.TimeUnit
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
@@ -39,7 +37,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                             private val AuthDataStorage: AuthDataStorage,
                             private val UserModel: UserModelEx,
                             private val SecurityContext: SecurityContextEx,
-                            private val VcsManager: VcsManager,
                             private val WebHooksManager: WebHooksManager) : BaseController() {
 
     companion object {
@@ -115,7 +112,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             return simpleView("No stored auth data (secret key) found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
         }
 
-        val hookInfo = WebHooksManager.getHookForPubKey(authData.repository, pubKey)
+        val hookInfo = WebHooksManager.getHookForPubKey(authData)
         if (hookInfo == null) {
             // Seems local cache was cleared
             LOG.warn("No stored hook info found for public key '$pubKey' and repository '${authData.repository}'")
