@@ -21,7 +21,7 @@ object DeleteWebHookAction : Action<HookDeleteOperationResult, ActionContext> {
         var hooks = context.storage.getHooks(info)
         if (hooks.isEmpty()) return HookDeleteOperationResult.NeverExisted
 
-        // 1. Reload all hooks from GitHub Read
+        // 1. Reload all hooks from GitHub
         // It's ok throw GitHubAccessException upwards
         GetAllWebHooksAction.doRun(info, client, context)
 
