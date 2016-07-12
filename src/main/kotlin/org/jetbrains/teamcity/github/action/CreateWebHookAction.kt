@@ -53,6 +53,7 @@ object CreateWebHookAction {
         val created: RepositoryHook
         try {
             created = service.createHook(repo, hook)
+            context.authDataStorage.store(authData)
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to create webhook for repository $info: ${e.status}", e)
             context.handleCommonErrors(e)
@@ -80,15 +81,15 @@ object CreateWebHookAction {
             || authData.public != getPubKey(created.callbackUrl)) {
             // Weird
             // Either callback url is null or does not contains public key part of callback
+            context.authDataStorage.remove(authData)
             throw IllegalStateException("GitHub returned incorrect hook")
         }
 
         hookInfo = context.addHook(created, info.server, repo)
         if (hookInfo == null) {
+            context.authDataStorage.remove(authData)
             throw IllegalStateException("GitHub returned incorrect hook")
         }
-
-        context.authDataStorage.store(authData)
 
         // Remove missing hooks from storage as they don't exists remotely and we just created good one
         context.storage.delete(info) { it.status == Status.MISSING }
