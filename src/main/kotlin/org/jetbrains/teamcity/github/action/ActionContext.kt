@@ -8,6 +8,7 @@ import org.eclipse.egit.github.core.client.RequestException
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import org.jetbrains.teamcity.github.controllers.Status
+import org.jetbrains.teamcity.github.controllers.bad
 import java.net.HttpURLConnection
 import java.util.*
 
@@ -119,7 +120,8 @@ open class ActionContext(val storage: WebHooksStorage,
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
-        return storage.getHooks(info).firstOrNull()
+        val hooks = storage.getHooks(info)
+        return hooks.firstOrNull { !it.status.bad } ?: hooks.firstOrNull()
     }
 
     @Throws(GitHubAccessException::class)
