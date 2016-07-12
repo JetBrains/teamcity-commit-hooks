@@ -55,7 +55,7 @@ class SetupFromUrlGitHubWebhooksExtension(
                     ghc.setOAuth2Token(token.accessToken)
                     LOG.debug("Trying with token from GH user '${token.oauthLogin}', connection is ${connection.id}")
                     try {
-                        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
+                        val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
                         when (result.first) {
                             HookAddOperationResult.Created -> LOG.info("Added webhook for '$info'")
                             HookAddOperationResult.AlreadyExists -> LOG.info("Webhook for '$info' was already there")

@@ -271,7 +271,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
-        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
+        val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
                 return gh_json(result.first.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
@@ -284,7 +284,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
-        val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
+        val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
         val url = "${info.getRepositoryUrl()}/settings/hooks/${result.second.id}"
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
@@ -326,7 +326,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doDeleteWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement? {
-        val result = myWebHooksManager.doUnRegisterWebHook(info, ghc)
+        val result = myWebHooksManager.doDeleteWebHook(info, ghc)
         when (result) {
             HookDeleteOperationResult.NeverExisted -> {
                 return gh_json(result.name, "Hook for repository '${info.toString()}' never existed", info)

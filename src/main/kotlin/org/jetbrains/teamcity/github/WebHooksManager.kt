@@ -50,7 +50,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHooksStorage.HookInfo> {
+    fun doInstallWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHooksStorage.HookInfo> {
         return CreateWebHookAction.doRun(info, client, user, this, connection)
     }
 
@@ -60,7 +60,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doUnRegisterWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx): HookDeleteOperationResult {
+    fun doDeleteWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx): HookDeleteOperationResult {
         return DeleteWebHookAction.doRun(info, client, this)
     }
 
