@@ -117,9 +117,6 @@ class WebHooksManager(links: WebLinks,
         return true
     }
 
-    fun isHasIncorrectHooks() = storage.isHasIncorrectHooks()
-    fun getIncorrectHooks() = storage.getIncorrectHooks()
-
     fun getHookForPubKey(info: GitHubRepositoryInfo, pubKey: String): WebHooksStorage.HookInfo? {
         return storage.getHooks(info).firstOrNull { it.callbackUrl.endsWith(pubKey) }
     }
