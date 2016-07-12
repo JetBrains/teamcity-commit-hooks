@@ -10,31 +10,33 @@ import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import org.jetbrains.teamcity.github.controllers.Status
+import org.jetbrains.teamcity.github.controllers.bad
 
 object CreateWebHookAction {
 
     private val LOG = Logger.getInstance(CreateWebHookAction::class.java.name)
 
     @Throws(GitHubAccessException::class)
-    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext, connection: OAuthConnectionDescriptor): HookAddOperationResult {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHooksStorage.HookInfo> {
         val repo = info.getRepositoryId()
         val service = RepositoryService(client)
 
-        var hookInfo = context.getHook(info)
+        val hooks = context.storage.getHooks(info)
+        var hookInfo = hooks.firstOrNull { !it.status.bad }
         if (hookInfo != null) {
             // TODO: Check AuthData
-            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists
+            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists to hookInfo
         }
 
-        // First, check for already existing hooks, otherwise Github will answer with code 422
-        // If we cannot get hooks, we cannot add new one
-        // TODO: Consider handling GitHubAccessException
+        // Reload all hooks from GitHub
+        // It's ok throw GitHubAccessException upwards: if we cannot get hooks, we cannot add new one
         GetAllWebHooksAction.doRun(info, client, context)
 
-        hookInfo = context.getHook(info)
+        // Check for already existing hooks, otherwise Github will answer with code 422
+        hookInfo = context.storage.getHooks(info).firstOrNull { !it.status.bad }
         if (hookInfo != null) {
             // TODO: Check AuthData
-            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists
+            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists to hookInfo
         }
 
         val authData = context.authDataStorage.create(user, info, connection, false)
@@ -64,9 +66,9 @@ object CreateWebHookAction {
                 422 -> {
                     if (e.error.errors.any { it.resource.equals("hook", true) && it.message.contains("already exists") }) {
                         // Already exists
-                        // TODO: Handle AuthData
-                        // TODO: Remove existing hook if there no auth data know here.
-                        return HookAddOperationResult.AlreadyExists
+                        // Very low chance to happen since auth data and callback url is randomly generated
+                        // TODO: Remove
+                        return HookAddOperationResult.AlreadyExists to context.storage.getHooks(info).first { !it.status.bad }
                     }
                 }
             }
@@ -87,7 +89,11 @@ object CreateWebHookAction {
         }
 
         context.authDataStorage.store(authData)
-        return HookAddOperationResult.Created
+
+        // Remove missing hooks from storage as they don't exists remotely and we just created good one
+        context.storage.delete(info) { it.status == Status.MISSING }
+
+        return HookAddOperationResult.Created to hookInfo
 
     }
 
@@ -107,8 +113,9 @@ object CreateWebHookAction {
                 context.storage.update(info) {
                     it.status = Status.INCORRECT
                 }
+                return false
             } else {
-                return true
+                return !hookInfo.status.bad
             }
         }
         return false

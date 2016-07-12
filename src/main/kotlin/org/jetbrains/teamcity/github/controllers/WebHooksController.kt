@@ -271,12 +271,12 @@ class WebHooksController(descriptor: PluginDescriptor,
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
-        when (result) {
+        when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
+                return gh_json(result.first.name, "Hook for repository '${info.toString()}' already exists, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.name, "Created hook for repository '${info.toString()}'", info)
+                return gh_json(result.first.name, "Created hook for repository '${info.toString()}'", info)
             }
         }
     }
@@ -284,14 +284,13 @@ class WebHooksController(descriptor: PluginDescriptor,
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
         val result = myWebHooksManager.doRegisterWebHook(info, ghc, user, connection)
-        val id = myWebHooksManager.getHook(info)!!.id
-        val url = "${info.getRepositoryUrl()}/settings/hooks/$id"
-        when (result) {
+        val url = "${info.getRepositoryUrl()}/settings/hooks/${result.second.id}"
+        when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.name, "Hook for repository '${info.toString()}' <a href=\"$url\">already exists</a>, updated info", info)
+                return gh_json(result.first.name, "Hook for repository '${info.toString()}' <a href=\"$url\">already exists</a>, updated info", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.name, "Created <a href=\"$url\">hook</a> for repository '${info.toString()}'", info)
+                return gh_json(result.first.name, "Created <a href=\"$url\">hook</a> for repository '${info.toString()}'", info)
             }
         }
     }
