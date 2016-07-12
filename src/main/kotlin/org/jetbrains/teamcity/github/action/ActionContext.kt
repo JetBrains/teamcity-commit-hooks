@@ -76,6 +76,29 @@ open class ActionContext(val storage: WebHooksStorage,
         return result
     }
 
+    fun updateOneHook(server: String, repo: RepositoryId, rh: RepositoryHook): WebHooksStorage.HookInfo? {
+        val hooks = storage.getHooks(server, repo).toMutableList()
+        var result: WebHooksStorage.HookInfo? = null
+        if (!hooks.any { it.isSame(rh) }) {
+            return addHook(rh, server, repo)
+        } else {
+            storage.update(server, repo) {
+                if (it.isSame(rh)) {
+                    if (!rh.isActive) {
+                        it.status = Status.DISABLED
+                    } else {
+                        // TODO: Should update status?
+                        if (it.status in listOf(Status.MISSING, Status.DISABLED)) {
+                            it.status = Status.WAITING_FOR_SERVER_RESPONSE
+                        }
+                    }
+                    result = it
+                }
+            }
+        }
+        return result
+    }
+
     fun addHook(created: RepositoryHook, server: String, repo: RepositoryId): WebHooksStorage.HookInfo? {
         val callbackUrl = created.callbackUrl
         if (callbackUrl == null) {
