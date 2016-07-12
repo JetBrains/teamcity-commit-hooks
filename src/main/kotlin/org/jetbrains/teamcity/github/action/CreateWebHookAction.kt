@@ -21,23 +21,22 @@ object CreateWebHookAction {
         val repo = info.getRepositoryId()
         val service = RepositoryService(client)
 
-        val hooks = context.storage.getHooks(info)
-        var hookInfo = hooks.firstOrNull { !it.status.bad }
-        if (hookInfo != null) {
-            // TODO: Check AuthData
-            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists to hookInfo
+        var result: Pair<HookAddOperationResult, WebHooksStorage.HookInfo>? = null
+
+        for (hook in context.storage.getHooks(info)) {
+            if (checkExisting(client, context, hook, info, user)) result = HookAddOperationResult.AlreadyExists to hook
         }
+        if (result != null) return result
 
         // Reload all hooks from GitHub
         // It's ok throw GitHubAccessException upwards: if we cannot get hooks, we cannot add new one
         GetAllWebHooksAction.doRun(info, client, context)
 
-        // Check for already existing hooks, otherwise Github will answer with code 422
-        hookInfo = context.storage.getHooks(info).firstOrNull { !it.status.bad }
-        if (hookInfo != null) {
-            // TODO: Check AuthData
-            if (checkExisting(client, context, hookInfo, info, user)) return HookAddOperationResult.AlreadyExists to hookInfo
+        // Check for already existing hooks, otherwise Github we may create another hook for repository
+        for (hook in context.storage.getHooks(info)) {
+            if (checkExisting(client, context, hook, info, user)) result = HookAddOperationResult.AlreadyExists to hook
         }
+        if (result != null) return result
 
         val authData = context.authDataStorage.create(user, info, connection, false)
 
@@ -85,7 +84,7 @@ object CreateWebHookAction {
             throw IllegalStateException("GitHub returned incorrect hook")
         }
 
-        hookInfo = context.addHook(created, info.server, repo)
+        val hookInfo = context.addHook(created, info.server, repo)
         if (hookInfo == null) {
             context.authDataStorage.remove(authData)
             throw IllegalStateException("GitHub returned incorrect hook")
@@ -100,26 +99,22 @@ object CreateWebHookAction {
 
     private fun checkExisting(client: GitHubClientEx, context: ActionContext, hookInfo: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, user: SUser): Boolean {
         val pubKey = getPubKey(hookInfo.callbackUrl)
-        if (pubKey == null) {
-            // Seems old hook. Forget about it
-            context.storage.delete(info)
-        } else {
-            val authData = context.authDataStorage.find(pubKey)
-            if (authData == null) {
-                // Unknown webhook, remove from GitHub and local cache
-                try {
-                    DeleteWebHookAction.doRun(info, client, user, context)
-                } catch(ignored: GitHubAccessException) {
-                }
+        val authData = pubKey?.let { context.authDataStorage.find(it) }
+        if (authData == null) {
+            // Unknown webhook or old callback url format, remove from GitHub and local cache
+            // Possible cause: local cache was cleared, old callback url format.
+            try {
+                DeleteWebHookAction.doRun(info, client, user, context)
+                context.storage.delete(info)
+            } catch(ignored: GitHubAccessException) {
                 context.storage.update(info) {
                     it.status = Status.INCORRECT
                 }
-                return false
-            } else {
-                return !hookInfo.status.bad
             }
+            return false
+        } else {
+            return !hookInfo.status.bad
         }
-        return false
     }
 
     private fun getPubKey(url: String?): String? {
