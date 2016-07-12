@@ -20,6 +20,7 @@ import org.jetbrains.teamcity.github.action.GetAllWebHooksAction
 import org.jetbrains.teamcity.github.action.TestWebHookAction
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import org.jetbrains.teamcity.github.controllers.Status
+import org.jetbrains.teamcity.github.controllers.good
 import java.util.*
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -86,6 +87,11 @@ class WebhookPeriodicalChecker(
             val hook = incorrectHooks.firstOrNull { it.first == info }?.second ?: myWebHooksStorage.getHooks(info).firstOrNull()
             if (hook == null) {
                 // Completely removed, even from our storage. Let's forget about it
+                myIncorrectHooks.invalidate(info)
+                continue
+            }
+            if (myWebHooksStorage.getHooks(info).any { it.status.good }) {
+                // Installed new hook or fixed previous one
                 myIncorrectHooks.invalidate(info)
                 continue
             }
