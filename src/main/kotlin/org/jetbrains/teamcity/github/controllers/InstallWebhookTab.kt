@@ -5,6 +5,7 @@ import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
+import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
@@ -14,8 +15,9 @@ import org.jetbrains.teamcity.github.TokensHelper
 import javax.servlet.http.HttpServletRequest
 
 class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
-                        val tokensHelper: TokensHelper,
-                        val projectsManager: ProjectManager
+                        private val tokensHelper: TokensHelper,
+                        private val connectionsManager: OAuthConnectionsManager,
+                        private val projectsManager: ProjectManager
 ) : EditProjectTab(places, "installWebHook", descriptor.getPluginResourcesPath("installPage.jsp"), "Install Webhook") {
 
     companion object {
@@ -87,7 +89,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
             } else {
                 connectionProject = project
             }
-            return connectionProject?.let { tokensHelper.connectionsManager.findConnectionById(it, connectionId) }
+            return connectionProject?.let { connectionsManager.findConnectionById(it, connectionId) }
         }
         return null
     }
