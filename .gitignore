@@ -44,6 +44,8 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
+classes/
+
 ### Java template
 *.class
 
