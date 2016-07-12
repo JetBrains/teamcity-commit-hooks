@@ -135,7 +135,7 @@ class ProjectWebHooksBean(val project: SProject,
     }
 
     fun getNumberOfCorrectWebHooks(): Int {
-        return hooks.count() { getHookStatus(it.value.info).status in arrayOf(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE) }
+        return hooks.count() { getHookStatus(it.value.info).status.good }
     }
 
     @Used("jps") fun getVisibleHooks(): List<Map.Entry<GitHubRepositoryInfo, WebHookDetails>> {
