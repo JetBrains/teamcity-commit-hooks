@@ -6,15 +6,11 @@ import com.google.gson.JsonSyntaxException
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
-import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SecurityContextEx
-import jetbrains.buildServer.serverSide.impl.VcsModificationChecker
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.users.impl.UserEx
 import jetbrains.buildServer.util.FileUtil
 import jetbrains.buildServer.util.StringUtil
-import jetbrains.buildServer.vcs.OperationRequestor
-import jetbrains.buildServer.vcs.VcsRootInstance
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.WebUtil
 import org.eclipse.egit.github.core.client.GsonUtilsEx
@@ -31,8 +27,6 @@ import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
 class GitHubWebHookListener(private val WebControllerManager: WebControllerManager,
-                            private val ProjectManager: ProjectManager,
-                            private val VcsModificationChecker: VcsModificationChecker,
                             private val AuthorizationInterceptor: AuthorizationInterceptor,
                             private val AuthDataStorage: AuthDataStorage,
                             private val UserModel: UserModelEx,
@@ -111,6 +105,14 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             response.status = HttpServletResponse.SC_NOT_FOUND
             return simpleView("No stored auth data (secret key) found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
         }
+        val userId = authData.userId
+        val user = UserModel.findUserById(userId)
+        if (user == null) {
+            AuthDataStorage.removeAllForUser(userId)
+            LOG.warn("User with id '$userId' not found")
+            response.status = HttpServletResponse.SC_BAD_REQUEST
+            return simpleView("User installed webhook no longer registered in TeamCity. Remove and reinstall webhook.")
+        }
 
         val hookInfo = WebHooksManager.getHookForPubKey(authData)
         if (hookInfo == null) {
@@ -160,13 +162,17 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             when (eventType) {
                 "ping" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PingWebHookPayload::class.java)
-                    val pair = doHandlePingEvent(payload, hookInfo)
+                    val pair = doHandlePingEvent(payload, hookInfo, request, response, user)
+                    @Suppress("IfNullToElvis")
+                    if (pair == null) return null
                     response.status = pair.first
                     return simpleView(pair.second)
                 }
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PushWebHookPayload::class.java)
-                    val pair = doHandlePushEvent(payload, authData, hookInfo)
+                    val pair = doHandlePushEvent(payload, hookInfo, request, response, user)
+                    @Suppress("IfNullToElvis")
+                    if (pair == null) return null
                     response.status = pair.first
                     return simpleView(pair.second)
                 }
@@ -188,7 +194,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun getAuthData(subPath: String) = AuthDataStorage.find(subPath)
 
-    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHooksStorage.HookInfo): Pair<Int, String> {
+    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         val url = payload.repository?.gitUrl
         LOG.info("Received ping payload from webhook:${payload.hook_id}(${payload.hook.url}) for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
@@ -204,15 +210,10 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         }
         updateLastUsed(info, hookInfo)
 
-        val foundVcsInstances = findSuitableVcsRootInstances(info)
-        if (foundVcsInstances.isEmpty()) {
-            return HttpServletResponse.SC_NOT_FOUND to "There are no VCS roots referencing '$info' repository"
-        }
-
-        return HttpServletResponse.SC_ACCEPTED to "Acknowledged"
+        return doForwardToRestApi(info, user, request, response)
     }
 
-    private fun doHandlePushEvent(payload: PushWebHookPayload, authData: AuthDataStorage.AuthData, hookInfo: WebHooksStorage.HookInfo): Pair<Int, String> {
+    private fun doHandlePushEvent(payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         val url = payload.repository?.gitUrl
         LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
@@ -229,20 +230,19 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         updateLastUsed(info, hookInfo)
         updateBranches(info, payload, hookInfo)
 
-        val userId = authData.userId
-        val user = UserModel.findUserById(userId)
-        if (user == null) {
-            AuthDataStorage.removeAllForUser(userId)
-            LOG.warn("User with id '$userId' not found")
-            return HttpServletResponse.SC_BAD_REQUEST to "User installed webhook no longer registered in TeamCity. Remove and reinstall webhook."
-        }
+        return doForwardToRestApi(info, user, request, response)
+    }
 
-        val foundVcsInstances = findSuitableVcsRootInstances(info)
-        doScheduleCheckForPendingChanges(foundVcsInstances, user)
-        if (foundVcsInstances.isEmpty()) {
-            return HttpServletResponse.SC_NOT_FOUND to "There are no VCS roots referencing '$info' repository"
+    private fun doForwardToRestApi(info: GitHubRepositoryInfo, user: UserEx, request: HttpServletRequest, response: HttpServletResponse): Pair<Int, String>? {
+        val dispatcher = request.getRequestDispatcher("/app/rest/vcs-root-instances/commitHookNotification?" +
+                                                      "locator=vcsRoot:(type:jetbrains.git,property:(name:url,value:${info.getRepositoryUrl()},matchType:contains))")
+        if (dispatcher != null) {
+            SecurityContext.runAs(user) {
+                dispatcher.forward(request, response)
+            }
+            return null
         }
-        return HttpServletResponse.SC_ACCEPTED to "Scheduled check for pending changes in ${foundVcsInstances.size} vcs root ${StringUtil.pluralize("instance", foundVcsInstances.size)}"
+        return HttpServletResponse.SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
     }
 
     private fun updateLastUsed(info: GitHubRepositoryInfo, hookInfo: WebHooksStorage.HookInfo) {
@@ -251,23 +251,5 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun updateBranches(info: GitHubRepositoryInfo, payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo) {
         WebHooksManager.updateBranchRevisions(info, mapOf(payload.ref to payload.after), hookInfo)
-    }
-
-    private fun doScheduleCheckForPendingChanges(roots: List<VcsRootInstance>, user: UserEx) {
-        // TODO: Or #forceCheckingFor ?
-        // TODO: Should use rest api method ?
-        SecurityContext.runAs(user, {
-            VcsModificationChecker.checkForModificationsAsync(roots, OperationRequestor.COMMIT_HOOK)
-        })
-    }
-
-    fun findSuitableVcsRootInstances(info: GitHubRepositoryInfo): List<VcsRootInstance> {
-        val instances = HashSet<VcsRootInstance>()
-        for (bt in ProjectManager.allBuildTypes) {
-            if (bt.project.isArchived) continue
-            val roots = bt.vcsRoots.filter { Util.isSuitableVcsRoot(it, false) }
-            roots.map { bt.getVcsRootInstanceForParent(it) }.filterNotNull().filter { Util.isSuitableVcsRoot(it, true) }.toCollection(instances)
-        }
-        return instances.filter { info == Util.getGitHubInfo(it) }
     }
 }
