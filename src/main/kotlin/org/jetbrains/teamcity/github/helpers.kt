@@ -38,7 +38,7 @@ fun Iterable<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>>.filterKnownServers(
     val cache: Cache<SProject, List<OAuthConnectionDescriptor>> = CacheBuilder.newBuilder().build()
     return this.filter { entry ->
         if (entry.key.server == "github.com") {
-            if (!Util.isShowGitHub()) return@filter false
+            if (!Util.isAccessibleFromInternet()) return@filter false
             return@filter true
         }
         Util.getProjects(entry.value).any { project ->

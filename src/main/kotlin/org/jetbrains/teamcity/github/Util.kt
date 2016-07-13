@@ -31,7 +31,7 @@ class Util {
             return parseGitRepoUrl(url)
         }
 
-        fun isShowGitHub() = TeamCityProperties.getBoolean("teamcity.github-webhooks.show-github-com")
+        fun isAccessibleFromInternet() = TeamCityProperties.getBoolean("teamcity.accessible.from.internet")
 
         fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet<SProject>())
 
