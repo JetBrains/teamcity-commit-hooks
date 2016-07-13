@@ -121,6 +121,13 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             return simpleView("No stored hook info found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
         }
 
+        if (request.contentLength >= MaxPayloadSize) {
+            val message = "Payload size exceed ${StringUtil.formatFileSize(MaxPayloadSize, 0)} limit"
+            LOG.info("$message. Requests url: $path")
+            response.status = HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE
+            return simpleView(message)
+        }
+
         val content: ByteArray
         try {
             var estimatedSize = request.contentLength
