@@ -42,7 +42,7 @@ class WebhookPeriodicalChecker(
     companion object {
         private val LOG = Logger.getInstance(WebhookPeriodicalChecker::class.java.name)
         val TYPE = "GitHub.WebHookIncorrect"
-        val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Incorrect", "GitHub repo webhook is misconfigured or outdated", ItemSeverity.INFO)
+        val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Incorrect", "GitHub webhook is misconfigured or outdated", ItemSeverity.WARN)
     }
 
     override fun getType(): String = TYPE
