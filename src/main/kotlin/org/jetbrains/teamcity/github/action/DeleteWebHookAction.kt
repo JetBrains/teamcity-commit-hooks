@@ -4,6 +4,7 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
+import org.eclipse.egit.github.core.service.RepositoryServiceEx
 import org.jetbrains.teamcity.github.GitHubAccessException
 import org.jetbrains.teamcity.github.GitHubRepositoryInfo
 import org.jetbrains.teamcity.github.TokensHelper
@@ -30,7 +31,7 @@ object DeleteWebHookAction {
         hooks = context.storage.getHooks(info)
         if (hooks.isEmpty()) return HookDeleteOperationResult.NeverExisted
 
-        val service = RepositoryService(client)
+        val service = RepositoryServiceEx(client)
 
         // 3. Run 'delete' action remotely
         // 4. If case of insufficient permissions - run 'disable' action remotely
@@ -40,7 +41,7 @@ object DeleteWebHookAction {
         return HookDeleteOperationResult.Removed
     }
 
-    private fun doDeleteOrDisable(client: GitHubClientEx, context: ActionContext, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryService): HookDeleteOperationResult {
+    private fun doDeleteOrDisable(client: GitHubClientEx, context: ActionContext, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryServiceEx): HookDeleteOperationResult {
         try {
             delete(client, hook, info, service, context)
         } catch(e: GitHubAccessException) {
@@ -75,14 +76,9 @@ object DeleteWebHookAction {
         GitHubWebHookListener.getPubKeyFromRequestPath(hook.callbackUrl)?.let { context.authDataStorage.delete(it) }
     }
 
-    private fun disable(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryService, context: ActionContext) {
+    private fun disable(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryServiceEx, context: ActionContext) {
         try {
-            val id = hook.id.toInt()
-            var rh = service.getHook(info.getRepositoryId(), id)
-            context.updateOneHook(info.server, info.getRepositoryId(), rh)
-            if (!rh.isActive) return
-            rh.isActive = false
-            rh = service.editHook(info.getRepositoryId(), rh)
+            val rh = service.disableHook(info.getRepositoryId(), hook.id)
             context.updateOneHook(info.server, info.getRepositoryId(), rh)
         } catch(e: RequestException) {
             LOG.warnAndDebugDetails("Failed to delete webhook for repository $info: ${e.status}", e)
