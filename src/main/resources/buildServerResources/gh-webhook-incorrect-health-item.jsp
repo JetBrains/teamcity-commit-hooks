@@ -31,8 +31,7 @@
      data-repository="<c:out value="${GitHubInfo}"/>"
      data-server="<c:out value="${GitHubInfo.server}"/>"
      data-project-id="<c:out value="${Project.externalId}"/>">
-    <c:if test="${HookInfo != null}"><a href="<c:out value="${GitHubInfo.repositoryUrl}/settings/hooks/${HookInfo.id}"/>">Webhook</a></c:if>
-    <c:if test="${HookInfo == null}">Webhook</c:if>
+    <a href="<c:out value="${GitHubInfo.repositoryUrl}/settings/hooks/${HookInfo.id}"/>">Webhook</a>
     for GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a>
     is outdated or misconfigured: <c:out value="${Reason}"/>
     <div class="suggestionAction">

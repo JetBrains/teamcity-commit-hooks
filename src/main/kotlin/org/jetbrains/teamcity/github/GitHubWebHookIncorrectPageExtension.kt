@@ -1,9 +1,9 @@
 package org.jetbrains.teamcity.github
 
 import com.google.gson.Gson
+import jetbrains.buildServer.serverSide.ProjectComparator
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.auth.Permission
-import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemPageExtension
@@ -39,14 +39,15 @@ class GitHubWebHookIncorrectPageExtension(descriptor: PluginDescriptor, places: 
         val item = getStatusItem(request)
         val user = SessionUser.getUser(request)!!
 
-        val info: GitHubRepositoryInfo = item.additionalData["GitHubInfo"] as GitHubRepositoryInfo
-        val hook: WebHooksStorage.HookInfo = item.additionalData["HookInfo"] as WebHooksStorage.HookInfo
         @Suppress("UNCHECKED_CAST")
         val projects: Set<SProject> = item.additionalData["Projects"] as Set<SProject>
-        @Suppress("UNCHECKED_CAST")
-        val usages: Set<SVcsRoot> = item.additionalData["Usages"] as Set<SVcsRoot>
 
-        val project = projects.firstOrNull { user.isPermissionGrantedForProject(it.projectId, Permission.EDIT_PROJECT) }!!
+        val projectsSorted = projects.toMutableList()
+        if (projectsSorted.size > 1) {
+            projectsSorted.sortWith(ProjectComparator(false))
+        }
+
+        val project = projectsSorted.firstOrNull { user.isPermissionGrantedForProject(it.projectId, Permission.EDIT_PROJECT) }!!
         model["Project"] = project
 
         model["gson"] = Gson()

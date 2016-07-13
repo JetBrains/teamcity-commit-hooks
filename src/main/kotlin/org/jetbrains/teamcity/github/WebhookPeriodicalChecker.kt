@@ -102,7 +102,6 @@ class WebhookPeriodicalChecker(
                     "GitHubInfo" to info,
                     "HookInfo" to hook,
                     "Projects" to GitHubWebHookAvailableHealthReport.getProjects(roots),
-                    "Usages" to roots,
                     "Reason" to reason
             ))
 
