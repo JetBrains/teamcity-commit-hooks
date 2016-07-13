@@ -16,7 +16,9 @@ import jetbrains.buildServer.web.util.WebUtil
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.event.PingWebHookPayload
 import org.eclipse.egit.github.core.event.PushWebHookPayload
+import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
+import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
@@ -25,6 +27,7 @@ import java.io.InputStreamReader
 import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
+import javax.servlet.http.HttpServletResponse.*
 
 class GitHubWebHookListener(private val WebControllerManager: WebControllerManager,
                             private val AuthorizationInterceptor: AuthorizationInterceptor,
@@ -55,6 +58,17 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             }
             return pubKey
         }
+
+        private fun simpleText(response: HttpServletResponse, @MagicConstant(valuesFromClass = HttpServletResponse::class) status: Int, text: String): ModelAndView? {
+            response.status = status
+            response.contentType = MediaType.TEXT_PLAIN_VALUE
+            response.characterEncoding = "UTF-8"
+            response.setContentLength(text.length + 2)
+            response.outputStream.use {
+                it.println(text)
+            }
+            return null
+        }
     }
 
     fun register(): Unit {
@@ -71,30 +85,27 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         // From documentation: Also, the User-Agent for the requests will have the prefix GitHub-Hookshot/.
 
         val eventType: String? = request.getHeader(X_GitHub_Event)
+        @Suppress("IfNullToElvis")
         if (eventType == null) {
-            response.status = HttpServletResponse.SC_BAD_REQUEST
-            return simpleView("'$X_GitHub_Event' header is missing")
+            return simpleText(response, SC_BAD_REQUEST, "'$X_GitHub_Event' header is missing")
         }
 
         if (!SupportedEvents.contains(eventType)) {
             LOG.info("Received unsupported event type '$eventType', ignoring")
-            response.status = HttpServletResponse.SC_ACCEPTED
-            return simpleView("Unsupported event type '$eventType'")
+            return simpleText(response, SC_ACCEPTED, "Unsupported event type '$eventType'")
         }
 
         val signature = request.getHeader(X_Hub_Signature)
         if (signature == null || signature.isNullOrBlank()) {
             LOG.warn("Received event without signature ($X_Hub_Signature header)")
-            response.status = HttpServletResponse.SC_BAD_REQUEST
-            return simpleView("'$X_Hub_Signature' header is missing")
+            return simpleText(response, SC_BAD_REQUEST, "'$X_Hub_Signature' header is missing")
         }
 
         val path = WebUtil.getPathWithoutAuthenticationType(request)
         val pubKey: String? = getPubKeyFromRequestPath(path)
         if (pubKey == null) {
             LOG.warn("Received hook event with signature header but without public key part of url")
-            response.status = HttpServletResponse.SC_BAD_REQUEST
-            return simpleView("'$X_Hub_Signature' is present but request url does not contains public key part")
+            return simpleText(response, SC_BAD_REQUEST, "'$X_Hub_Signature' is present but request url does not contains public key part")
         }
 
         LOG.debug("Received hook event with public key in path: $pubKey")
@@ -102,16 +113,14 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         val authData = getAuthData(pubKey)
         if (authData == null) {
             LOG.warn("No stored auth data (secret key) found for public key '$pubKey'")
-            response.status = HttpServletResponse.SC_NOT_FOUND
-            return simpleView("No stored auth data (secret key) found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
+            return simpleText(response, SC_NOT_FOUND, "No stored auth data (secret key) found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
         }
         val userId = authData.userId
         val user = UserModel.findUserById(userId)
         if (user == null) {
             AuthDataStorage.removeAllForUser(userId)
             LOG.warn("User with id '$userId' not found")
-            response.status = HttpServletResponse.SC_BAD_REQUEST
-            return simpleView("User installed webhook no longer registered in TeamCity. Remove and reinstall webhook.")
+            return simpleText(response, SC_NOT_FOUND, "User installed webhook no longer registered in TeamCity. Remove and reinstall webhook.")
         }
 
         val hookInfo = WebHooksManager.getHookForPubKey(authData)
@@ -119,15 +128,13 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             // Seems local cache was cleared
             LOG.warn("No stored hook info found for public key '$pubKey' and repository '${authData.repository}'")
             AuthDataStorage.delete(pubKey)
-            response.status = HttpServletResponse.SC_NOT_FOUND
-            return simpleView("No stored hook info found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
+            return simpleText(response, SC_NOT_FOUND, "No stored hook info found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
         }
 
         if (request.contentLength >= MaxPayloadSize) {
             val message = "Payload size exceed ${StringUtil.formatFileSize(MaxPayloadSize, 0)} limit"
             LOG.info("$message. Requests url: $path")
-            response.status = HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE
-            return simpleView(message)
+            return simpleText(response, SC_REQUEST_ENTITY_TOO_LARGE, message)
         }
 
         val content: ByteArray
@@ -138,22 +145,19 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             content = LimitInputStream(request.inputStream, MaxPayloadSize).readBytes(estimatedSize)
         } catch(e: IOException) {
             LOG.warnAndDebugDetails("Failed to read payload of $eventType event", e)
-            response.status = HttpServletResponse.SC_SERVICE_UNAVAILABLE
-            return simpleView("Failed to read payload: ${e.message}")
+            return simpleText(response, SC_SERVICE_UNAVAILABLE, "Failed to read payload: ${e.message}")
         } finally {
             FileUtil.close(request.inputStream)
         }
         if (content.size >= MaxPayloadSize) {
             val message = "Payload size exceed ${StringUtil.formatFileSize(MaxPayloadSize, 0)} limit"
             LOG.info("$message. Requests url: $path")
-            response.status = HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE
-            return simpleView(message)
+            return simpleText(response, SC_REQUEST_ENTITY_TOO_LARGE, message)
         }
 
         if (!HMacUtil.checkHMac(content, authData.secret.toByteArray(charset("UTF-8")), signature)) {
             LOG.warn("HMac verification failed for $eventType event")
-            response.status = HttpServletResponse.SC_FORBIDDEN
-            return simpleView("Payload signature verification failed. Ensure request url, '$X_Hub_Signature' header and payload are correct")
+            return simpleText(response, SC_FORBIDDEN, "Payload signature verification failed. Ensure request url, '$X_Hub_Signature' header and payload are correct")
         }
 
         val contentReader = BufferedReader(InputStreamReader(ByteArrayInputStream(content), request.characterEncoding ?: "UTF-8"))
@@ -163,18 +167,12 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                 "ping" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PingWebHookPayload::class.java)
                     val pair = doHandlePingEvent(payload, hookInfo, request, response, user)
-                    @Suppress("IfNullToElvis")
-                    if (pair == null) return null
-                    response.status = pair.first
-                    return simpleView(pair.second)
+                    return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PushWebHookPayload::class.java)
                     val pair = doHandlePushEvent(payload, hookInfo, request, response, user)
-                    @Suppress("IfNullToElvis")
-                    if (pair == null) return null
-                    response.status = pair.first
-                    return simpleView(pair.second)
+                    return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
             }
         } catch(e: Exception) {
@@ -185,8 +183,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                 message = "Failed to process request (event type is '$eventType')"
             }
             LOG.warnAndDebugDetails(message, e)
-            response.status = HttpServletResponse.SC_SERVICE_UNAVAILABLE
-            return simpleView(message + ": ${e.message}")
+            return simpleText(response, SC_SERVICE_UNAVAILABLE, message + ": ${e.message}")
         }
         return null
     }
@@ -200,13 +197,13 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         if (url == null) {
             val message = "Ping event payload have no repository url specified"
             LOG.warn(message)
-            return HttpServletResponse.SC_BAD_REQUEST to message
+            return SC_BAD_REQUEST to message
         }
         val info = Util.getGitHubInfo(url)
         if (info == null) {
             val message = "Cannot determine repository info from url '$url'"
             LOG.warn(message)
-            return HttpServletResponse.SC_SERVICE_UNAVAILABLE to message
+            return SC_SERVICE_UNAVAILABLE to message
         }
         updateLastUsed(info, hookInfo)
 
@@ -219,13 +216,13 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         if (url == null) {
             val message = "Push event payload have no repository url specified"
             LOG.warn(message)
-            return HttpServletResponse.SC_BAD_REQUEST to message
+            return SC_BAD_REQUEST to message
         }
         val info = Util.getGitHubInfo(url)
         if (info == null) {
             val message = "Cannot determine repository info from url '$url'"
             LOG.warn(message)
-            return HttpServletResponse.SC_SERVICE_UNAVAILABLE to message
+            return SC_SERVICE_UNAVAILABLE to message
         }
         updateLastUsed(info, hookInfo)
         updateBranches(info, payload, hookInfo)
@@ -242,7 +239,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             }
             return null
         }
-        return HttpServletResponse.SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
+        return SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
     }
 
     private fun updateLastUsed(info: GitHubRepositoryInfo, hookInfo: WebHooksStorage.HookInfo) {
