@@ -30,7 +30,7 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
                              val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
         val TAB_TITLE_PREFIX = "GitHub Webhooks"
-        val TAB_ENABLE_INTERNAL_PROPERTY = "teamcity.github-webhooks.table-project-tab.enabled"
+        val TAB_ENABLE_INTERNAL_PROPERTY = "teamcity.github-webhooks.tab.enabled"
     }
 
     init {
@@ -154,10 +154,7 @@ class ProjectWebHooksBean(val project: SProject,
         }
         val split = GitHubWebHookAvailableHealthReport.splitRoots(allGitVcsRoots)
         val filtered = split.entrySet()
-                .filter { entry ->
-                    // Filter by known servers
-                    entry.key.server == "github.com" || GitHubWebHookAvailableHealthReport.getProjects(entry.value).any { project -> Util.findConnections(oAuthConnectionsManager, project, entry.key.server).isNotEmpty() }
-                }
+                .filterKnownServers(oAuthConnectionsManager)
         for ((info, roots) in filtered) {
             if (keyword != null && keywordFiltering) {
                 if (!info.getRepositoryUrl().contains(keyword, true)) continue

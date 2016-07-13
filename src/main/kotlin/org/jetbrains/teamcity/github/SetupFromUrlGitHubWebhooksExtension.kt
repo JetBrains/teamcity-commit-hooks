@@ -33,10 +33,8 @@ class SetupFromUrlGitHubWebhooksExtension(
                 .filter {
                     myWebHooksManager.storage.getHooks(it.key).isEmpty()
                 }
-                .filter {
-                    // Filter by known servers
-                    it.key.server == "github.com" || GitHubWebHookAvailableHealthReport.getProjects(it.value).any { project -> Util.findConnections(myOAuthConnectionsManager, project, it.key.server).isNotEmpty() }
-                }.map { it.key to it.value }.toMap()
+                .filterKnownServers(myOAuthConnectionsManager)
+                .map { it.key to it.value }.toMap()
 
         if (filtered.isEmpty()) return
 

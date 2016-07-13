@@ -2,6 +2,7 @@ package org.jetbrains.teamcity.github
 
 import jetbrains.buildServer.serverSide.SBuildType
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusScope
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
@@ -14,6 +15,7 @@ import jetbrains.buildServer.vcs.VcsRoot
 import java.net.MalformedURLException
 import java.net.URI
 import java.net.URL
+import java.util.*
 
 class Util {
     companion object {
@@ -28,6 +30,10 @@ class Util {
         fun getGitHubInfo(url: String): GitHubRepositoryInfo? {
             return parseGitRepoUrl(url)
         }
+
+        fun isShowGitHub() = TeamCityProperties.getBoolean("teamcity.github-webhooks.show-github-com")
+
+        fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet<SProject>())
 
         val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
 

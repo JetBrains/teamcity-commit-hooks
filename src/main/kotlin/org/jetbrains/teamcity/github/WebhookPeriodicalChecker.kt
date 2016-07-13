@@ -101,7 +101,7 @@ class WebhookPeriodicalChecker(
             val item = HealthStatusItem("GH.WH.I.$id", CATEGORY, mapOf(
                     "GitHubInfo" to info,
                     "HookInfo" to hook,
-                    "Projects" to GitHubWebHookAvailableHealthReport.getProjects(roots),
+                    "Projects" to Util.getProjects(roots),
                     "Reason" to reason
             ))
 

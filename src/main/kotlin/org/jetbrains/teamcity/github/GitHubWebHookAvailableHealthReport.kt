@@ -1,7 +1,6 @@
 package org.jetbrains.teamcity.github
 
 import jetbrains.buildServer.dataStructures.MultiMapToSet
-import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.vcs.SVcsRoot
@@ -26,8 +25,6 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
             }
             return map
         }
-
-        fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet<SProject>())
     }
 
     override fun getType(): String = TYPE
@@ -58,10 +55,7 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
                 .filter {
                     WebHooksManager.storage.getHooks(it.key).isEmpty()
                 }
-                .filter {
-                    // Filter by known servers
-                    it.key.server == "github.com" || getProjects(it.value).any { project -> Util.findConnections(OAuthConnectionsManager, project, it.key.server).isNotEmpty() }
-                }
+                .filterKnownServers(OAuthConnectionsManager)
 
         for ((info, roots) in filtered) {
             if (WebHooksManager.storage.getHooks(info).isNotEmpty()) {
