@@ -76,7 +76,7 @@ teamcity {
             displayName = 'GitHub Integration'
             version = project.version
             vendorName = 'JetBrains, s.r.o.'
-            vendorUrl = 'https://www.jetbrains.com/'
+            vendorUrl = 'http://www.jetbrains.com/'
             description = 'TeamCity GitHub Integration Plugin'
 
             useSeparateClassloader = true
