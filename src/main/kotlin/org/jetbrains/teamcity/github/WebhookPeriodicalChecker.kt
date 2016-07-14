@@ -4,6 +4,7 @@ import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.ProjectManager
+import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.serverSide.executors.ExecutorServices
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
@@ -43,6 +44,8 @@ class WebhookPeriodicalChecker(
         private val LOG = Logger.getInstance(WebhookPeriodicalChecker::class.java.name)
         val TYPE = "GitHub.WebHookIncorrect"
         val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Incorrect", "GitHub webhook is misconfigured or outdated", ItemSeverity.WARN)
+
+        val CHECK_INTERVAL_PROPERTY = "teamcity.github-webhooks.check-interval.minutes"
     }
 
     override fun getType(): String = TYPE
@@ -52,7 +55,7 @@ class WebhookPeriodicalChecker(
     override fun getCategories(): MutableCollection<ItemCategory> = arrayListOf(CATEGORY)
 
     fun init() {
-        myTask = myExecutorServices.normalExecutorService.scheduleWithFixedDelay({ doCheck() }, 1, 60, TimeUnit.MINUTES)
+        myTask = myExecutorServices.normalExecutorService.scheduleWithFixedDelay({ doCheck() }, 3, TeamCityProperties.getLong(CHECK_INTERVAL_PROPERTY, 15), TimeUnit.MINUTES)
     }
 
     fun destroy() {
