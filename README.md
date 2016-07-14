@@ -1,4 +1,4 @@
-teamcity-github-plugin
+teamcity-commit-hooks
 ======================
 
 SSH clone URL: ssh://git-hosting.labs.intellij.net/teamcity-github-plugin.git
