@@ -9,7 +9,7 @@ class AuthDataStorageTest {
     @Test
     fun testAuthDataSerialization() {
         val connInfo = AuthDataStorage.ConnectionInfo("CONN_ID", "CONN_PID")
-        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, "secret", "public", GitHubRepositoryInfo("server", "owner", "repo"), connInfo))
+        doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, "public", "secret", GitHubRepositoryInfo("server", "owner", "repo"), connInfo))
         doAuthDataSerializationTest(AuthDataStorage.AuthData(1000, UUID.randomUUID().toString(), UUID.randomUUID().toString(), GitHubRepositoryInfo("server", "owner", "repo"), connInfo))
     }
 

@@ -1,24 +1,33 @@
 package org.jetbrains.teamcity.github
 
 import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
+import jetbrains.buildServer.serverSide.ServerPaths
+import jetbrains.buildServer.serverSide.executors.ExecutorServices
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
-import jetbrains.buildServer.util.cache.CacheProvider
-import jetbrains.buildServer.util.cache.SCacheImpl
+import jetbrains.buildServer.util.FileUtil
 import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
+import java.io.File
 import java.util.*
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-class AuthDataStorage(cacheProvider: CacheProvider,
+class AuthDataStorage(executorServices: ExecutorServices,
+                      private val myServerPaths: ServerPaths,
                       private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
     companion object {
         private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
+        private val ourDataTypeToken: TypeToken<Map<String, AuthData>> = object : TypeToken<Map<String, AuthData>>() {}
+        internal val gson = GsonBuilder()
+                .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
+                .create()
     }
 
     data class ConnectionInfo(val id: String,
@@ -27,48 +36,29 @@ class AuthDataStorage(cacheProvider: CacheProvider,
     }
 
     data class AuthData(val userId: Long,
-                        val secret: String,
                         val public: String,
+                        val secret: String,
                         val repository: GitHubRepositoryInfo,
                         val connection: ConnectionInfo) {
         companion object {
-            private val gson = GsonBuilder()
-                    .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
-                    .create()
-
             fun fromJson(string: String): AuthData? = gson.fromJson(string, AuthData::class.java)
         }
 
         fun toJson(): String = gson.toJson(this)
     }
 
-    private val myCache = cacheProvider.getOrCreateCache("WebHooksAuthCache", String::class.java)
+    private val myData = TreeMap<String, AuthData>()
+    private val myDataLock = ReentrantReadWriteLock()
 
-    private val myCacheLock = ReentrantReadWriteLock()
+    private val myExecutor = executorServices.lowPriorityExecutorService
 
     private val myServerListener = object : BuildServerAdapter() {
         override fun serverStartup() {
-            myCacheLock.write {
-                if (myCache is SCacheImpl) {
-                    if (!myCache.isAlive) {
-                        LOG.warn("Cache ${myCache.name} is not alive")
-                        return
-                    }
-                }
-                LOG.info("Cache keys: ${myCache.keys}")
-            }
+            load()
         }
 
         override fun serverShutdown() {
-            myCacheLock.write {
-                if (myCache is SCacheImpl) {
-                    if (!myCache.isAlive) {
-                        LOG.warn("Cache ${myCache.name} is not alive")
-                        return
-                    }
-                }
-                myCache.flush()
-            }
+            persist()
         }
     }
 
@@ -81,14 +71,14 @@ class AuthDataStorage(cacheProvider: CacheProvider,
     }
 
     fun find(public: String): AuthData? {
-        myCacheLock.read {
-            return myCache.read(public)?.let { AuthData.fromJson(it) }
+        myDataLock.read {
+            return myData[public]
         }
     }
 
     fun create(user: SUser, repository: GitHubRepositoryInfo, connection: OAuthConnectionDescriptor, store: Boolean = true): AuthData {
         val (public, secret) = generate()
-        val data = AuthData(user.id, secret, public, repository, ConnectionInfo(connection))
+        val data = AuthData(user.id, public, secret, repository, ConnectionInfo(connection))
         if (store) {
             store(data)
         }
@@ -96,15 +86,16 @@ class AuthDataStorage(cacheProvider: CacheProvider,
     }
 
     fun store(data: AuthData) {
-        myCacheLock.write {
-            myCache.invalidate(data.public)
-            myCache.write(data.public, data.toJson())
+        myDataLock.write {
+            myData.remove(data.public)
+            myData.put(data.public, data)
         }
+        schedulePersisting()
     }
 
     fun remove(data: AuthData) {
-        myCacheLock.write {
-            myCache.invalidate(data.public)
+        myDataLock.write {
+            myData.remove(data.public)?.run { schedulePersisting() }
         }
     }
 
@@ -115,25 +106,82 @@ class AuthDataStorage(cacheProvider: CacheProvider,
     }
 
     fun removeAllForUser(userId: Long) {
-        for (i in 0..2) {
-            val keysToRemove =
-                    myCacheLock.read {
-                        return@read myCache.keys.filter {
-                            val data = myCache.read(it)
-                            userId == data?.let { AuthData.fromJson(it) }?.userId
-                        }
+        while (true) {
+            val keysToRemove: Collection<String> =
+                    myDataLock.read {
+                        myData.entries.filter { it.value.userId == userId }.map { it.key }
                     }
             if (keysToRemove.isEmpty()) return
-            myCacheLock.write {
-                keysToRemove.forEach { myCache.invalidate(it) }
+            myDataLock.write {
+                myData.keys.removeAll(keysToRemove)
             }
+            schedulePersisting()
         }
     }
 
     fun delete(pubKey: String) {
-        myCacheLock.write {
-            myCache.invalidate(pubKey)
+        myDataLock.write {
+            myData.remove(pubKey)?.run { schedulePersisting() }
         }
     }
 
+    private fun schedulePersisting() {
+        try {
+            myExecutor.submit { persist() }
+        } catch (e: RejectedExecutionException) {
+            persist()
+        }
+    }
+
+    // TODO: Check whether data was actually modified
+    private fun persist(): Boolean {
+        val data = myDataLock.read {
+            TreeMap(myData)
+        }
+
+        val file = getStorageFile()
+
+        try {
+            FileUtil.createParentDirs(file)
+            val writer = file.writer(Charsets.UTF_8).buffered()
+            writer.use {
+                gson.toJson(data, ourDataTypeToken.type, it)
+            }
+            return true
+        } catch(e: Exception) {
+            LOG.warnAndDebugDetails("Cannot write auth-data to file '${file.absolutePath}'", e)
+            return false
+        }
+    }
+
+    private fun load(): Boolean {
+        val file = getStorageFile()
+
+        val map: Map<String, AuthData>?
+        try {
+            FileUtil.createParentDirs(file)
+            if (!file.isFile) return false
+            map = file.reader(Charsets.UTF_8).buffered().use {
+                gson.fromJson<Map<String, AuthData>>(it, ourDataTypeToken.type)
+            }
+        } catch(e: Exception) {
+            LOG.warnAndDebugDetails("Cannot read auth-data from file '${file.absolutePath}'", e)
+            return false
+        }
+
+        if (map == null) {
+            LOG.warn("Stored map is null")
+            return false
+        }
+
+        myDataLock.write {
+            myData.clear()
+            myData.putAll(map)
+        }
+        return true
+    }
+
+    private fun getStorageFile(): File {
+        return File(myServerPaths.pluginDataDirectory, "commit-hooks/auth-data.json")
+    }
 }
