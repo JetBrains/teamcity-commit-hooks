@@ -19,6 +19,14 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
+/**
+ * AuthData storage
+ * Backend: 'commit-hooks/auth-data.json' file under pluginData folder
+ *
+ * Synchronization:
+ * Internal data store - ReentrantReadWriteLock
+ * File read/write (#load(), #persist()) - on object
+ */
 class AuthDataStorage(executorServices: ExecutorServices,
                       private val myServerPaths: ServerPaths,
                       private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
@@ -49,6 +57,8 @@ class AuthDataStorage(executorServices: ExecutorServices,
 
     private val myData = TreeMap<String, AuthData>()
     private val myDataLock = ReentrantReadWriteLock()
+    private var myDataModificationCounter: Int = 0;
+    private var myStoredDataModificationCounter: Int = 0
 
     private val myExecutor = executorServices.lowPriorityExecutorService
 
@@ -89,14 +99,18 @@ class AuthDataStorage(executorServices: ExecutorServices,
         myDataLock.write {
             myData.remove(data.public)
             myData.put(data.public, data)
+            myDataModificationCounter++
         }
         schedulePersisting()
     }
 
     fun remove(data: AuthData) {
         myDataLock.write {
-            myData.remove(data.public)?.run { schedulePersisting() }
+            myData.remove(data.public)?.run {
+                myDataModificationCounter++
+            }
         }
+        schedulePersisting()
     }
 
     private fun generate(): Pair<String, String> {
@@ -114,6 +128,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
             if (keysToRemove.isEmpty()) return
             myDataLock.write {
                 myData.keys.removeAll(keysToRemove)
+                myDataModificationCounter++
             }
             schedulePersisting()
         }
@@ -121,11 +136,16 @@ class AuthDataStorage(executorServices: ExecutorServices,
 
     fun delete(pubKey: String) {
         myDataLock.write {
-            myData.remove(pubKey)?.run { schedulePersisting() }
+            myData.remove(pubKey)?.run {
+                myDataModificationCounter++
+            }
         }
+        schedulePersisting()
     }
 
+    // NOTE: Should not be called inside myDataLock
     private fun schedulePersisting() {
+        assert(!myDataLock.isWriteLockedByCurrentThread)
         try {
             myExecutor.submit { persist() }
         } catch (e: RejectedExecutionException) {
@@ -133,10 +153,10 @@ class AuthDataStorage(executorServices: ExecutorServices,
         }
     }
 
-    // TODO: Check whether data was actually modified
-    private fun persist(): Boolean {
-        val data = myDataLock.read {
-            TreeMap(myData)
+    @Synchronized private fun persist(): Boolean {
+        val (data, counter) = myDataLock.read {
+            if (myDataModificationCounter == myStoredDataModificationCounter) return true
+            TreeMap(myData) to myDataModificationCounter
         }
 
         val file = getStorageFile()
@@ -147,6 +167,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
             writer.use {
                 gson.toJson(data, ourDataTypeToken.type, it)
             }
+            myDataLock.write { myStoredDataModificationCounter = counter }
             return true
         } catch(e: Exception) {
             LOG.warnAndDebugDetails("Cannot write auth-data to file '${file.absolutePath}'", e)
@@ -154,7 +175,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
         }
     }
 
-    private fun load(): Boolean {
+    @Synchronized private fun load(): Boolean {
         val file = getStorageFile()
 
         val map: Map<String, AuthData>?
@@ -177,6 +198,9 @@ class AuthDataStorage(executorServices: ExecutorServices,
         myDataLock.write {
             myData.clear()
             myData.putAll(map)
+            val counter = Math.max(myDataModificationCounter, myStoredDataModificationCounter) + 1
+            myDataModificationCounter = counter
+            myStoredDataModificationCounter = counter
         }
         return true
     }
