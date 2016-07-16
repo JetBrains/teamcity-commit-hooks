@@ -1,5 +1,6 @@
 package org.jetbrains.teamcity.github
 
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
 import com.intellij.openapi.diagnostic.Logger
@@ -23,6 +24,8 @@ import kotlin.concurrent.write
  * AuthData storage
  * Backend: 'commit-hooks/auth-data.json' file under pluginData folder
  *
+ * It's safe to check modifications via modification counter since data values are unmodifiable
+ *
  * Synchronization:
  * Internal data store - ReentrantReadWriteLock
  * File read/write (#load(), #persist()) - on object
@@ -33,7 +36,8 @@ class AuthDataStorage(executorServices: ExecutorServices,
     companion object {
         private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
         private val ourDataTypeToken: TypeToken<Map<String, AuthData>> = object : TypeToken<Map<String, AuthData>>() {}
-        internal val gson = GsonBuilder()
+        internal val gson: Gson = GsonBuilder()
+                .setPrettyPrinting()
                 .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
                 .create()
     }
