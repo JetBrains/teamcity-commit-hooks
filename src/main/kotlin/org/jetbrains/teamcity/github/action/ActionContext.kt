@@ -107,7 +107,7 @@ open class ActionContext(val storage: WebHooksStorage,
             return null
         }
         val status = created.getStatus()
-        return storage.add(server, repo, { WebHooksStorage.HookInfo(created.id, created.url, status, callbackUrl = callbackUrl) })
+        return storage.add(server, repo, { WebHooksStorage.HookInfo(created.url, callbackUrl = callbackUrl, id = created.id, status = status) })
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {

@@ -22,17 +22,17 @@ class WebHooksStorageTest {
 
     @Test
     fun testHookInfoSerialization() {
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.OK, callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.DISABLED, Date(), mutableMapOf("1" to "2", "3" to "4"), callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.INCORRECT, callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.MISSING, Date(10), callbackUrl = callback))
-        doHookInfoSerializationTest(WebHooksStorage.HookInfo(10, "abc", Status.WAITING_FOR_SERVER_RESPONSE, Date(10), LinkedHashMap(mapOf("1" to "2")), callbackUrl = callback))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/10", callbackUrl = callback, id = 10, status = Status.OK))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/10", callbackUrl = callback, id = 10, status = Status.DISABLED, lastUsed = Date(), lastBranchRevisions = mutableMapOf("1" to "2", "3" to "4")))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/10", callbackUrl = callback, id = 10, status = Status.INCORRECT))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/10", callbackUrl = callback, id = 10, status = Status.MISSING, lastUsed = Date(10)))
+        doHookInfoSerializationTest(WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/10", callbackUrl = callback, id = 10, status = Status.WAITING_FOR_SERVER_RESPONSE, lastUsed = Date(10), lastBranchRevisions = LinkedHashMap(mapOf("1" to "2"))))
     }
 
     @Test
     fun testHookInfoListSerialization() {
-        val first = WebHooksStorage.HookInfo(1, "__A__", Status.OK, callbackUrl = callback)
-        val second = WebHooksStorage.HookInfo(2, "__B__", Status.INCORRECT, callbackUrl = callback)
+        val first = WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/1", callbackUrl = callback, id = 1, status = Status.OK)
+        val second = WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/2", callbackUrl = callback, id = 2, status = Status.INCORRECT)
         val json = WebHooksStorage.HookInfo.toJson(listOf(first, second))
         val list: List<WebHooksStorage.HookInfo>? = WebHooksStorage.HookInfo.fromJson(json)
         then(list).containsOnly(first, second).isEqualTo(listOf(first, second))
@@ -40,8 +40,8 @@ class WebHooksStorageTest {
 
     @Test
     fun testBothDeserialization() {
-        val first = WebHooksStorage.HookInfo(1, "__A__", Status.OK, callbackUrl = callback)
-        val second = WebHooksStorage.HookInfo(2, "__B__", Status.INCORRECT, callbackUrl = callback)
+        val first = WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/1", callbackUrl = callback, id = 1, status = Status.OK)
+        val second = WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/2", callbackUrl = callback, id = 2, status = Status.INCORRECT)
         val list = listOf(first, second)
 
         val json = WebHooksStorage.HookInfo.toJson(list)
@@ -52,8 +52,25 @@ class WebHooksStorageTest {
         then(singleList).isEqualTo(listOf(first))
     }
 
+    @Test
+    fun testHookURLToKey() {
+        doHookURLToKey("http://teamcity-github-enterprise.labs.intellij.net/api/v3/repos/Vlad/test/hooks/88", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test", 88)
+        doHookURLToKey("https://api.github.com/repos/VladRassokhin/intellij-hcl/hooks/9124004", "github.com", "VladRassokhin", "intellij-hcl", 9124004)
+    }
+
+    private fun doHookURLToKey(url: String, server: String, owner: String, name: String, id: Long) {
+        val key = WebHooksStorage.Key.fromHookUrl(url)
+        val (s, o, n, i) = key
+        then(s).isEqualTo(server)
+        then(o).isEqualTo(owner)
+        then(n).isEqualTo(name)
+        then(i).isEqualTo(id)
+        then(WebHooksStorage.Key.fromString(key.toString())).isEqualTo(key)
+    }
+
     private fun doHookInfoSerializationTest(first: WebHooksStorage.HookInfo) {
-        val second = WebHooksStorage.HookInfo.fromJson(first.toJson()).firstOrNull()
+        val json = first.toJson()
+        val second = WebHooksStorage.HookInfo.fromJson(json).firstOrNull()
         then(second).isNotNull()
         second!!
         then(second.id).isEqualTo(first.id)
@@ -61,9 +78,12 @@ class WebHooksStorageTest {
         then(second.lastBranchRevisions).isEqualTo(first.lastBranchRevisions)
         then(second.url).isEqualTo(first.url)
         then(second.callbackUrl).isEqualTo(first.callbackUrl)
-        then(second.toJson()).isEqualTo(first.toJson())
+        then(second.toJson()).isEqualTo(json)
         then(second.hashCode()).isEqualTo(first.hashCode())
         then(second).isEqualTo(first)
+        then(second.key).isEqualTo(first.key)
+
+        then(json).doesNotContain("\"key\"")
     }
 
     fun doKeyTest(server: String, owner: String, name: String, expectedKey: String) {

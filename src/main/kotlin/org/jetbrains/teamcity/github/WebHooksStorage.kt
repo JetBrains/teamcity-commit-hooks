@@ -13,6 +13,7 @@ import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
 import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.controllers.bad
+import org.jetbrains.teamcity.github.json.HookInfoTypeAdapter
 import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -42,14 +43,68 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    data class HookInfo(val id: Long,
-                        val url: String, // API URL
-                        var status: Status,
-                        var lastUsed: Date? = null,
-                        var lastBranchRevisions: MutableMap<String, String>? = null,
-                        val callbackUrl: String) {
+    // URLs:
+    // http://teamcity-github-enterprise.labs.intellij.net/api/v3/repos/Vlad/test/hooks/88
+    // https://api.github.com/repos/VladRassokhin/intellij-hcl/hooks/9124004
+
+    // Keys:
+    // teamcity-github-enterprise.labs.intellij.net/Vlad/test/88
+    // github.com/VladRassokhin/intellij-hcl/9124004
+
+    data class Key(val server: String, val owner: String, val name: String, val id: Long) {
         companion object {
-            val gson: Gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()!!
+            fun fromString(serialized: String): Key {
+                val split = serialized.split('/')
+                if (split.size < 4) throw IllegalArgumentException("Not an proper key: \"$serialized\"")
+                val id = split[split.lastIndex].toLong()
+                val name = split[split.lastIndex - 1]
+                val owner = split[split.lastIndex - 2]
+                val server = split.dropLast(3).joinToString("/")
+                return Key(server, owner, name, id)
+            }
+
+            fun fromHookUrl(hookUrl: String): Key {
+                val split = ArrayDeque(hookUrl.split('/'))
+                assert(split.size >= 8)
+                val id = split.pollLast().toLong()
+                split.pollLast() // "hooks"
+                val name = split.pollLast()
+                val owner = split.pollLast()
+                split.pollLast() // "repos"
+                val serverOfV3 = split.pollLast()
+                val server: String
+                if (serverOfV3 == "api.github.com") {
+                    server = "github.com"
+                } else {
+                    split.pollLast()
+                    server = split.pollLast()
+                }
+                return Key(server, owner, name, id)
+            }
+        }
+
+        override fun toString(): String {
+            return "$server/$owner/$name/$id"
+        }
+    }
+
+    class HookInfo(val url: String, // API URL
+                   val callbackUrl: String, // TC URL (GitHubWebHookListener)
+
+                   val key: Key = Key.fromHookUrl(url),
+                   val id: Long = key.id,
+
+                   var status: Status,
+                   var lastUsed: Date? = null,
+                   var lastBranchRevisions: MutableMap<String, String>? = null
+    ) {
+        companion object {
+            val gson: Gson = GsonBuilder()
+                    .setPrettyPrinting()
+                    .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
+                    .registerTypeAdapter(HookInfo::class.java, HookInfoTypeAdapter)
+                    .create()!!
+
             private val listType = object : TypeToken<List<HookInfo>>() {}.type
 
             private fun oneFromJson(string: String): HookInfo? = gson.fromJson(string, HookInfo::class.java)
@@ -80,6 +135,27 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
         fun isSame(hook: RepositoryHook): Boolean {
             return id == hook.id && url == hook.url && callbackUrl == hook.callbackUrl
+        }
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other?.javaClass != javaClass) return false
+            other as HookInfo
+
+            if (url != other.url) return false
+            if (callbackUrl != other.callbackUrl) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = url.hashCode()
+            result = 31 * result + callbackUrl.hashCode()
+            return result
+        }
+
+        override fun toString(): String {
+            return "HookInfo(url='$url', callbackUrl='$callbackUrl', status=$status, lastUsed=$lastUsed, lastBranchRevisions=$lastBranchRevisions)"
         }
     }
 
