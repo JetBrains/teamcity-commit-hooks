@@ -61,7 +61,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
                 } else if (json.startsWith("[")) {
                     return HookInfo.listFromJson(json)
                 } else {
-                    throw IllegalArgumentException("Unexpected content: ${json}")
+                    throw IllegalArgumentException("Unexpected content: $json")
                 }
             }
 
@@ -70,6 +70,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             }
         }
 
+        @Suppress("DeprecatedCallableAddReplaceWith")
         @Deprecated("")
         fun toJson(): String = gson.toJson(this)
 
