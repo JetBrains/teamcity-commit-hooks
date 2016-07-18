@@ -14,6 +14,7 @@ import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.client.RequestException
 import org.jetbrains.teamcity.github.action.*
 import org.jetbrains.teamcity.github.controllers.Status
+import org.jetbrains.teamcity.github.controllers.good
 import java.io.IOException
 import java.util.*
 
@@ -26,12 +27,9 @@ class WebHooksManager(links: WebLinks,
         override fun repositoryStateChanged(root: VcsRoot, oldState: RepositoryState, newState: RepositoryState) {
             if (!Util.isSuitableVcsRoot(root)) return
             val info = Util.getGitHubInfo(root) ?: return
-            if (storage.getHooks(info).any { !isBranchesInfoUpToDate(it, newState.branchRevisions, info) }) {
-                storage.update(info) {
-                    if (!isBranchesInfoUpToDate(it, newState.branchRevisions, info)) {
-                        // Mark hook as outdated, probably incorrectly configured
-                        it.status = Status.OUTDATED
-                    }
+            for (hook in storage.getHooks(info)) {
+                if (hook.status.good && !isBranchesInfoUpToDate(hook, newState.branchRevisions)) {
+                    hook.status = Status.OUTDATED
                 }
             }
         }
@@ -69,38 +67,28 @@ class WebHooksManager(links: WebLinks,
         return TestWebHookAction.doRun(info, ghc, this, hook)
     }
 
-    fun updateLastUsed(info: GitHubRepositoryInfo, date: Date, hookInfo: WebHooksStorage.HookInfo) {
+    fun updateLastUsed(hookInfo: WebHooksStorage.HookInfo, date: Date) {
         // TODO: We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
-        storage.update(info) {
-            if (it.isSame(hookInfo)) {
-                val used = it.lastUsed
-                it.status = Status.OK
-                if (used == null || used.before(date)) {
-                    it.lastUsed = date
-                }
-            }
+        val used = hookInfo.lastUsed
+        hookInfo.status = Status.OK
+        if (used == null || used.before(date)) {
+            hookInfo.lastUsed = date
         }
     }
 
-    fun updateBranchRevisions(info: GitHubRepositoryInfo, map: Map<String, String>, hookInfo: WebHooksStorage.HookInfo) {
-        storage.update(info) {
-            if (it.isSame(hookInfo)) {
-                it.status = Status.OK
-                val lbr = it.lastBranchRevisions ?: HashMap()
-                lbr.putAll(map)
-                it.lastBranchRevisions = lbr
-            }
-        }
+    fun updateBranchRevisions(hookInfo: WebHooksStorage.HookInfo, map: Map<String, String>) {
+        hookInfo.status = Status.OK
+        val lbr = hookInfo.lastBranchRevisions ?: HashMap()
+        lbr.putAll(map)
+        hookInfo.lastBranchRevisions = lbr
     }
 
-    private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>, info: GitHubRepositoryInfo): Boolean {
+    private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>): Boolean {
         val hookBranches = hook.lastBranchRevisions
 
         // Maybe we have forgot about revisions (cache cleanup after server restart)
         if (hookBranches == null) {
-            storage.update(info) {
-                it.lastBranchRevisions = HashMap(newBranches)
-            }
+            hook.lastBranchRevisions = HashMap(newBranches)
             return true
         }
         for ((name, hash) in newBranches.entries) {

@@ -229,6 +229,11 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         return add(WebHooksStorage.HookInfo(url = created.url, callbackUrl = created.callbackUrl!!, id = created.id, status = created.getStatus()))
     }
 
+    fun getOrAdd(created: RepositoryHook): HookInfo {
+        return add(WebHooksStorage.HookInfo(url = created.url, callbackUrl = created.callbackUrl!!, id = created.id, status = created.getStatus()))
+    }
+
+
     /**
      * Adds hook if it not existed previously
      */
@@ -279,18 +284,13 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    fun update(info: GitHubRepositoryInfo, update: (HookInfo) -> Unit): Boolean {
-        return update(info.server, info.getRepositoryId(), update)
-    }
-
     fun update(server: String, repo: RepositoryId, update: (HookInfo) -> Unit): Boolean {
         val key = MapKey(server, repo)
-        myDataLock.write {
-            val hooks = myData[key]?.toMutableList() ?: return false
-            for (hook in hooks) {
-                update(hook)
-            }
-            myData.put(key, hooks)
+        val hooks = myDataLock.read {
+            myData[key]?.toMutableList() ?: return false
+        }
+        for (hook in hooks) {
+            update(hook)
         }
         return true
     }

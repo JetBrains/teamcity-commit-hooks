@@ -107,9 +107,7 @@ object CreateWebHookAction {
                 DeleteWebHookAction.doRun(info, client, context)
                 context.storage.delete(hookInfo)
             } catch(ignored: GitHubAccessException) {
-                context.storage.update(info) {
-                    it.status = Status.INCORRECT
-                }
+                hookInfo.status = Status.INCORRECT
             }
             return false
         } else {

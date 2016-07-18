@@ -141,28 +141,28 @@ class WebhookPeriodicalChecker(
             val authData = myAuthDataStorage.find(pubKey)
             if (authData == null) {
                 LOG.warn("Cannot find auth data for hook '${hook.url}'")
-                report(info, "Webhook callback url is incorrect or internal storage was corrupted")
+                report(info, hook, "Webhook callback url is incorrect or internal storage was corrupted")
                 continue
             }
 
             val connection = getConnection(authData)
             if (connection == null) {
                 LOG.warn("OAuth Connection for repository '$info' not found")
-                report(info, "OAuth connection used to install webhook is unavailable", Status.NO_INFO)
+                report(info, hook, "OAuth connection used to install webhook is unavailable", Status.NO_INFO)
                 continue
             }
 
             val user = myUserModel.findUserById(authData.userId)
             if (user == null) {
                 LOG.warn("TeamCity user '${authData.userId}' which created webhook for repository '$info' no longer exists")
-                report(info, "TeamCity user '${authData.userId}' which created webhook no longer exists", Status.NO_INFO)
+                report(info, hook, "TeamCity user '${authData.userId}' which created webhook no longer exists", Status.NO_INFO)
                 continue
             }
 
             val tokens = myTokensHelper.getExistingTokens(listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
             if (tokens.isEmpty()) {
                 LOG.warn("No OAuth tokens to access repository '$info'")
-                report(info, "No OAuth tokens found to access repository", Status.NO_INFO)
+                report(info, hook, "No OAuth tokens found to access repository", Status.NO_INFO)
                 continue
             }
 
@@ -182,7 +182,7 @@ class WebhookPeriodicalChecker(
                     val loaded = GetAllWebHooksAction.doRun(info, ghc, myWebHooksManager)
                     if (loaded.isEmpty()) {
                         LOG.debug("No details loaded for '$info' repo webhooks, seems all of them are incorrect or removed")
-                        report(info, "Webhook not found on server, seems it has been incorrectly configured or removed", Status.MISSING)
+                        report(info, hook, "Webhook not found on server, seems it has been incorrectly configured or removed", Status.MISSING)
                     } else {
                         for ((key, value) in loaded) {
                             val lastResponse = key.lastResponse
@@ -195,21 +195,17 @@ class WebhookPeriodicalChecker(
                             when (lastResponse.code) {
                                 in 200..299 -> {
                                     LOG.debug("Last response is OK")
-                                    myWebHooksStorage.update(info) {
-                                        if (it.isSame(key)) {
-                                            it.status = if (!key.isActive) Status.DISABLED else Status.OK
-                                        }
-                                    }
+                                    myWebHooksStorage.getOrAdd(key).status = if (!key.isActive) Status.DISABLED else Status.OK
                                 }
                                 in 400..599 -> {
                                     val reason = "Last payload delivery failed: (${lastResponse.code}) ${lastResponse.message}"
                                     LOG.debug(reason)
-                                    report(info, reason, Status.PAYLOAD_DELIVERY_FAILED)
+                                    report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
                                 }
                                 else -> {
                                     val reason = "Unexpected payload delivery response: (${lastResponse.code}) ${lastResponse.message}"
                                     LOG.debug(reason)
-                                    report(info, reason, Status.PAYLOAD_DELIVERY_FAILED)
+                                    report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
                                 }
                             }
                         }
@@ -231,7 +227,7 @@ class WebhookPeriodicalChecker(
                         GitHubAccessException.Type.UserHaveNoAccess -> {
                             LOG.warn("User (TC:${user.describe(false)}, GH:${token.oauthLogin}) have no access to repository $info, cannot check hook status")
                             if (tokens.map { it.oauthLogin }.distinct().size == 1) {
-                                report(info, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook have no longer access to repository", Status.NO_INFO)
+                                report(info, hook, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook have no longer access to repository", Status.NO_INFO)
                             } else {
                                 // TODO: ??? Seems TC user has many tokens with different GH users
                             }
@@ -295,13 +291,12 @@ class WebhookPeriodicalChecker(
         return connection
     }
 
+    // TODO: Should mention HookInfo
     private val myIncorrectHooks: Cache<GitHubRepositoryInfo, String> = CacheBuilder.newBuilder().expireAfterWrite(120, TimeUnit.MINUTES).build()
 
-    private fun report(info: GitHubRepositoryInfo, reason: String, status: Status = Status.INCORRECT) {
+    private fun report(info: GitHubRepositoryInfo, hook: WebHooksStorage.HookInfo, reason: String, status: Status = Status.INCORRECT) {
         myIncorrectHooks.put(info, reason)
-        myWebHooksStorage.update(info) {
-            it.status = status
-        }
+        hook.status = status
     }
 
 }

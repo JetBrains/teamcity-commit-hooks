@@ -205,7 +205,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             LOG.warn(message)
             return SC_SERVICE_UNAVAILABLE to message
         }
-        updateLastUsed(info, hookInfo)
+        updateLastUsed(hookInfo)
 
         return doForwardToRestApi(info, user, request, response)
     }
@@ -224,8 +224,8 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             LOG.warn(message)
             return SC_SERVICE_UNAVAILABLE to message
         }
-        updateLastUsed(info, hookInfo)
-        updateBranches(info, payload, hookInfo)
+        updateLastUsed(hookInfo)
+        updateBranches(payload, hookInfo)
 
         return doForwardToRestApi(info, user, request, response)
     }
@@ -242,11 +242,11 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
     }
 
-    private fun updateLastUsed(info: GitHubRepositoryInfo, hookInfo: WebHooksStorage.HookInfo) {
-        WebHooksManager.updateLastUsed(info, Date(), hookInfo)
+    private fun updateLastUsed(hookInfo: WebHooksStorage.HookInfo) {
+        WebHooksManager.updateLastUsed(hookInfo, Date())
     }
 
-    private fun updateBranches(info: GitHubRepositoryInfo, payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo) {
-        WebHooksManager.updateBranchRevisions(info, mapOf(payload.ref to payload.after), hookInfo)
+    private fun updateBranches(payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo) {
+        WebHooksManager.updateBranchRevisions(hookInfo, mapOf(payload.ref to payload.after))
     }
 }
