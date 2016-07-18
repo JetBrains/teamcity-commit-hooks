@@ -58,6 +58,20 @@ class WebHooksStorageTest {
         doHookURLToKey("https://api.github.com/repos/VladRassokhin/intellij-hcl/hooks/9124004", "github.com", "VladRassokhin", "intellij-hcl", 9124004)
     }
 
+    @Test
+    fun testDataToJsonAndBack() {
+        val hook = WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/1", callback, status = Status.OK)
+        val obj = WebHooksStorage.getJsonObjectFromData(listOf(hook))
+        val json = WebHooksStorage.gson.toJson(obj)
+        then(json).contains("\"version\"").contains("\"hooks\"")
+
+        val map = WebHooksStorage.getDataFromJsonObject(obj)
+        then(map).isNotNull()
+        val key = WebHooksStorage.MapKey("server", "owner", "repo")
+        then(map!!).containsOnlyKeys(key)
+        then(map[key]).containsOnly(hook)
+    }
+
     private fun doHookURLToKey(url: String, server: String, owner: String, name: String, id: Long) {
         val key = WebHooksStorage.Key.fromHookUrl(url)
         val (s, o, n, i) = key
@@ -87,9 +101,9 @@ class WebHooksStorageTest {
     }
 
     fun doKeyTest(server: String, owner: String, name: String, expectedKey: String) {
-        val key = WebHooksStorage.toKey(server, RepositoryId.create(owner, name))
-        then(key).isEqualTo(expectedKey)
-        val triple = WebHooksStorage.fromKey(key)
-        then(triple).isEqualTo(Triple(server.trimEnd('/'), owner, name))
+        val key = WebHooksStorage.MapKey(server, RepositoryId.create(owner, name))
+        then(key.toString()).isEqualTo(expectedKey)
+        val (a, b, c) = key
+        then(Triple(a, b, c)).isEqualTo(Triple(server.trimEnd('/'), owner, name))
     }
 }

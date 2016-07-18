@@ -72,7 +72,7 @@ object DeleteWebHookAction {
             }
             throw e
         }
-        context.storage.delete(info)
+        context.storage.delete(hook)
         GitHubWebHookListener.getPubKeyFromRequestPath(hook.callbackUrl)?.let { context.authDataStorage.delete(it) }
     }
 
@@ -95,7 +95,5 @@ object DeleteWebHookAction {
             }
             throw e
         }
-        context.storage.delete(info)
-        GitHubWebHookListener.getPubKeyFromRequestPath(hook.callbackUrl)?.let { context.authDataStorage.delete(it) }
     }
 }

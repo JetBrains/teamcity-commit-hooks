@@ -135,7 +135,7 @@ class WebhookPeriodicalChecker(
             if (pubKey == null || pubKey.isBlank()) {
                 // Old hook format
                 LOG.warn("Callback url (${hook.callbackUrl}) of hook '${hook.url}' does not contains security check public key")
-                myWebHooksStorage.delete(info)
+                myWebHooksStorage.delete(hook)
                 continue
             }
             val authData = myAuthDataStorage.find(pubKey)

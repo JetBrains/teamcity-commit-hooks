@@ -105,7 +105,7 @@ object CreateWebHookAction {
             // Possible cause: local cache was cleared, old callback url format.
             try {
                 DeleteWebHookAction.doRun(info, client, context)
-                context.storage.delete(info)
+                context.storage.delete(hookInfo)
             } catch(ignored: GitHubAccessException) {
                 context.storage.update(info) {
                     it.status = Status.INCORRECT
