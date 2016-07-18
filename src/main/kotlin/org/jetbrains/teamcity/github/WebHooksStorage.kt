@@ -223,7 +223,14 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     }
 
     /**
-     * Adds hooks if it not existed previously
+     * Adds hook if it not existed previously
+     */
+    fun add(created: RepositoryHook): HookInfo {
+        return add(WebHooksStorage.HookInfo(url = created.url, callbackUrl = created.callbackUrl!!, id = created.id, status = created.getStatus()))
+    }
+
+    /**
+     * Adds hook if it not existed previously
      */
     fun add(toAdd: HookInfo): HookInfo {
         val key = toAdd.key.toMapKey()

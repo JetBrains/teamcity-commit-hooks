@@ -63,14 +63,14 @@ open class ActionContext(val storage: WebHooksStorage,
 
         for (hook in filtered) {
             if (hooks.isEmpty()) {
-                result.put(hook, addHook(hook, server, repo)!!)
+                result.put(hook, addHook(hook)!!)
             } else {
                 val same = hooks.firstOrNull { it.isSame(hook) }
                 if (same != null) {
                     result.put(hook, same)
                     continue
                 } else {
-                    result.put(hook, addHook(hook, server, repo)!!)
+                    result.put(hook, addHook(hook)!!)
                 }
             }
         }
@@ -81,7 +81,7 @@ open class ActionContext(val storage: WebHooksStorage,
         val hooks = storage.getHooks(server, repo).toMutableList()
         var result: WebHooksStorage.HookInfo? = null
         if (!hooks.any { it.isSame(rh) }) {
-            return addHook(rh, server, repo)
+            return addHook(rh)
         } else {
             storage.update(server, repo) {
                 if (it.isSame(rh)) {
@@ -100,14 +100,13 @@ open class ActionContext(val storage: WebHooksStorage,
         return result
     }
 
-    fun addHook(created: RepositoryHook, server: String, repo: RepositoryId): WebHooksStorage.HookInfo? {
+    fun addHook(created: RepositoryHook): WebHooksStorage.HookInfo? {
         val callbackUrl = created.callbackUrl
         if (callbackUrl == null) {
             LOG.warn("Received RepositoryHook without callback url, ignoring it")
             return null
         }
-        val status = created.getStatus()
-        return storage.add(WebHooksStorage.HookInfo(url = created.url, callbackUrl = callbackUrl, id = created.id, status = status))
+        return storage.add(created)
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {

@@ -84,7 +84,7 @@ object CreateWebHookAction {
             throw IllegalStateException("GitHub returned incorrect hook")
         }
 
-        val hookInfo = context.addHook(created, info.server, repo)
+        val hookInfo = context.addHook(created)
         if (hookInfo == null) {
             context.authDataStorage.remove(authData)
             throw IllegalStateException("GitHub returned incorrect hook")
