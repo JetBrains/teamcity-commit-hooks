@@ -106,7 +106,10 @@ open class ActionContext(val storage: WebHooksStorage,
             LOG.warn("Received RepositoryHook without callback url, ignoring it")
             return null
         }
-        return storage.add(created)
+        val info = storage.getOrAdd(created)
+        // If there was already hook info, update status
+        info.status = created.getStatus()
+        return info
     }
 
     fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {

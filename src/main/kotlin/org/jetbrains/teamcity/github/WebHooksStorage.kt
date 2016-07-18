@@ -113,7 +113,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
 
         fun toMapKey(): MapKey {
-            return MapKey(server, owner, name)
+            return MapKey(server.trimEnd('/'), owner, name)
         }
     }
 
@@ -153,10 +153,6 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         @Suppress("DeprecatedCallableAddReplaceWith")
         @Deprecated("")
         fun toJson(): String = gson.toJson(this)
-
-        fun isSame(other: HookInfo): Boolean {
-            return id == other.id && url == other.url && callbackUrl == other.callbackUrl
-        }
 
         fun isSame(hook: RepositoryHook): Boolean {
             return id == hook.id && url == hook.url && callbackUrl == hook.callbackUrl
@@ -225,42 +221,33 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     /**
      * Adds hook if it not existed previously
      */
-    fun add(created: RepositoryHook): HookInfo {
-        return add(WebHooksStorage.HookInfo(url = created.url, callbackUrl = created.callbackUrl!!, id = created.id, status = created.getStatus()))
-    }
-
     fun getOrAdd(created: RepositoryHook): HookInfo {
-        return add(WebHooksStorage.HookInfo(url = created.url, callbackUrl = created.callbackUrl!!, id = created.id, status = created.getStatus()))
-    }
+        val key = Key.fromHookUrl(created.url)
+        val mapKey = key.toMapKey()
 
-
-    /**
-     * Adds hook if it not existed previously
-     */
-    fun add(toAdd: HookInfo): HookInfo {
-        val key = toAdd.key.toMapKey()
-
-        val hooks = getHooks(key)
-        val hook = hooks.firstOrNull { it.isSame(toAdd) }
+        val hooks = getHooks(mapKey)
+        val hook = hooks.firstOrNull { it.isSame(created) }
         if (hook != null) return hook
 
         myDataLock.write {
             @Suppress("NAME_SHADOWING")
-            var hooks = myData[key]
+            var hooks = myData[mapKey]
             @Suppress("NAME_SHADOWING")
-            val hook = hooks?.firstOrNull { it.isSame(toAdd) }
+            val hook = hooks?.firstOrNull { it.isSame(created) }
             if (hook != null) return hook
+
+            val toAdd = WebHooksStorage.HookInfo(url = created.url, callbackUrl = created.callbackUrl!!, key = key, status = created.getStatus())
 
             if (hooks == null || hooks.isEmpty()) {
                 hooks = mutableListOf(toAdd)
-                myData.put(key, hooks)
+                myData.put(mapKey, hooks)
             } else {
                 hooks = hooks;
                 hooks.add(toAdd)
-                myData.put(key, hooks)
+                myData.put(mapKey, hooks)
             }
+            return toAdd
         }
-        return toAdd
     }
 
     fun delete(hookInfo: HookInfo) {
