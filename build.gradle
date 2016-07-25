@@ -73,11 +73,11 @@ teamcity {
     server {
         descriptor {
             name = project.name
-            displayName = 'GitHub Integration'
+            displayName = 'Commit Hooks'
             version = project.version
             vendorName = 'JetBrains, s.r.o.'
             vendorUrl = 'http://www.jetbrains.com/'
-            description = 'TeamCity GitHub Integration Plugin'
+            description = 'Support for GitHub Webhooks'
 
             useSeparateClassloader = true
         }
