@@ -1,12 +1,13 @@
 package org.eclipse.egit.github.core.service;
 
-import com.google.gson.JsonObject;
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx;
 import org.eclipse.egit.github.core.IRepositoryIdProvider;
 import org.eclipse.egit.github.core.RepositoryHook;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 
 import static org.eclipse.egit.github.core.client.IGitHubConstants.SEGMENT_HOOKS;
 import static org.eclipse.egit.github.core.client.IGitHubConstants.SEGMENT_REPOS;
@@ -17,18 +18,14 @@ public class RepositoryServiceEx extends RepositoryService {
     }
 
     public RepositoryHook enableHook(@NotNull IRepositoryIdProvider repository, long hookId) throws IOException {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("active", true);
-        return patchHook(repository, hookId, obj);
+        return patchHook(repository, hookId, Collections.<String, Object>singletonMap("active", true));
     }
 
     public RepositoryHook disableHook(@NotNull IRepositoryIdProvider repository, long hookId) throws IOException {
-        JsonObject obj = new JsonObject();
-        obj.addProperty("active", false);
-        return patchHook(repository, hookId, obj);
+        return patchHook(repository, hookId, Collections.<String, Object>singletonMap("active", false));
     }
 
-    public RepositoryHook patchHook(@NotNull IRepositoryIdProvider repository, long hookId, @NotNull JsonObject patch) throws IOException {
+    public RepositoryHook patchHook(@NotNull IRepositoryIdProvider repository, long hookId, @NotNull Map<String, Object> patch) throws IOException {
         String id = getId(repository);
 
         StringBuilder uri = new StringBuilder(SEGMENT_REPOS);
