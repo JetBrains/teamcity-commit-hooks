@@ -2,12 +2,22 @@ package org.jetbrains.teamcity.github
 
 import org.assertj.core.api.Assertions
 import org.eclipse.egit.github.core.client.GsonUtilsEx
+import org.eclipse.egit.github.core.client.IGitHubConstants
 import org.eclipse.egit.github.core.event.PingWebHookPayload
 import org.eclipse.egit.github.core.event.PushWebHookPayload
+import org.testng.annotations.BeforeClass
 import org.testng.annotations.Test
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 class WebHookPayloadDeserializeTest {
+    @BeforeClass
+    fun setUp() {
+        val format = SimpleDateFormat(IGitHubConstants.DATE_FORMAT_V2_2)
+        format.timeZone = TimeZone.getTimeZone("Zulu")
+        Assertions.registerCustomDateFormat(format)
+    }
 
     @Test
     fun testPushPayloadParsed() {
@@ -19,6 +29,9 @@ class WebHookPayloadDeserializeTest {
         Assertions.assertThat(event).isNotNull()
         Assertions.assertThat(event.repository).isNotNull()
         Assertions.assertThat(event.ref).isNotNull()
+
+        Assertions.assertThat(event.repository.pushedAt).isEqualTo("2015-11-27T17:50:23Z")
+        Assertions.assertThat(event.repository.updatedAt).isEqualTo("2015-11-09T19:16:01Z")
     }
 
     @Test

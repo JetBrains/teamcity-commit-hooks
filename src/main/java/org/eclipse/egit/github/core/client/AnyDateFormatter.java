@@ -18,7 +18,11 @@ public class AnyDateFormatter extends DateFormatter {
         if (json instanceof JsonPrimitive) {
             final JsonPrimitive primitive = (JsonPrimitive) json;
             if (primitive.isNumber()) {
-                return new Date(json.getAsLong());
+                long timestamp = json.getAsLong();
+                if (timestamp > 10000000000L) {
+                    return new Date(timestamp);
+                }
+                return new Date(timestamp * 1000);
             }
         }
         return super.deserialize(json, typeOfT, context);
