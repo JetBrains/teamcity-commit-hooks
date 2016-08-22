@@ -76,7 +76,7 @@ teamcity {
             version = project.version
             vendorName = 'JetBrains, s.r.o.'
             vendorUrl = 'http://www.jetbrains.com/'
-            description = 'Allows to install GitHub Webhooks pointing to TeamCity VCS roots'
+            description = 'Allows to setup GitHub Webhooks for TeamCity VCS roots'
 
             useSeparateClassloader = true
         }
