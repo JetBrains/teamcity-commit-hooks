@@ -9,35 +9,35 @@ BS.GitHubWebHooks = {};
         var message = json['message'];
         var repo = info['owner'] + '/' + info['name'];
         var server = info['server'];
-        var warning = false;
+        var error = false;
         if ("NotFound" == result) {
-            warning = true;
+            error = true;
         } else if ("TokenScopeMismatch" == result) {
             message = "Token you provided have no access to repository '" + repo + "', try again";
-            warning = true;
+            error = true;
             // TODO: Add link to refresh/request token (via popup window)
             WH.forcePopup[server] = true
         } else if ("NoAccess" == result) {
-            warning = true;
+            error = true;
         } else if ("InternalServerError" == result) {
         } else if ("UserHaveNoAccess" == result) {
-            warning = true;
+            error = true;
         } else if ("NoOAuthConnections" == result) {
             // TODO: Add link to configure connections, good UI.
-            warning = true;
+            error = true;
         } else if ("Error" == result) {
-            warning = true;
+            error = true;
         } else {
             BS.Log.error("Unexpected result: " + result);
-            warning = true;
+            error = true;
         }
         var group = server + '/' + repo;
         var opts = messageOptions || {};
-        if (warning) {
-            opts.verbosity = 'warn'
+        if (error) {
+            WH.showError(message);
+        } else {
+            BS.Util.Messages.show(group, message, opts);
         }
-        BS.Util.Messages.show(group, message, opts);
-        return true;
     }
 
     function onActionSuccess(json, result, good) {
@@ -164,7 +164,7 @@ BS.GitHubWebHooks = {};
                 this.doHideProgress();
                 var error = json['error'];
                 BS.Util.Messages.hide({group: 'gh_wh_install'});
-                $j('#errorRepository').text(error).show();
+                WH.showError(error);
             },
             doShowProgress: function () {
                 BS.Util.show('installProgress');
@@ -554,15 +554,23 @@ BS.GitHubWebHooks = {};
         var repository = $j('input#repository').val();
         var projectId = $j('input#projectId').val();
 
-        $j('#errorRepository').text("").hide();
+        this.clearErrors();
         BS.Util.Messages.hide({group: 'gh_wh_install'});
 
         if (!repository || repository.length == 0) {
-            $j('#errorRepository').text("Repository url is empty").show();
+            this.showError("Repository URL is not specified");
             return false;
         }
 
         return WH.doAction('install', element, repository, projectId);
+    };
+
+    WH.showError = function(text) {
+        $j('#webhookError').text(text).show();
+    };
+
+    WH.clearErrors = function(id, text) {
+        $j('.error').text("").hide();
     }
 })(BS.GitHubWebHooks);
 
@@ -645,6 +653,5 @@ BS.AdminActions = BS.AdminActions || {};
         return false;
     };
 })(BS.AdminActions);
-
 
 window.GitHubWebHookCallback = BS.GitHubWebHooks.callback;

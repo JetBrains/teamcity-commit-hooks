@@ -11,7 +11,7 @@
 <%--@elvariable id="has_connections" type="java.lang.Boolean"--%>
 <%--@elvariable id="has_tokens" type="java.lang.Boolean"--%>
 
-<h2 class="noBorder">Install GitHub webhook</h2>
+<h2 class="noBorder">Install GitHub Webhook</h2>
 <bs:smallNote>
   GitHub webhook notifies TeamCity server when a commit is pushed to repository.
   As a result TeamCity needs to poll GitHub repository for changes less frequently and detects commits made in repository almost instantly.
@@ -28,7 +28,7 @@
             <td>
                 <forms:textField name="repository" className="longField" maxlength="80" value="${repository}"/>
                 <%--TODO: Add completion from list of project github vcs roots--%>
-                <span class="error" id="errorRepository"></span>
+                <span class="error" id="webhookError"></span>
             </td>
         </tr>
     </table>
