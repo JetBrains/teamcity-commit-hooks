@@ -11,31 +11,38 @@
 <%--@elvariable id="has_connections" type="java.lang.Boolean"--%>
 <%--@elvariable id="has_tokens" type="java.lang.Boolean"--%>
 
-<div class="editProjectPage">
-    <form id="installWebhook"
-          data-connection-id="<c:out value="${connectionId}"/>"
-          data-connection-project-id="<c:out value="${connectionProjectId}"/>"
-          data-connection-server="<c:out value="${empty info ? '' : info.server}"/>">
+<h2 class="noBorder">Install GitHub webhook</h2>
+<bs:smallNote>
+  GitHub webhook notifies TeamCity server when a commit is pushed to repository.
+  As a result TeamCity needs to poll GitHub repository for changes less frequently and detects commits made in repository almost instantly.
+</bs:smallNote>
+
+<form id="installWebhook"
+      data-connection-id="<c:out value="${connectionId}"/>"
+      data-connection-project-id="<c:out value="${connectionProjectId}"/>"
+      data-connection-server="<c:out value="${empty info ? '' : info.server}"/>">
+
+    <table class="runnerFormTable">
+        <tr>
+            <th><label for="repository">GitHub repository URL: <l:star/></label></th>
+            <td>
+                <forms:textField name="repository" className="longField" maxlength="80" value="${repository}"/>
+                <%--TODO: Add completion from list of project github vcs roots--%>
+                <span class="error" id="errorRepository"></span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="saveButtonsBlock">
         <input type="hidden" id="projectId" value="${currentProject.externalId}">
-        <table class="runnerFormTable">
-            <tr>
-                <th><label for="repository">Repository url: <l:star/></label></th>
-                <td>
-                    <forms:textField name="repository" className="longField" maxlength="80" value="${repository}"/>
-                    <%--TODO: Add completion from list of project github vcs roots--%>
-                    <span class="error" id="errorRepository"></span>
-                </td>
-            </tr>
-        </table>
-        <div class="saveButtonsBlock">
-            <forms:submit id="installWebhookSubmit" name="installWebhookSubmit" label="Install" onclick="BS.GitHubWebHooks.doInstallForm(this); return false;"/>
-            <forms:cancel cameFromSupport="${cameFrom}"/>
-            <forms:saving id="installProgress" style="float: none; margin-left: 0.5em;" savingTitle="Installing Webhook..."/>
-        </div>
-    </form>
-    <div id="installResult">
+        <forms:submit id="installWebhookSubmit" name="installWebhookSubmit" label="Install" onclick="BS.GitHubWebHooks.doInstallForm(this); return false;"/>
+        <forms:cancel cameFromSupport="${cameFrom}"/>
+        <forms:saving id="installProgress" style="float: none; margin-left: 0.5em;" savingTitle="Installing GitHub webhook..."/>
     </div>
-</div>
+</form>
+
+<div id="installResult"></div>
+
 <script type="text/javascript">
     (function () {
         if (typeof BS.ServerInfo === 'undefined') {

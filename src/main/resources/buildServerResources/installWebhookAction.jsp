@@ -3,5 +3,5 @@
 <l:li>
     <c:set var="cameFromUrl" value="${pageUrl}"/>
     <c:set var="projectUrl"><admin:editProjectLink projectId="${project.externalId}" withoutLink="true"/></c:set>
-    <a href="${projectUrl}&tab=installWebHook&cameFromUrl=${util:urlEscape(cameFromUrl)}" title="Install webhook...">Install webhook...</a>
+    <a href="${projectUrl}&tab=installWebHook&cameFromUrl=${util:urlEscape(cameFromUrl)}" title="Install GitHub webhook...">Install GitHub webhook...</a>
 </l:li>

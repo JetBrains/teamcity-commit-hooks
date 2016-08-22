@@ -53,3 +53,11 @@ form .recursive {
 .spinner {
     float: right;
 }
+
+#installWebhook table.runnerFormTable {
+    margin-top: 0.5em;
+}
+
+#installWebhook table.runnerFormTable th {
+    padding-left: 0;
+}

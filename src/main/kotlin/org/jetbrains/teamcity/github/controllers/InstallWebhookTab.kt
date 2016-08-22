@@ -8,10 +8,7 @@ import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.vcs.SVcsRoot
-import jetbrains.buildServer.web.openapi.PagePlaces
-import jetbrains.buildServer.web.openapi.PlaceId
-import jetbrains.buildServer.web.openapi.PluginDescriptor
-import jetbrains.buildServer.web.openapi.SimplePageExtension
+import jetbrains.buildServer.web.openapi.*
 import jetbrains.buildServer.web.util.CameFromSupport
 import jetbrains.buildServer.web.util.SessionUser
 import org.jetbrains.teamcity.github.TokensHelper
@@ -23,7 +20,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
                         private val tokensHelper: TokensHelper,
                         private val connectionsManager: OAuthConnectionsManager,
                         private val projectsManager: ProjectManager
-) : EditProjectTab(places, "installWebHook", descriptor.getPluginResourcesPath("installPage.jsp"), "Install Webhook") {
+) : EditProjectTab(places, "installWebHook", descriptor.getPluginResourcesPath("installPage.jsp"), "Install GitHub Webhook") {
 
     companion object {
         private val LOG = Logger.getInstance(InstallWebhookTab::class.java.name)
@@ -44,6 +41,8 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
         addJsFile("/js/bs/systemProblemsMonitor.js")
         addJsFile("${descriptor.pluginResourcesPath}gh-webhook.js")
         addCssFile("${descriptor.pluginResourcesPath}webhook.css")
+
+        setPosition(PositionConstraint.last())
 
         val projectMenuExtension = object : SimplePageExtension(myPagePlaces) {
             override fun isAvailable(request: HttpServletRequest): Boolean {
