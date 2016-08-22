@@ -1,6 +1,6 @@
 package org.jetbrains.teamcity.github
 
-import com.intellij.openapi.diagnostic.Logger
+import jetbrains.buildServer.log.Loggers
 import jetbrains.buildServer.serverSide.SBuildType
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
@@ -18,7 +18,7 @@ class SetupFromUrlGitHubWebhooksExtension(
         private val myTokensHelper: TokensHelper
 ) : SetupFromUrlExtension {
     companion object {
-        private val LOG = Logger.getInstance(SetupFromUrlGitHubWebhooksExtension::class.java.name)
+        private val LOG = Loggers.SERVER
     }
 
     override fun afterCreate(buildType: SBuildType, user: SUser) {
@@ -39,29 +39,29 @@ class SetupFromUrlGitHubWebhooksExtension(
         if (filtered.isEmpty()) return
 
         val affectedRootsCount = filtered.values.sumBy { it.size }
-        LOG.info("Will try to install hooks to ${filtered.size} ${filtered.size.pluralize("repository")} (used in $affectedRootsCount vcs ${affectedRootsCount.pluralize("root")})")
+        LOG.info("Will try to install GitHub webhooks to ${filtered.size} ${filtered.size.pluralize("repository")} (used in $affectedRootsCount vcs ${affectedRootsCount.pluralize("root")})")
 
         infos@for (info in filtered.keys) {
             val connections = myTokensHelper.getConnections(buildType.project, info.server)
             val connectionToTokensMap = myTokensHelper.getExistingTokens(connections, user)
             if (connectionToTokensMap.isEmpty()) {
-                LOG.info("Cannot automatically add webhook for '$info' repository: no tokens for user '${user.describe(false)}")
+                LOG.warn("Could not install GitHub webhook for '$info' repository: no tokens for user '${user.describe(false)}")
             }
             for ((connection, tokens) in connectionToTokensMap) {
                 val ghc: GitHubClientEx = GitHubClientFactory.createGitHubClient(connection.parameters[GitHubConstants.GITHUB_URL_PARAM]!!)
                 for (token in tokens) {
                     ghc.setOAuth2Token(token.accessToken)
-                    LOG.debug("Trying with token from GH user '${token.oauthLogin}', connection is ${connection.id}")
+                    LOG.debug("Trying to install GitHub webhook with token from the GitHub user '${token.oauthLogin}', OAuth connection is ${connection.id}")
                     try {
                         val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
                         when (result.first) {
-                            HookAddOperationResult.Created -> LOG.info("Added webhook for '$info'")
-                            HookAddOperationResult.AlreadyExists -> LOG.info("Webhook for '$info' was already there")
+                            HookAddOperationResult.Created -> LOG.info("Installed GitHub webhook for '$info'")
+                            HookAddOperationResult.AlreadyExists -> LOG.info("Skipped installation of the GitHub webhook for '$info' because it was already there")
                         }
                         // TODO: Show message in UI once webhook successfully installed
                         continue@infos
                     } catch(e: Exception) {
-                        LOG.warnAndDebugDetails("Failed to install webhook for repository '$info' using token of GH user '${token.oauthLogin}'", e)
+                        LOG.warnAndDebugDetails("Failed to install GitHub webhook for the repository '$info' using token of the GitHub user '${token.oauthLogin}'", e)
                     }
                 }
             }
