@@ -90,8 +90,6 @@ teamcity {
                 serverOptions '-Xdebug'
                 serverOptions '-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5500'
 
-                serverOptions '-Dteamcity.oauthConnections.enabled=true'
-
                 serverOptions '-Dteamcity.development.mode=true'
                 serverOptions '-Dteamcity.development.shadowCopyClasses=true'
             }
