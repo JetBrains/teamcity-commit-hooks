@@ -83,6 +83,7 @@ teamcity {
 
         environments {
             teamcityDev {
+                version = TeamCityVersion
                 homeDir = file(teamcityDir)
                 dataDir = file(teamcityDataDir)
                 javaHome = file(teamcityJavaHome)
