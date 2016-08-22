@@ -55,7 +55,7 @@ class SetupFromUrlGitHubWebhooksExtension(
                     try {
                         val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
                         when (result.first) {
-                            HookAddOperationResult.Created -> LOG.info("Installed GitHub webhook for '$info'")
+                            HookAddOperationResult.Created -> LOG.info("Successfully installed GitHub webhook for '$info'")
                             HookAddOperationResult.AlreadyExists -> LOG.info("Skipped installation of the GitHub webhook for '$info' because it was already there")
                         }
                         // TODO: Show message in UI once webhook successfully installed
