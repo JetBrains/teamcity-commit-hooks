@@ -5,7 +5,7 @@ import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
 
 fun WebHookAddHookHealthItem(info: GitHubRepositoryInfo, root: SVcsRoot): HealthStatusItem {
-    return HealthStatusItem("GH.WH.${root.id}.${info.getIdentifier()}", GitHubWebHookAvailableHealthReport.CATEGORY, mapOf(
+    return HealthStatusItem("GH.WH.${root.id}.${info.getIdentifier()}", GitHubWebHookSuggestion.CATEGORY, mapOf(
             "GitHubInfo" to info,
             "VcsRoot" to root
     ))

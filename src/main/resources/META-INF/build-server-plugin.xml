@@ -14,8 +14,8 @@
     </bean>
     <bean class="org.jetbrains.teamcity.github.TokensHelper"/>
 
-    <bean class="org.jetbrains.teamcity.github.GitHubWebHookAvailablePageExtension" init-method="register"/>
-    <bean class="org.jetbrains.teamcity.github.GitHubWebHookAvailableHealthReport"/>
+    <bean class="org.jetbrains.teamcity.github.GitHubWebHookSuggestionPageExtension" init-method="register"/>
+    <bean class="org.jetbrains.teamcity.github.GitHubWebHookSuggestion"/>
 
     <bean class="org.jetbrains.teamcity.github.controllers.EditProjectWebHooksTab"/>
     <bean class="org.jetbrains.teamcity.github.controllers.EditProjectWebHooksController"/>

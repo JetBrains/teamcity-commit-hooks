@@ -152,7 +152,7 @@ class ProjectWebHooksBean(val project: SProject,
             allGitVcsRoots.add(it)
             true
         }
-        val split = GitHubWebHookAvailableHealthReport.splitRoots(allGitVcsRoots)
+        val split = GitHubWebHookSuggestion.splitRoots(allGitVcsRoots)
         val filtered = split.entrySet()
                 .filterKnownServers(oAuthConnectionsManager)
         for ((info, roots) in filtered) {

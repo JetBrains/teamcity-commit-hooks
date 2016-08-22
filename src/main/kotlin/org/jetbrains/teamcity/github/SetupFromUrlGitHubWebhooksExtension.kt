@@ -27,7 +27,7 @@ class SetupFromUrlGitHubWebhooksExtension(
             gitRoots.add(it)
         }
         if (gitRoots.isEmpty()) return
-        val split = GitHubWebHookAvailableHealthReport.splitRoots(gitRoots)
+        val split = GitHubWebHookSuggestion.splitRoots(gitRoots)
 
         val filtered = split.entrySet()
                 .filter {

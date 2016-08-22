@@ -27,13 +27,11 @@
 <c:set var="id" value="hid_${util:forJSIdentifier(GitHubInfo.identifier)}"/>
 
 <div id='${id}' class="suggestionItem" data-repository="${GitHubInfo}" data-server="${GitHubInfo.server}">
-    Found VCS root <admin:vcsRootName vcsRoot="${VcsRoot}" editingScope="editProject:${VcsRoot.project.externalId}" cameFromUrl="${cameFromUrl}"/>
-    belongs to <admin:projectName project="${VcsRoot.project}"/>
-    referencing GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a>
-    without configured Webhook:
+    Install webhook into the GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a> to speedup collecting of the changes
+    and reduce overhead on the GitHub server.
     <div class="suggestionAction">
         <c:set var="projectUrl"><admin:editProjectLink projectId="${VcsRoot.project.externalId}" withoutLink="true"/></c:set>
-        <forms:addLink href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install webhook</forms:addLink>
+        <forms:addLink href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install GitHub webhook</forms:addLink>
     </div>
 </div>
 

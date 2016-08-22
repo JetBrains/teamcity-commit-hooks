@@ -78,7 +78,7 @@ class WebhookPeriodicalChecker(
         val incorrectHooks = myWebHooksStorage.getIncorrectHooks()
         val incorrectHooksInfos = incorrectHooks.map { it.first }.toHashSet()
 
-        val split = GitHubWebHookAvailableHealthReport.splitRoots(gitRoots)
+        val split = GitHubWebHookSuggestion.splitRoots(gitRoots)
 
         val myIncorrectHooksKeys = myIncorrectHooks.asMap().keys.toHashSet()
         val filtered = split.entrySet()

@@ -6,11 +6,11 @@ import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.vcs.SVcsRoot
 import java.util.*
 
-class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksManager,
-                                         private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
+class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
+                              private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
-        val TYPE = "GitHub.WebHookAvailable"
-        val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Available", "GitHub repo polling could be replaced with webhook", ItemSeverity.INFO)
+        val TYPE = "GitHubWebHooksSuggestion"
+        val CATEGORY: ItemCategory = SuggestionCategory(ItemSeverity.INFO, "Reduce GitHub repository overhead and speedup changes detection by switching to GitHub webhook", null)
 
         fun splitRoots(vcsRoots: Set<SVcsRoot>): MultiMapToSet<GitHubRepositoryInfo, SVcsRoot> {
             val map = MultiMapToSet<GitHubRepositoryInfo, SVcsRoot>()
@@ -30,7 +30,7 @@ class GitHubWebHookAvailableHealthReport(private val WebHooksManager: WebHooksMa
     override fun getType(): String = TYPE
 
     override fun getDisplayName(): String {
-        return "Find VCS roots which can use GitHub push hook instead of polling"
+        return "Suggests installing of a GitHub webhook for GitHub repositories configured in TeamCity"
     }
 
     override fun getCategories(): MutableCollection<ItemCategory> {
