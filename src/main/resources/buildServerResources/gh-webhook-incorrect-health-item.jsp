@@ -32,12 +32,12 @@
      data-server="<c:out value="${GitHubInfo.server}"/>"
      data-project-id="<c:out value="${Project.externalId}"/>">
     <a href="<c:out value="${GitHubInfo.repositoryUrl}/settings/hooks/${HookInfo.id}"/>">Webhook</a>
-    for GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a>
-    is outdated or misconfigured: <c:out value="${Reason}"/>
+    for the GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a>
+    is misconfigured: <c:out value="${Reason}"/>
     <div class="suggestionAction">
         <c:set var="projectUrl"><admin:editProjectLink projectId="${Project.externalId}" withoutLink="true"/></c:set>
         <forms:addLink
-                href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install webhook</forms:addLink>
+                href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Re-install GitHub webhook</forms:addLink>
         <br>
         <a class="" onclick="return BS.GitHubWebHooks.doAction('delete', this);">Remove webhook</a>
     </div>

@@ -60,4 +60,9 @@ form .recursive {
 
 #installWebhook table.runnerFormTable th {
     padding-left: 0;
+    width: 20%;
+}
+
+#repository {
+    width: 40em;
 }

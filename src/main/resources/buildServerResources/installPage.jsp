@@ -26,7 +26,7 @@
         <tr>
             <th><label for="repository">GitHub repository URL: <l:star/></label></th>
             <td>
-                <forms:textField name="repository" className="longField" maxlength="80" value="${repository}"/>
+                <forms:textField name="repository" className="longField" maxlength="1024" value="${repository}"/>
                 <%--TODO: Add completion from list of project github vcs roots--%>
                 <span class="error" id="webhookError"></span>
             </td>

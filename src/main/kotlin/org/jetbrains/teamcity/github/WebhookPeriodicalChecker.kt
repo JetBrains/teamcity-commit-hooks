@@ -42,15 +42,15 @@ class WebhookPeriodicalChecker(
 
     companion object {
         private val LOG = Logger.getInstance(WebhookPeriodicalChecker::class.java.name)
-        val TYPE = "GitHub.WebHookIncorrect"
-        val CATEGORY: ItemCategory = ItemCategory("GH.WebHook.Incorrect", "GitHub webhook is misconfigured or outdated", ItemSeverity.WARN)
+        val TYPE = "GitHubWebHookProblem"
+        val CATEGORY: ItemCategory = ItemCategory("GitHubWebHookProblem", "GitHub webhook problem", ItemSeverity.WARN)
 
-        val CHECK_INTERVAL_PROPERTY = "teamcity.github-webhooks.check-interval.minutes"
+        val CHECK_INTERVAL_PROPERTY = "teamcity.githubWebhooks.checkInterval.min"
     }
 
     override fun getType(): String = TYPE
 
-    override fun getDisplayName(): String = "GitHub misconfigured/outdated webhooks"
+    override fun getDisplayName(): String = "Reports problems detected with GitHub webhooks"
 
     override fun getCategories(): MutableCollection<ItemCategory> = arrayListOf(CATEGORY)
 
