@@ -27,6 +27,7 @@
             <th><label for="repository">GitHub repository URL: <l:star/></label></th>
             <td>
                 <forms:textField name="repository" className="longField" maxlength="1024" value="${repository}"/>
+                <jsp:include page="/admin/repositoryControls.html?projectId=${currentProject.externalId}&pluginName=github"/>
                 <%--TODO: Add completion from list of project github vcs roots--%>
                 <span class="error" id="webhookError"></span>
             </td>
@@ -64,5 +65,13 @@
         }
         </c:if>
     })();
+
+    $j(document).ready(function() {
+      if (BS.Repositories != null) {
+        BS.Repositories.installControls($('repository'), function(repoInfo, cre) {
+          $('repository').value = repoInfo.repositoryUrl;
+        });
+      }
+    });
 </script>
 
