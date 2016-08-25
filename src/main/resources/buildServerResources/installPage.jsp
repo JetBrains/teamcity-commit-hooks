@@ -17,6 +17,8 @@
   As a result TeamCity needs to poll GitHub repository for changes less frequently and detects commits made in repository almost instantly.
 </bs:smallNote>
 
+<div class="successMessage" id="webhookMessage"></div>
+
 <form id="installWebhook"
       data-connection-id="<c:out value="${connectionId}"/>"
       data-connection-project-id="<c:out value="${connectionProjectId}"/>"

@@ -4,7 +4,7 @@ BS.GitHubWebHooks = {};
     WH.data = {};
     WH.forcePopup = {};
 
-    function onActionSuccessBasic(json, result, messageOptions) {
+    function onActionSuccessBasic(json, result) {
         var info = json['info'];
         var message = json['message'];
         var repo = info['owner'] + '/' + info['name'];
@@ -31,12 +31,11 @@ BS.GitHubWebHooks = {};
             BS.Log.error("Unexpected result: " + result);
             error = true;
         }
-        var group = server + '/' + repo;
-        var opts = messageOptions || {};
+
         if (error) {
             WH.showError(message);
         } else {
-            BS.Util.Messages.show(group, message, opts);
+            WH.showSuccessMessage(message);
         }
     }
 
@@ -44,7 +43,6 @@ BS.GitHubWebHooks = {};
         var info = json['info'];
         var message = json['message'];
         var server = info['server'];
-        var warning = false;
         if (good.indexOf(result) > -1) {
             // Good one
             const data = json['data'];
@@ -53,8 +51,7 @@ BS.GitHubWebHooks = {};
                 WH.data[repository] = data;
                 renderOne(data, $j('#webHooksTable'))
             }
-            var group = server + '/' + info['owner'] + '/' + info['name'];
-            BS.Util.Messages.show(group, message, warning ? {verbosity: 'warn'} : {});
+            WH.showSuccessMessage(message);
             return
         }
         onActionSuccessBasic(json, result);
@@ -81,7 +78,7 @@ BS.GitHubWebHooks = {};
         },
         doHideProgress: function () {
             BS.ProgressPopup.hidePopup(0, true);
-        },
+        }
     };
 
     WH.actions = {
@@ -139,8 +136,7 @@ BS.GitHubWebHooks = {};
                     }
                     WH.forcePopup[server] = false;
                     $j("#installWebhookSubmit").attr("value", "Install");
-                    var group = server + '/' + info['owner'] + '/' + info['name'];
-                    BS.Util.Messages.show(group, message, opts);
+                    WH.showSuccessMessage(message);
                     return
                 }
                 if ("TokenScopeMismatch" == result) {
@@ -148,10 +144,10 @@ BS.GitHubWebHooks = {};
                     $j("#installWebhookSubmit").attr("value", "Authorize and Install");
                     WH.forcePopup[server] = true;
                     opts.verbosity = 'warn';
-                    BS.Util.Messages.show(group, message, opts);
+                    WH.showSuccessMessage(message);
                     return
                 }
-                onActionSuccessBasic(json, result, opts);
+                onActionSuccessBasic(json, result);
             },
             doHandleRedirect: function (json, id) {
                 WH.forcePopup[WH.getServerUrl(id)] = true;
@@ -163,7 +159,6 @@ BS.GitHubWebHooks = {};
             doHandleError: function (json) {
                 this.doHideProgress();
                 var error = json['error'];
-                BS.Util.Messages.hide({group: 'gh_wh_install'});
                 WH.showError(error);
             },
             doShowProgress: function () {
@@ -173,7 +168,7 @@ BS.GitHubWebHooks = {};
             doHideProgress: function () {
                 BS.Util.hide('installProgress');
                 $j('#installButton').removeAttr('disabled', false)
-            },
+            }
         })
     };
     WH.checkLocation = function () {
@@ -268,7 +263,7 @@ BS.GitHubWebHooks = {};
                 action.doHandleError(json)
             } else {
                 BS.Log.error("Something went wrong: " + json['error']);
-                BS.Messages.show("WH.Callback", json['error'], {verbosity: 'warn', group: 'gh_wh_install'});
+                WH.showError(json['error']);
             }
         } else if (json['result']) {
             var res = json['result'];
@@ -554,8 +549,7 @@ BS.GitHubWebHooks = {};
         var repository = $j('input#repository').val();
         var projectId = $j('input#projectId').val();
 
-        this.clearErrors();
-        BS.Util.Messages.hide({group: 'gh_wh_install'});
+        this.clearMessages();
 
         if (!repository || repository.length == 0) {
             this.showError("Repository URL is not specified");
@@ -566,11 +560,17 @@ BS.GitHubWebHooks = {};
     };
 
     WH.showError = function(text) {
+        WH.clearMessages();
         $j('#webhookError').text(text).show();
     };
 
-    WH.clearErrors = function(id, text) {
+    WH.showSuccessMessage = function(text) {
+        $j('#webhookMessage').html(text).show();
+    };
+
+    WH.clearMessages = function() {
         $j('.error').text("").hide();
+        $j('#webhookMessage').text("").hide();
     }
 })(BS.GitHubWebHooks);
 
