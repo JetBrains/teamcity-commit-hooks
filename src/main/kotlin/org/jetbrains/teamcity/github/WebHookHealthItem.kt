@@ -2,10 +2,9 @@ package org.jetbrains.teamcity.github
 
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusItem
 import jetbrains.buildServer.vcs.SVcsRoot
-import jetbrains.buildServer.vcs.VcsRootInstance
 
 fun WebHookAddHookHealthItem(info: GitHubRepositoryInfo, root: SVcsRoot): HealthStatusItem {
-    return HealthStatusItem("GH.WH.${root.id}.${info.getIdentifier()}", GitHubWebHookSuggestion.CATEGORY, mapOf(
+    return HealthStatusItem("GitHubWebHook.${root.id}.${info.getIdentifier()}", GitHubWebHookSuggestion.CATEGORY, mapOf(
             "GitHubInfo" to info,
             "VcsRoot" to root
     ))

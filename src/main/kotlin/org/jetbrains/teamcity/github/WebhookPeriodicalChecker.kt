@@ -101,7 +101,7 @@ class WebhookPeriodicalChecker(
 
             val reason = myIncorrectHooks.getIfPresent(info) ?: "Unknown reason"
 
-            val item = HealthStatusItem("GH.WH.I.$id", CATEGORY, mapOf(
+            val item = HealthStatusItem("GitHubWebHook.I.$id", CATEGORY, mapOf(
                     "GitHubInfo" to info,
                     "HookInfo" to hook,
                     "Projects" to Util.getProjects(roots),
@@ -111,7 +111,6 @@ class WebhookPeriodicalChecker(
             for (it in roots) {
                 resultConsumer.consumeForVcsRoot(it, item)
                 it.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
-                it.usagesInProjects.plus(it.project).toSet().forEach { resultConsumer.consumeForProject(it, item) }
             }
         }
     }

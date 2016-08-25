@@ -67,7 +67,6 @@ class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
                 val item = WebHookAddHookHealthItem(info, root)
                 resultConsumer.consumeForVcsRoot(root, item)
                 root.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
-                root.usagesInProjects.plus(root.project).toSet().forEach { resultConsumer.consumeForProject(it, item) }
             }
         }
     }
