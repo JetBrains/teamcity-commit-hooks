@@ -133,5 +133,24 @@ class Util {
                 }
             }
         }
+
+        // returns true if project has Git VCS roots and there are OAuth connections corresponding to these VCS roots
+        fun installHookAvailable(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
+            val roots = HashSet<SVcsRoot>()
+            Util.findSuitableRoots(project, recursive = true) {
+                if (Util.isSuitableVcsRoot(it, true)) roots.add(it)
+                true
+            }
+
+            if (roots.isEmpty()) return false
+
+            for (root in roots) {
+                val info = Util.getGitHubInfo(root) ?: continue
+                val connections = Util.findConnections(connectionsManager, project, info.server)
+                if (connections.isNotEmpty()) return true;
+            }
+
+            return false;
+        }
     }
 }

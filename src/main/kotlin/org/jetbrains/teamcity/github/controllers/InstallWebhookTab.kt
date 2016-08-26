@@ -7,13 +7,11 @@ import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.users.SUser
-import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.web.openapi.*
 import jetbrains.buildServer.web.util.CameFromSupport
 import jetbrains.buildServer.web.util.SessionUser
 import org.jetbrains.teamcity.github.TokensHelper
 import org.jetbrains.teamcity.github.Util
-import java.util.*
 import javax.servlet.http.HttpServletRequest
 
 class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
@@ -22,18 +20,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
                         private val projectsManager: ProjectManager
 ) : EditProjectTab(places, "installWebHook", descriptor.getPluginResourcesPath("installPage.jsp"), "Install GitHub Webhook") {
 
-    companion object {
-        private val LOG = Logger.getInstance(InstallWebhookTab::class.java.name)
-
-        private fun hasRelevantVcsRoots(project: SProject): Boolean {
-            val roots = HashSet<SVcsRoot>()
-            Util.findSuitableRoots(project, recursive = true) {
-                if (Util.isSuitableVcsRoot(it, true)) roots.add(it)
-                true
-            }
-            return roots.isNotEmpty()
-        }
-    }
+    private val LOG = Logger.getInstance(InstallWebhookTab::class.java.name)
 
     init {
         addCssFile("/css/admin/projectConfig.css")
@@ -46,8 +33,9 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
 
         val projectMenuExtension = object : SimplePageExtension(myPagePlaces) {
             override fun isAvailable(request: HttpServletRequest): Boolean {
-                val project = request.getAttribute("project") as SProject?
-                return project != null && hasRelevantVcsRoots(project)
+                val project = request.getAttribute("project") as SProject? ?: return false
+
+                return Util.installHookAvailable(project, connectionsManager);
             }
         }
         projectMenuExtension.pluginName = "installWebhookAction"

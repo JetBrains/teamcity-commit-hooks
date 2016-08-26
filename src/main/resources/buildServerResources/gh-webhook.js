@@ -561,7 +561,7 @@ BS.GitHubWebHooks = {};
 
     WH.showError = function(text) {
         WH.clearMessages();
-        $j('#webhookError').text(text).show();
+        $j('#webhookError').html(text).show();
     };
 
     WH.showSuccessMessage = function(text) {
