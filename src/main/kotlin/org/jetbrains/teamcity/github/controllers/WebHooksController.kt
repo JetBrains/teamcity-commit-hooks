@@ -271,7 +271,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Webhook for the GitHub repository '${info.toString()}' is already installed, webhook has been updated", info)
+                return gh_json(result.first.name, "Webhook for the GitHub repository '${info.toString()}' is already installed", info)
             }
             HookAddOperationResult.Created -> {
                 return gh_json(result.first.name, "Successfully installed webhook for the GitHub repository '${info.toString()}'", info)
@@ -285,7 +285,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         val url = "${info.getRepositoryUrl()}/settings/hooks/${result.second.id}"
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.toString()}</a> is already <a href=\"$url\">installed</a>, webhook has been updated", info)
+                return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.toString()}</a> is already <a href=\"$url\">installed</a>", info)
             }
             HookAddOperationResult.Created -> {
                 return gh_json(result.first.name, "Successfully installed <a href=\"$url\">webhook</a> for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.toString()}</a>", info)

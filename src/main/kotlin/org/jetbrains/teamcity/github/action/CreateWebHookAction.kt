@@ -21,22 +21,15 @@ object CreateWebHookAction {
         val repo = info.getRepositoryId()
         val service = RepositoryService(client)
 
-        var result: Pair<HookAddOperationResult, WebHooksStorage.HookInfo>? = null
-
-        for (hook in context.storage.getHooks(info)) {
-            if (checkExisting(client, context, hook, info)) result = HookAddOperationResult.AlreadyExists to hook
-        }
-        if (result != null) return result
-
         // Reload all hooks from GitHub
         // It's ok throw GitHubAccessException upwards: if we cannot get hooks, we cannot add new one
         GetAllWebHooksAction.doRun(info, client, context)
 
-        // Check for already existing hooks, otherwise Github we may create another hook for repository
         for (hook in context.storage.getHooks(info)) {
-            if (checkExisting(client, context, hook, info)) result = HookAddOperationResult.AlreadyExists to hook
+            if (checkExisting(client, context, hook, info)) {
+                return HookAddOperationResult.AlreadyExists to hook;
+            }
         }
-        if (result != null) return result
 
         val authData = context.authDataStorage.create(user, info, connection, false)
 
