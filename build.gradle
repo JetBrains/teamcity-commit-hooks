@@ -42,6 +42,7 @@ project.plugins.withType(JavaPlugin) {
 repositories {
     maven { url "http://download.jetbrains.com/teamcity-repository" }
     mavenCentral()
+    mavenLocal()
 }
 
 configurations {
