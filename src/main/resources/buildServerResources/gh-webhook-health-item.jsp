@@ -27,7 +27,7 @@
 <c:set var="id" value="hid_${util:forJSIdentifier(GitHubInfo.identifier)}"/>
 
 <div id='${id}' class="suggestionItem" data-repository="${GitHubInfo}" data-server="${GitHubInfo.server}">
-    Install webhook into the GitHub repository <a href="${GitHubInfo.repositoryUrl}">${GitHubInfo.repositoryUrl}</a> to speedup collecting of the changes
+    Install webhook into the GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a> to speedup collecting of the changes
     and reduce overhead on the GitHub server.
     <div class="suggestionAction">
         <c:set var="projectUrl"><admin:editProjectLink projectId="${VcsRoot.project.externalId}" withoutLink="true"/></c:set>

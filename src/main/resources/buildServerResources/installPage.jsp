@@ -29,8 +29,9 @@
             <th><label for="repository">GitHub repository URL: <l:star/></label></th>
             <td>
                 <forms:textField name="repository" className="longField" maxlength="1024" value="${repository}"/>
-                <jsp:include page="/admin/repositoryControls.html?projectId=${currentProject.externalId}&pluginName=github"/>
-                <%--TODO: Add completion from list of project github vcs roots--%>
+                <span class="icon-magic"
+                      onclick="BS.GitHubWebHooks.SuitableRepositoriesPopup.showPopup(this, '${currentProject.externalId}')"
+                      title="Click to choose a GitHub repository where a webhook can be installed"></span>
                 <span class="error" id="webhookError"></span>
             </td>
         </tr>
@@ -62,6 +63,19 @@
         BS.GitHubWebHooks.info['${info.identifier}'] = ${info.toJson()};
         BS.GitHubWebHooks.forcePopup['${info.server}'] = ${not has_connections or not has_tokens};
         </c:if>
+
+        BS.GitHubWebHooks.SuitableRepositoriesPopup = new BS.Popup("suitableReposPopup", {
+          url: window['base_uri'] + "/webhooks/github/suitableRepositoriesPopup.html",
+          method: "get",
+          hideOnMouseOut: false,
+          hideOnMouseClickOutside: true,
+          shift: {x: 0, y: 20}
+        });
+
+        BS.GitHubWebHooks.SuitableRepositoriesPopup.showPopup = function(nearestElem, projectId) {
+            this.options.parameters = "projectId=" + projectId;
+            this.showPopupNearElement(nearestElem);
+        }
     })();
 
     $j(document).ready(function() {

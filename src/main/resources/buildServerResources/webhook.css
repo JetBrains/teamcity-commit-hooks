@@ -70,3 +70,8 @@ form .recursive {
 #webhookMessage {
     display: none;
 }
+
+span.icon-magic {
+    cursor: pointer;
+}
+

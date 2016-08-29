@@ -270,15 +270,6 @@ BS.GitHubWebHooks = {};
         }
     };
 
-    WH.callback = function (json) {
-        var action = WH.actions[json['action']];
-        if (action) {
-            action.doHideProgress();
-        }
-        WH.doHandle(json, action);
-        WH.refreshReports();
-    };
-
     WH.refreshReports = function () {
         var summary = $('reportSummary');
         var categories = $('reportCategories');
@@ -566,7 +557,7 @@ BS.GitHubWebHooks = {};
     WH.clearMessages = function() {
         $j('.error').text("").hide();
         $j('#webhookMessage').text("").hide();
-    }
+    };
 })(BS.GitHubWebHooks);
 
 BS.Util.Messages = BS.Util.Messages || {};
@@ -648,5 +639,3 @@ BS.AdminActions = BS.AdminActions || {};
         return false;
     };
 })(BS.AdminActions);
-
-window.GitHubWebHookCallback = BS.GitHubWebHooks.callback;

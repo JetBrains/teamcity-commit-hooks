@@ -35,7 +35,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
             override fun isAvailable(request: HttpServletRequest): Boolean {
                 val project = request.getAttribute("project") as SProject? ?: return false
 
-                return Util.installHookAvailable(project, connectionsManager);
+                return Util.getVcsRootsWhereHookCanBeInstalled(project, connectionsManager).isNotEmpty();
             }
         }
         projectMenuExtension.pluginName = "installWebhookAction"

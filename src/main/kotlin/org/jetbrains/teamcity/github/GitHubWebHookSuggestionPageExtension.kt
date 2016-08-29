@@ -39,6 +39,6 @@ class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places:
     override fun isAvailable(request: HttpServletRequest): Boolean {
         val item = getStatusItem(request)
         val root = item.additionalData["VcsRoot"] ?: return false;
-        return Util.installHookAvailable((root as SVcsRoot).project, connectionsManager);
+        return Util.getVcsRootsWhereHookCanBeInstalled((root as SVcsRoot).project, connectionsManager).isNotEmpty();
     }
 }
