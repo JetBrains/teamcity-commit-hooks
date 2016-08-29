@@ -1,5 +1,7 @@
 <%@include file="/include-internal.jsp" %>
 <jsp:useBean id="repositoriesMap" type="java.util.Map" scope="request"/> <!-- Map of GitHubRepositoryInfo to OAuth connection -->
+<jsp:useBean id="hasConnections" type="java.lang.Boolean" scope="request"/>
+<jsp:useBean id="project" type="jetbrains.buildServer.serverSide.SProject" scope="request"/>
 <c:set var="reposCount" value="${fn:length(repositoriesMap)}"/>
 <c:choose>
   <c:when test="${reposCount > 0}">
@@ -11,6 +13,9 @@
         </li>
       </c:forEach>
     </ul>
+  </c:when>
+  <c:when test="${not hasConnections}">
+    <div>There are no OAuth connections <admin:editProjectLink projectId="${project.externalId}" addToUrl="&tab=oauthConnections">configured</admin:editProjectLink> in this project.</div>
   </c:when>
   <c:otherwise>
     <div>Could not find repositories where GitHub webhook could be installed.</div>
