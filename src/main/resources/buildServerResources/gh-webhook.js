@@ -6,6 +6,7 @@ BS.GitHubWebHooks = {};
 
     WH.SIGN_IN_BUTTON_TITLE = "Sign in to GitHub";
     WH.INSTALL_BUTTON_TITLE = "Install webhook";
+    WH.WEBHOOKS_CONTROLLER_PATH = "/webhooks/github/webhooks.html";
 
     function onActionSuccessBasic(json, result) {
         var info = json['info'];
@@ -191,7 +192,7 @@ BS.GitHubWebHooks = {};
         }
 
         if (popup) {
-            var url = BS.ServerInfo.url + '/oauth/github/webhooks.html?action=' + action.id + '&popup=true&id=' + id;
+            var url = BS.ServerInfo.url + WH.WEBHOOKS_CONTROLLER_PATH + '?action=' + action.id + '&popup=true&id=' + id;
             if (projectId !== undefined) {
                 url = url + "&projectId=" + projectId
             }
@@ -231,7 +232,7 @@ BS.GitHubWebHooks = {};
             }
         }
         //noinspection JSUnusedGlobalSymbols
-        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
+        BS.ajaxRequest(window.base_uri + WH.WEBHOOKS_CONTROLLER_PATH, {
             method: "post",
             parameters: parameters,
             onComplete: function (transport) {
@@ -328,7 +329,7 @@ BS.GitHubWebHooks = {};
             parameters["projectId"] = projectId
         }
         BS.ProgressPopup.showProgress(element, "Rechecking all webhooks", {shift: {x: -65, y: 20}, zIndex: 100});
-        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
+        BS.ajaxRequest(window.base_uri + WH.WEBHOOKS_CONTROLLER_PATH, {
             method: "post",
             parameters: parameters,
             onComplete: function (transport) {
@@ -472,7 +473,7 @@ BS.GitHubWebHooks = {};
         } else if (table !== undefined) {
             $j(table).find('.spinner').show();
         }
-        BS.ajaxRequest(window.base_uri + "/oauth/github/webhooks.html", {
+        BS.ajaxRequest(window.base_uri + WH.WEBHOOKS_CONTROLLER_PATH, {
             method: 'post',
             parameters: {
                 'action': 'get-info',
