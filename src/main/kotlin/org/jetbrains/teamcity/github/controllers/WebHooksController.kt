@@ -6,6 +6,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.stream.JsonWriter
 import jetbrains.buildServer.controllers.BaseController
+import jetbrains.buildServer.controllers.SimpleView
 import jetbrains.buildServer.log.Loggers
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildServer
@@ -48,7 +49,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                          server: SBuildServer) : BaseController(server) {
 
 
-    private val myResultJspPath = descriptor.getPluginResourcesPath("hook-created.jsp")
+    private val myTokenGrantedPath = descriptor.getPluginResourcesPath("tokenGranted.jsp")
 
 
     fun register(): Unit {
@@ -91,15 +92,14 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
-        var action = request.getParameter("action")
+        val action = request.getParameter("action")
         val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
         val element: JsonElement
         try {
             if (action in listOf("add", "check", "delete", "ping", "install")) {
                 element = doHandleAction(request, action, popup)
-            } else if ("continue" == action) {
-                element = doHandleAction(request, action, popup)
-                action = request.getParameter("original_action") ?: "add"
+            } else if ("tokenGranted" == action) {
+                return ModelAndView(myTokenGrantedPath)
             } else if ("check-all" == action) {
                 element = doHandleCheckAllAction(request, popup)
             } else if ("get-info" == action) {
@@ -129,13 +129,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                 }
             }
         }
-        return callbackPage(element)
-    }
-
-    private fun callbackPage(element: JsonElement): ModelAndView {
-        val mav = ModelAndView(myResultJspPath)
-        mav.model.put("json", Gson().toJson(element))
-        return mav
+        return SimpleView.createTextView("Unrecognized request: " + WebUtil.getRequestDump(request))
     }
 
     @Throws(MyRequestException::class)
@@ -151,7 +145,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
         val (project, info) = getRepositoryInfo(inProjectId, inId)
 
-        LOG.info("Trying to create webhook for GitHub repository with id '$inId', repository info is '$info', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
+        LOG.info("Trying to create a webhook for the GitHub repository with id '$inId', repository info is '$info', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
 
         if (connection != null && !Util.isConnectionToServer(connection, info.server)) {
             return error_json("OAuth connection '${connection.connectionDisplayName}' server doesn't match repository server '${info.server}'", HttpServletResponse.SC_BAD_REQUEST)
@@ -183,7 +177,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                     postponedResult = gh_json("NoTokens", "Could not obtain token from GitHub using connection ${connection.connectionDisplayName}.\nPlease ensure connection is configured properly.", info)
                     continue@attempts
                 }
-                val params = linkedMapOf("action" to "continue", "original_action" to action, "popup" to popup, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
+                val params = linkedMapOf("action" to "tokenGranted", "popup" to popup, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
                 if (inProjectId != null) {
                     params.put("projectId", inProjectId)
                 }

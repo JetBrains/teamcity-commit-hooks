@@ -4,6 +4,9 @@ BS.GitHubWebHooks = {};
     WH.data = {};
     WH.forcePopup = {};
 
+    WH.SIGN_IN_BUTTON_TITLE = "Sign in to GitHub";
+    WH.INSTALL_BUTTON_TITLE = "Install webhook";
+
     function onActionSuccessBasic(json, result) {
         var info = json['info'];
         var message = json['message'];
@@ -13,7 +16,7 @@ BS.GitHubWebHooks = {};
         if ("NotFound" == result) {
             error = true;
         } else if ("TokenScopeMismatch" == result) {
-            message = "Token you provided have no access to repository '" + repo + "', try again";
+            message = "Token scope does not allow to install webhook to the repository '" + repo + "'";
             error = true;
             // TODO: Add link to refresh/request token (via popup window)
             WH.forcePopup[server] = true
@@ -125,8 +128,7 @@ BS.GitHubWebHooks = {};
                 var message = json['message'];
                 var repo = info['owner'] + '/' + info['name'];
                 var server = info['server'];
-                BS.Util.Messages.hide({group: 'gh_wh_install'});
-                var opts = {group: 'gh_wh_install'};
+
                 if (good.indexOf(result) > -1) {
                     // Good one
                     const data = json['data'];
@@ -135,16 +137,15 @@ BS.GitHubWebHooks = {};
                         WH.data[repository] = data;
                     }
                     WH.forcePopup[server] = false;
-                    $j("#installWebhookSubmit").attr("value", "Install");
+                    $j("#installWebhookSubmit").attr("value", WH.INSTALL_BUTTON_TITLE);
                     WH.showSuccessMessage(message);
                     return
                 }
                 if ("TokenScopeMismatch" == result) {
-                    message = "Token you provided have no access to repository '" + repo + "', try again";
-                    $j("#installWebhookSubmit").attr("value", "Authorize and Install");
+                    message = "Token scope does not allow to install webhook to the repository '" + repo + "'";
+                    $j("#installWebhookSubmit").attr("value", WH.SIGN_IN_BUTTON_TITLE);
                     WH.forcePopup[server] = true;
-                    opts.verbosity = 'warn';
-                    WH.showSuccessMessage(message);
+                    WH.showError(message);
                     return
                 }
                 onActionSuccessBasic(json, result);
@@ -152,9 +153,8 @@ BS.GitHubWebHooks = {};
             doHandleRedirect: function (json, id) {
                 WH.forcePopup[WH.getServerUrl(id)] = true;
 
-                $j("#installWebhookSubmit").attr("value", "Authorize and Install");
-                BS.Util.Messages.hide({group: 'gh_wh_install'});
-                BS.Util.Messages.show(id, 'GitHub authorization needed.', {verbosity: 'warn', group: 'gh_wh_install'});
+                $j("#installWebhookSubmit").attr("value", WH.SIGN_IN_BUTTON_TITLE);
+                WH.showError("Please sign in to GitHub to proceed.");
             },
             doHandleError: function (json) {
                 this.doHideProgress();
@@ -171,29 +171,13 @@ BS.GitHubWebHooks = {};
             }
         })
     };
-    WH.checkLocation = function () {
-        if (document.location.href.indexOf(BS.ServerInfo.url) == -1) {
-            if (confirm("Request cannot be processed because browser URL does not correspond to URL specified in TeamCity server configuration: " + BS.ServerInfo.url + ".\n\n" +
-                    "Click Ok to redirect to correct URL or click Cancel to leave URL as is.")) {
-                var contextPath = BS.RequestInfo.context_path;
-                var pathWithoutContext = document.location.pathname;
-                if (contextPath.length > 0) {
-                    pathWithoutContext = pathWithoutContext.substring(contextPath.length);
-                }
-                document.location.href = BS.ServerInfo.url + pathWithoutContext + document.location.search + document.location.hash;
-            }
-            return false;
-        }
-        return true;
-    };
+
     function isSameServer(first, second) {
         if (!first || !second) return false;
         return first.indexOf(second) > -1
     }
 
     WH.doWebHookAction = function (action, element, id, popup, projectId) {
-        //var progress = $$("# .progress").show();
-
         // Enforce popup for server if needed
         var server = undefined;
         var info = WH.info[id];
@@ -207,13 +191,23 @@ BS.GitHubWebHooks = {};
         }
 
         if (popup) {
-            if (!WH.checkLocation()) return;
-            var url = window.base_uri + '/oauth/github/webhooks.html?action=' + action.id + '&popup=true&id=' + id;
+            var url = BS.ServerInfo.url + '/oauth/github/webhooks.html?action=' + action.id + '&popup=true&id=' + id;
             if (projectId !== undefined) {
                 url = url + "&projectId=" + projectId
             }
-            BS.Util.popupWindow(url, 'webhook_' + action.id + '_' + id);
-            return
+            var popupWin = BS.Util.popupWindow(url, 'webhook_' + action.id + '_' + id);
+            var interval = window.setInterval(function() {
+              try {
+                if (popupWin == null || popupWin.closed) {
+                  window.clearInterval(interval);
+                  $j("#installWebhookSubmit").attr("value", WH.INSTALL_BUTTON_TITLE);
+                  WH.forcePopup[server] = false;
+                  WH.doInstallForm($('installWebhookSubmit'));
+                }
+              } catch (e) {
+              }
+            }, 1000);
+            return;
         }
 
         var that = element;
@@ -223,7 +217,7 @@ BS.GitHubWebHooks = {};
         var parameters = {
             "action": action.id,
             "id": id,
-            "popup": popup,
+            "popup": popup
         };
         if (projectId !== undefined) {
             parameters["projectId"] = projectId
@@ -565,6 +559,7 @@ BS.GitHubWebHooks = {};
     };
 
     WH.showSuccessMessage = function(text) {
+        WH.clearMessages();
         $j('#webhookMessage').html(text).show();
     };
 
