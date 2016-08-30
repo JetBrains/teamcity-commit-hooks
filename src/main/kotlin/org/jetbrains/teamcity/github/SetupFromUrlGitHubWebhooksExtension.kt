@@ -1,7 +1,9 @@
 package org.jetbrains.teamcity.github
 
 import jetbrains.buildServer.log.Loggers
+import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildType
+import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
@@ -13,6 +15,7 @@ import org.jetbrains.teamcity.github.action.HookAddOperationResult
 import java.util.*
 
 class SetupFromUrlGitHubWebhooksExtension(
+        private val myProjectManager: ProjectManager,
         private val myWebHooksManager: WebHooksManager,
         private val myOAuthConnectionsManager: OAuthConnectionsManager,
         private val myTokensHelper: TokensHelper
@@ -30,9 +33,6 @@ class SetupFromUrlGitHubWebhooksExtension(
         val split = GitHubWebHookSuggestion.splitRoots(gitRoots)
 
         val filtered = split.entrySet()
-                .filter {
-                    myWebHooksManager.storage.getHooks(it.key).isEmpty()
-                }
                 .filterKnownServers(myOAuthConnectionsManager)
                 .map { it.key to it.value }.toMap()
 
@@ -41,8 +41,14 @@ class SetupFromUrlGitHubWebhooksExtension(
         val affectedRootsCount = filtered.values.sumBy { it.size }
         LOG.info("Will try to install GitHub webhooks to ${filtered.size} ${filtered.size.pluralize("repository")} (used in $affectedRootsCount vcs ${affectedRootsCount.pluralize("root")})")
 
-        infos@for (info in filtered.keys) {
+        val infos = filtered.keys
+
+        // Load webhooks for repository and install new one if there's no good webhooks there
+        infos@for (info in infos) {
             val connections = myTokensHelper.getConnections(buildType.project, info.server)
+                    .plus(myWebHooksManager.authDataStorage.findAllForRepository(info).map { getConnection(it) }.filterNotNull())
+                    // Like #toSet with custom #equals:
+                    .map { (it.project to it.id) to it }.toMap().values
             val connectionToTokensMap = myTokensHelper.getExistingTokens(connections, user)
             if (connectionToTokensMap.isEmpty()) {
                 LOG.warn("Could not install GitHub webhook for '$info' repository: no tokens for user '${user.describe(false)}")
@@ -66,5 +72,12 @@ class SetupFromUrlGitHubWebhooksExtension(
                 }
             }
         }
+    }
+
+    private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
+        val info = authData.connection
+        val project = myProjectManager.findProjectByExternalId(info.projectExternalId) ?: return null
+        val connection = myOAuthConnectionsManager.findConnectionById(project, info.id) ?: return null
+        return connection
     }
 }

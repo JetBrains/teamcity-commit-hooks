@@ -212,4 +212,8 @@ class AuthDataStorage(executorServices: ExecutorServices,
     private fun getStorageFile(): File {
         return File(myServerPaths.pluginDataDirectory, "commit-hooks/auth-data.json")
     }
+
+    fun findAllForRepository(repository: GitHubRepositoryInfo): List<AuthData> {
+        return myData.values.filter { it.repository == repository }
+    }
 }
