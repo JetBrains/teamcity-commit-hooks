@@ -185,7 +185,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                                          "action" to "obtainToken",
                                          "connectionId" to connection.id,
                                          "projectId" to connection.project.externalId,
-                                         "scope" to "public_repo,repo,repo:status,write:repo_hook,admin:repo_hook",
+                                         "scope" to "public_repo,repo,repo:status,write:repo_hook",
                                          "callbackUrl" to url(request.contextPath + PATH, params))
                 )
             }
