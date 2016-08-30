@@ -178,34 +178,45 @@ class WebhookPeriodicalChecker(
                 ghc.setOAuth2Token(token.accessToken)
                 try {
                     LOG.debug("Checking webhook status for '$info' repository")
+                    // GetAllWebHooksAction will automatically update statuses in all hooks for repository if succeed
                     val loaded = GetAllWebHooksAction.doRun(info, ghc, myWebHooksManager)
-                    if (loaded.isEmpty()) {
-                        LOG.debug("No details loaded for '$info' repo webhooks, seems all of them are incorrect or removed")
-                        report(info, hook, "Webhook not found on server, seems it has been incorrectly configured or removed", Status.MISSING)
-                    } else {
-                        for ((key, value) in loaded) {
-                            val lastResponse = key.lastResponse
-                            if (lastResponse == null) {
-                                LOG.debug("No last response info for hook ${key.url!!}")
-                                // Lets ask GH to send us ping request, so next time there would be some 'lastResponse'
-                                toPing.add(Triple(info, ghc to token.accessToken, value))
-                                continue
+                    LOG.debug("Successfully fetched webhooks for '$info' repository from GitHub server")
+
+                    // Since we've loaded all hooks for repository 'info' it's safe to remove others for same repo from queue
+                    toCheck.removeAll { it.first == info }
+
+                    // Remove hooks removed on remote server from storages.
+                    val removed = myWebHooksStorage.getHooks(info).filter { it.status == Status.MISSING }
+                    if (!removed.isEmpty()) {
+                        LOG.info("$removed ${removed.size.pluralize("webhook")} missing on remote server and would be removed locally")
+                        val pubKeysToRemove = removed.map { GitHubWebHookListener.getPubKeyFromRequestPath(it.callbackUrl) }.filterNotNull()
+                        myWebHooksStorage.delete(info) {it in removed}
+                        myAuthDataStorage.findAllForRepository(info).filter { it.public in pubKeysToRemove }.forEach { myAuthDataStorage.remove(it) }
+                    }
+
+                    // Update info for all loaded hooks
+                    for ((key, hook) in loaded) {
+                        val lastResponse = key.lastResponse
+                        if (lastResponse == null) {
+                            LOG.debug("No last response info for hook ${key.url!!}")
+                            // Lets ask GH to send us ping request, so next time there would be some 'lastResponse'
+                            toPing.add(Triple(info, ghc to token.accessToken, hook))
+                            continue
+                        }
+                        when (lastResponse.code) {
+                            in 200..299 -> {
+                                LOG.debug("Last response is OK")
+                                hook.status = if (!key.isActive) Status.DISABLED else Status.OK
                             }
-                            when (lastResponse.code) {
-                                in 200..299 -> {
-                                    LOG.debug("Last response is OK")
-                                    myWebHooksStorage.getOrAdd(key).status = if (!key.isActive) Status.DISABLED else Status.OK
-                                }
-                                in 400..599 -> {
-                                    val reason = "Last payload delivery failed: (${lastResponse.code}) ${lastResponse.message}"
-                                    LOG.debug(reason)
-                                    report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
-                                }
-                                else -> {
-                                    val reason = "Unexpected payload delivery response: (${lastResponse.code}) ${lastResponse.message}"
-                                    LOG.debug(reason)
-                                    report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
-                                }
+                            in 400..599 -> {
+                                val reason = "Last payload delivery failed: (${lastResponse.code}) ${lastResponse.message}"
+                                LOG.debug(reason)
+                                report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
+                            }
+                            else -> {
+                                val reason = "Unexpected payload delivery response: (${lastResponse.code}) ${lastResponse.message}"
+                                LOG.debug(reason)
+                                report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
                             }
                         }
                     }
