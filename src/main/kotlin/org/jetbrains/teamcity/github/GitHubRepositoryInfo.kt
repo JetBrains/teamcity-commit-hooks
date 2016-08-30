@@ -48,9 +48,4 @@ data class GitHubRepositoryInfo(val server: String, val owner: String, val name:
         return "https://$id"
     }
 
-    override fun toString(): String {
-        // TODO: Remove. Temporarily left for debug
-        return id
-    }
-
 }
