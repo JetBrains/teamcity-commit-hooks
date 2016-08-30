@@ -47,7 +47,7 @@ object CreateWebHookAction {
             created = service.createHook(repo, hook)
             context.authDataStorage.store(authData)
         } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Failed to create webhook for repository $info: ${e.status}", e)
+            LOG.warnAndDebugDetails("Failed to create webhook for repository ${info.id}: ${e.status}", e)
             context.handleCommonErrors(e)
             when (e.status) {
                 403, 404 -> {

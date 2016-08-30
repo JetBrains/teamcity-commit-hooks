@@ -91,7 +91,7 @@ class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerMana
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
         val projectExternalId = request.getParameter("projectId")
-        val project = projectManager.findProjectByExternalId(projectExternalId) ?: return simpleView("Project with id " + LogUtil.quote(projectExternalId) + " does not exist anymore.")
+        val project = projectManager.findProjectByExternalId(projectExternalId) ?: return simpleView("Project with id '$projectExternalId' does not exist anymore.")
         val user = SessionUser.getUser(request) ?: return simpleView("Session User not found.")
 
         val webHooksBean = ProjectWebHooksBean(project, webHooksManager, versionedSettingsManager, tokensHelper, user, oAuthConnectionsManager)

@@ -58,7 +58,7 @@ object DeleteWebHookAction {
         try {
             service.deleteHook(info.getRepositoryId(), hook.id.toInt())
         } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Failed to delete webhook for repository $info: ${e.status}", e)
+            LOG.warnAndDebugDetails("Failed to delete webhook for repository ${info.id}: ${e.status}", e)
             // TODO: There was not handel for 401. Investigate
             context.handleCommonErrors(e)
             when (e.status) {
@@ -81,7 +81,7 @@ object DeleteWebHookAction {
             val rh = service.disableHook(info.getRepositoryId(), hook.id)
             context.updateOneHook(info.server, info.getRepositoryId(), rh)
         } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Failed to delete webhook for repository $info: ${e.status}", e)
+            LOG.warnAndDebugDetails("Failed to delete webhook for repository ${info.id}: ${e.status}", e)
             // TODO: There was not handel for 401. Investigate
             context.handleCommonErrors(e)
             when (e.status) {

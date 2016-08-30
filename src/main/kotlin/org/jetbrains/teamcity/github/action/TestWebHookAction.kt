@@ -18,7 +18,7 @@ object TestWebHookAction {
         try {
             service.testHook(info.getRepositoryId(), hook.id.toInt())
         } catch(e: RequestException) {
-            LOG.warnAndDebugDetails("Failed to test (redeliver latest 'push' event) webhook for repository $info: ${e.status}", e)
+            LOG.warnAndDebugDetails("Failed to test (redeliver latest 'push' event) webhook for repository ${info.id}: ${e.status}", e)
             context.handleCommonErrors(e)
             when (e.status) {
                 403, 404 -> {

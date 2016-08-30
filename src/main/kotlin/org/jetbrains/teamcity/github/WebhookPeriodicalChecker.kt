@@ -153,14 +153,14 @@ class WebhookPeriodicalChecker(
 
             val user = myUserModel.findUserById(authData.userId)
             if (user == null) {
-                LOG.warn("TeamCity user '${authData.userId}' which created webhook for repository '$info' no longer exists")
+                LOG.warn("TeamCity user '${authData.userId}' which created webhook for repository '${info.id}' no longer exists")
                 report(info, hook, "TeamCity user '${authData.userId}' which created webhook no longer exists", Status.NO_INFO)
                 continue
             }
 
             val tokens = myTokensHelper.getExistingTokens(listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
             if (tokens.isEmpty()) {
-                LOG.warn("No OAuth tokens to access repository '$info'")
+                LOG.warn("No OAuth tokens to access repository '${info.id}'")
                 report(info, hook, "No OAuth tokens found to access repository", Status.NO_INFO)
                 continue
             }
@@ -177,10 +177,10 @@ class WebhookPeriodicalChecker(
             tokens@for (token in tokens) {
                 ghc.setOAuth2Token(token.accessToken)
                 try {
-                    LOG.debug("Checking webhook status for '$info' repository")
+                    LOG.debug("Checking webhook status for '${info.id}' repository")
                     // GetAllWebHooksAction will automatically update statuses in all hooks for repository if succeed
                     val loaded = GetAllWebHooksAction.doRun(info, ghc, myWebHooksManager)
-                    LOG.debug("Successfully fetched webhooks for '$info' repository from GitHub server")
+                    LOG.debug("Successfully fetched webhooks for '${info.id}' repository from GitHub server")
 
                     // Since we've loaded all hooks for repository 'info' it's safe to remove others for same repo from queue
                     toCheck.removeAll { it.first == info }
@@ -198,7 +198,7 @@ class WebhookPeriodicalChecker(
                     for ((key, hook) in loaded) {
                         val lastResponse = key.lastResponse
                         if (lastResponse == null) {
-                            LOG.debug("No last response info for hook ${key.url!!}")
+                            LOG.debug("No last response 3 for hook ${key.url!!}")
                             // Lets ask GH to send us ping request, so next time there would be some 'lastResponse'
                             toPing.add(Triple(info, ghc to token.accessToken, hook))
                             continue
@@ -235,7 +235,7 @@ class WebhookPeriodicalChecker(
                             retry = true
                         }
                         GitHubAccessException.Type.UserHaveNoAccess -> {
-                            LOG.warn("User (TC:${user.describe(false)}, GH:${token.oauthLogin}) have no access to repository $info, cannot check hook status")
+                            LOG.warn("User (TC:${user.describe(false)}, GH:${token.oauthLogin}) have no access to repository ${info.id}, cannot check hook status")
                             if (tokens.map { it.oauthLogin }.distinct().size == 1) {
                                 report(info, hook, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook have no longer access to repository", Status.NO_INFO)
                             } else {
@@ -244,11 +244,11 @@ class WebhookPeriodicalChecker(
                             retry = false
                         }
                         GitHubAccessException.Type.NoAccess -> {
-                            LOG.warn("No access to repository $info for unknown reason, cannot check hook status")
+                            LOG.warn("No access to repository ${info.id} for unknown reason, cannot check hook status")
                             retry = false
                         }
                         GitHubAccessException.Type.InternalServerError -> {
-                            LOG.info("Cannot check hooks status for repository $info: Error on GitHub side. Will try later")
+                            LOG.info("Cannot check hooks status for repository ${info.id}: Error on GitHub side. Will try later")
                             ignoredServers.add(info.server)
                             break@tokens
                         }
