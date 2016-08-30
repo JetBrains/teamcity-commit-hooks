@@ -276,7 +276,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
     private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
         val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
-        val url = "${info.getRepositoryUrl()}/settings/hooks/${result.second.id}"
+        val url = result.second.getUIUrl()
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
                 return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a> is already <a href=\"$url\">installed</a>", info)

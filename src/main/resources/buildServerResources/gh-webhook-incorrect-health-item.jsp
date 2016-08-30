@@ -31,7 +31,7 @@
      data-repository="<c:out value="${GitHubInfo.id}"/>"
      data-server="<c:out value="${GitHubInfo.server}"/>"
      data-project-id="<c:out value="${Project.externalId}"/>">
-    <a href="<c:out value="${GitHubInfo.repositoryUrl}/settings/hooks/${HookInfo.id}"/>">Webhook</a>
+    <a href="<c:out value="${HookInfo.UIUrl}"/>">Webhook</a>
     for the GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo.id}"/></a>
     is misconfigured: <c:out value="${Reason}"/>
     <div class="suggestionAction">

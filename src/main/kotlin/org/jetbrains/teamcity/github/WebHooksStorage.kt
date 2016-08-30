@@ -158,6 +158,10 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             return id == hook.id && url == hook.url && callbackUrl == hook.callbackUrl
         }
 
+        fun getUIUrl(): String {
+            return "https://${key.server}/${key.owner}/${key.name}/settings/hooks/$id"
+        }
+
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
             if (other?.javaClass != javaClass) return false
