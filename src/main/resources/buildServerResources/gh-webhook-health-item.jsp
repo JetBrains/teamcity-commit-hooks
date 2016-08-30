@@ -24,14 +24,14 @@
 <%--@elvariable id="GitHubInfo" type="org.jetbrains.teamcity.github.GitHubRepositoryInfo"--%>
 <%--@elvariable id="VcsRoot" type="jetbrains.buildServer.vcs.SVcsRoot"--%>
 
-<c:set var="id" value="hid_${util:forJSIdentifier(GitHubInfo.identifier)}"/>
+<c:set var="id" value="hid_${util:forJSIdentifier(GitHubInfo.id)}"/>
 
-<div id='${id}' class="suggestionItem" data-repository="${GitHubInfo}" data-server="${GitHubInfo.server}">
-    Install webhook into the GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a> to speedup collecting of the changes
+<div id='${id}' class="suggestionItem" data-repository="${GitHubInfo.id}" data-server="${GitHubInfo.server}">
+    Install webhook into the GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo.id}"/></a> to speedup collecting of the changes
     and reduce overhead on the GitHub server.
     <div class="suggestionAction">
         <c:set var="projectUrl"><admin:editProjectLink projectId="${VcsRoot.project.externalId}" withoutLink="true"/></c:set>
-        <forms:addLink href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install GitHub webhook</forms:addLink>
+        <forms:addLink href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.id)}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Install GitHub webhook</forms:addLink>
     </div>
 </div>
 
@@ -50,7 +50,7 @@
                 context_path: '${pageContext.request.contextPath}'
             };
         }
-        BS.GitHubWebHooks.info['${GitHubInfo.identifier}'] = ${GitHubInfo.toJson()};
+        BS.GitHubWebHooks.info['${util:forJSIdentifier(GitHubInfo.id)}'] = ${GitHubInfo.toJson()};
         BS.GitHubWebHooks.forcePopup['${GitHubInfo.server}'] = ${not has_connections or not has_tokens};
     })();
 </script>

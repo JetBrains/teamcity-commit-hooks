@@ -6,7 +6,9 @@ import org.eclipse.egit.github.core.RepositoryId
 import java.io.StringWriter
 
 data class GitHubRepositoryInfo(val server: String, val owner: String, val name: String) {
+
     fun getRepositoryId(): RepositoryId = RepositoryId.create(owner, name)
+
     fun toJson(): String {
         val sw = StringWriter()
         val writer = JsonWriter(sw)
@@ -23,34 +25,32 @@ data class GitHubRepositoryInfo(val server: String, val owner: String, val name:
         return StringUtil.hasParameterReferences(server) || StringUtil.hasParameterReferences(owner) || StringUtil.hasParameterReferences(name)
     }
 
-    override fun toString(): String {
-        val builder = StringBuilder()
-        builder.append(server)
-        if (!builder.endsWith('/')) {
+    /**
+     * Returns id in 'server/owner/name' format
+     */
+    val id: String
+        get() {
+            val builder = StringBuilder()
+            builder.append(server)
+            if (!builder.endsWith('/')) {
+                builder.append('/')
+            }
+            builder.append(owner)
             builder.append('/')
+            builder.append(name)
+            return builder.toString()
         }
-        builder.append(owner)
-        builder.append('/')
-        builder.append(name)
-        return builder.toString()
-    }
+
 
     fun getRepositoryUrl(): String {
-        val builder = StringBuilder()
-        // TODO: Uncomment next line. It's workaround for our non-https GHE server
-        //builder.append("https:")
-        builder.append("//")
-        builder.append(server)
-        if (!builder.endsWith('/')) {
-            builder.append('/')
-        }
-        builder.append(owner)
-        builder.append('/')
-        builder.append(name)
-        return builder.toString()
+        // We expect that all GHE servers has https mode enabled.
+        // One thing that may broke: links in ui. Internal logic uses connection url anyway.
+        return "https://$id"
     }
 
-    fun getIdentifier(): String {
-        return toString().replace("/", "_")
+    override fun toString(): String {
+        // TODO: Remove. Temporarily left for debug
+        return id
     }
+
 }

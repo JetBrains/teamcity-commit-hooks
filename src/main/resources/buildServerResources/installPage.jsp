@@ -60,7 +60,7 @@
             };
         }
         <c:if test="${info != null}">
-        BS.GitHubWebHooks.info['${info.identifier}'] = ${info.toJson()};
+        BS.GitHubWebHooks.info['${util:forJSIdentifier(info.id)}'] = ${info.toJson()};
         BS.GitHubWebHooks.forcePopup['${info.server}'] = ${not has_connections or not has_tokens};
         </c:if>
 

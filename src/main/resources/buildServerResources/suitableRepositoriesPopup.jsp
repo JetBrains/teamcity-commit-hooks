@@ -8,7 +8,7 @@
     <div class="grayNote reposCount">Found <strong>${fn:length(repositoriesMap)}</strong> <bs:plural txt="repository" val="${fn:length(repositoriesMap)}"/> in the project where GitHub webhook can be installed.</div>
     <ul class="menuList">
       <c:forEach items="${repositoriesMap}" var="entry">
-        <li onclick="$j('#repository').val('${entry.key}'); $j('#installWebhook').attr('data-connection-id', '${entry.value.id}'); $j('#installWebhook').attr('data-connection-project-id', '${entry.value.project.externalId}'); $j('#installWebhook').attr('data-connection-server', '${entry.key.server}'); BS.GitHubWebHooks.SuitableRepositoriesPopup.hidePopup(0)">
+        <li onclick="$j('#repository').val('${entry.key.id}'); $j('#installWebhook').attr('data-connection-id', '${entry.value.id}'); $j('#installWebhook').attr('data-connection-project-id', '${entry.value.project.externalId}'); $j('#installWebhook').attr('data-connection-server', '${entry.key.server}'); BS.GitHubWebHooks.SuitableRepositoriesPopup.hidePopup(0)">
           <c:out value="${entry.key.server}"/>
         </li>
       </c:forEach>

@@ -55,7 +55,7 @@
                 <c:set var="totalUsages" value="${entry.value.totalUsagesCount}"/>
                 <tr data-repository="${entry.key}" data-project-id="${currentProject.externalId}">
                     <td><div>
-                        <span class="webHook"><a href="${entry.key.repositoryUrl}">${entry.key}</a></span>
+                        <span class="webHook"><a href="${entry.key.repositoryUrl}">${entry.key.id}</a></span>
                         <span style="float: right" data-view="link"></span>
                     </div></td>
                     <td class="edit" data-view="actions"></td>

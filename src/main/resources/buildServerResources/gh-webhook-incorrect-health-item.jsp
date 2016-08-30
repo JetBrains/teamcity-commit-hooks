@@ -25,19 +25,19 @@
 <%--@elvariable id="HookInfo" type="org.jetbrains.teamcity.github.WebHooksStorage.HookInfo"--%>
 <%--@elvariable id="Reason" type="java.lang.String"--%>
 
-<c:set var="id" value="hid_i_${util:forJSIdentifier(GitHubInfo.identifier)}"/>
+<c:set var="id" value="hid_i_${util:forJSIdentifier(GitHubInfo.id)}"/>
 
 <div id='${id}' class="suggestionItem"
-     data-repository="<c:out value="${GitHubInfo}"/>"
+     data-repository="<c:out value="${GitHubInfo.id}"/>"
      data-server="<c:out value="${GitHubInfo.server}"/>"
      data-project-id="<c:out value="${Project.externalId}"/>">
     <a href="<c:out value="${GitHubInfo.repositoryUrl}/settings/hooks/${HookInfo.id}"/>">Webhook</a>
-    for the GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo}"/></a>
+    for the GitHub repository <a href="${GitHubInfo.repositoryUrl}"><c:out value="${GitHubInfo.id}"/></a>
     is misconfigured: <c:out value="${Reason}"/>
     <div class="suggestionAction">
         <c:set var="projectUrl"><admin:editProjectLink projectId="${Project.externalId}" withoutLink="true"/></c:set>
         <forms:addLink
-                href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.toString())}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Re-install GitHub webhook</forms:addLink>
+                href="${projectUrl}&tab=installWebHook&repository=${util:urlEscape(GitHubInfo.id)}&cameFromUrl=${util:urlEscape(cameFromUrl)}">Re-install GitHub webhook</forms:addLink>
         <br>
         <a class="" onclick="return BS.GitHubWebHooks.doAction('delete', this);">Remove webhook</a>
     </div>
@@ -58,7 +58,7 @@
                 context_path: '${pageContext.request.contextPath}'
             };
         }
-        BS.GitHubWebHooks.info['${GitHubInfo.identifier}'] = ${GitHubInfo.toJson()};
+        BS.GitHubWebHooks.info['${util:forJSIdentifier(GitHubInfo.id)}'] = ${GitHubInfo.toJson()};
         BS.GitHubWebHooks.forcePopup['${GitHubInfo.server}'] = ${not has_connections or not has_tokens};
     })();
 </script>
