@@ -27,7 +27,7 @@ class GitHubWebHookIncorrectPageExtension(descriptor: PluginDescriptor, places: 
         val user = SessionUser.getUser(request) ?: return false
         @Suppress("UNCHECKED_CAST")
         val projects = item.additionalData["Projects"] as Set<SProject>? ?: return false
-        // User cannot edit at least one project with GitHub repo / VCS root declaration
+        // Check that user can edit at least one project with GitHub repo / VCS root declaration
         return projects.any { user.isPermissionGrantedForProject(it.projectId, Permission.EDIT_PROJECT) }
     }
 
