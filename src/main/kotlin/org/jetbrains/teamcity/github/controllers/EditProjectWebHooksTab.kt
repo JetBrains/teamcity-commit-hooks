@@ -127,7 +127,16 @@ class ProjectWebHooksBean(val project: SProject,
     val pager: Pager = Pager(50)
 
     companion object {
-        private val comparator = Comparator<org.jetbrains.teamcity.github.GitHubRepositoryInfo> { a, b -> a.toString().compareTo(b.toString(), ignoreCase = true); }
+        private val comparator = Comparator<GitHubRepositoryInfo> { a, b ->
+            var c: Int
+            c = a.server.compareTo(b.server)
+            if (c != 0) return@Comparator c
+            c = a.owner.compareTo(b.owner)
+            if (c != 0) return@Comparator c
+            c = a.name.compareTo(b.name)
+            if (c != 0) return@Comparator c
+            0
+        }
     }
 
     fun getNumberOfAvailableWebHooks(): Int {
@@ -156,8 +165,8 @@ class ProjectWebHooksBean(val project: SProject,
         val filtered = split.entrySet()
                 .filterKnownServers(oAuthConnectionsManager)
         for ((info, roots) in filtered) {
-            if (keyword != null && keywordFiltering) {
-                if (!info.getRepositoryUrl().contains(keyword, true)) continue
+            if (keywordFiltering) {
+                if (!info.id.contains(keyword!!, true)) continue
             }
 
             val hook = webHooksManager.getHook(info)

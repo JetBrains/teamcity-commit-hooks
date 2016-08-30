@@ -74,7 +74,7 @@ class WebHooksController(descriptor: PluginDescriptor,
             if (info == null) {
                 element.addProperty("error", "not a GitHub repository URL")
             }
-            element.addProperty("repository", info.toString())
+            element.addProperty("repository", info?.id.toString())
             element.add("info", Gson().toJsonTree(info))
             element.add("hook", Gson().toJsonTree(hook))
             element.add("status", Gson().toJsonTree(status.status))
@@ -145,7 +145,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
         val (project, info) = getRepositoryInfo(inProjectId, inId)
 
-        LOG.info("Trying to create a webhook for the GitHub repository with id '$inId', repository info is '$info', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
+        LOG.info("Trying to create a webhook for the GitHub repository with id '$inId', repository info is '${info.id}', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
 
         if (connection != null && !Util.isConnectionToServer(connection, info.server)) {
             return error_json("OAuth connection '${connection.connectionDisplayName}' server doesn't match repository server '${info.server}'", HttpServletResponse.SC_BAD_REQUEST)
@@ -265,10 +265,10 @@ class WebHooksController(descriptor: PluginDescriptor,
         val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Webhook for the GitHub repository '${info.toString()}' is already installed", info)
+                return gh_json(result.first.name, "Webhook for the GitHub repository '${info.id}' is already installed", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Successfully installed webhook for the GitHub repository '${info.toString()}'", info)
+                return gh_json(result.first.name, "Successfully installed webhook for the GitHub repository '${info.id}'", info)
             }
         }
     }
@@ -279,10 +279,10 @@ class WebHooksController(descriptor: PluginDescriptor,
         val url = "${info.getRepositoryUrl()}/settings/hooks/${result.second.id}"
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.toString()}</a> is already <a href=\"$url\">installed</a>", info)
+                return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a> is already <a href=\"$url\">installed</a>", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Successfully installed <a href=\"$url\">webhook</a> for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.toString()}</a>", info)
+                return gh_json(result.first.name, "Successfully installed <a href=\"$url\">webhook</a> for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a>", info)
             }
         }
     }
@@ -293,9 +293,9 @@ class WebHooksController(descriptor: PluginDescriptor,
         myWebHooksManager.doGetAllWebHooks(info, ghc)
         val hook = myWebHooksManager.getHook(info)
         if (hook != null) {
-            return gh_json("Ok", "Updated webhook for the GitHub repository '${info.toString()}'", info)
+            return gh_json("Ok", "Updated webhook for the GitHub repository '${info.id}'", info)
         } else {
-            return gh_json("Ok", "No webhooks found for the GitHub repository '${info.toString()}'", info)
+            return gh_json("Ok", "No webhooks found for the GitHub repository '${info.id}'", info)
         }
     }
 
@@ -305,7 +305,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         val hook = myWebHooksManager.getHook(info)
         @Suppress("IfNullToElvis")
         if (hook == null) {
-            return gh_json("NotFound", "No webhooks found for the GitHub repository '${info.toString()}'", info)
+            return gh_json("NotFound", "No webhooks found for the GitHub repository '${info.id}'", info)
         }
         // Ensure test message was sent
         myWebHooksManager.doTestWebHook(info, ghc, hook)
@@ -317,10 +317,10 @@ class WebHooksController(descriptor: PluginDescriptor,
         val result = myWebHooksManager.doDeleteWebHook(info, ghc)
         when (result) {
             HookDeleteOperationResult.NeverExisted -> {
-                return gh_json(result.name, "Webhook for the GitHub repository '${info.toString()}' does not exist", info)
+                return gh_json(result.name, "Webhook for the GitHub repository '${info.id}' does not exist", info)
             }
             HookDeleteOperationResult.Removed -> {
-                return gh_json(result.name, "Successfully removed webhook for the GitHub repository '${info.toString()}'", info)
+                return gh_json(result.name, "Successfully removed webhook for the GitHub repository '${info.id}'", info)
             }
         }
     }
@@ -338,10 +338,10 @@ class WebHooksController(descriptor: PluginDescriptor,
                 return gh_json(e.type.name, e.message ?: "Token scope does not cover hooks management", info)
             }
             GitHubAccessException.Type.UserHaveNoAccess -> {
-                return gh_json(e.type.name, "You don't have access to '${info.toString()}'", info)
+                return gh_json(e.type.name, "You don't have access to '${info.id}'", info)
             }
             GitHubAccessException.Type.NoAccess -> {
-                return gh_json(e.type.name, "No access to repository '${info.toString()}'", info)
+                return gh_json(e.type.name, "No access to repository '${info.id}'", info)
             }
             GitHubAccessException.Type.InternalServerError -> {
                 LOG.warn("GitHub server ${info.server} returned 500")

@@ -232,7 +232,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun doForwardToRestApi(info: GitHubRepositoryInfo, user: UserEx, request: HttpServletRequest, response: HttpServletResponse): Pair<Int, String>? {
         val dispatcher = request.getRequestDispatcher("/app/rest/vcs-root-instances/commitHookNotification?" +
-                                                      "locator=vcsRoot:(type:jetbrains.git,property:(name:url,value:${info.getRepositoryUrl()},matchType:contains))")
+                                                      "locator=vcsRoot:(type:jetbrains.git,property:(name:url,value:${info.id},matchType:contains))")
         if (dispatcher != null) {
             SecurityContext.runAs(user) {
                 dispatcher.forward(request, response)
