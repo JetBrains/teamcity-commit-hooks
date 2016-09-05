@@ -1,6 +1,6 @@
 #Teamcity Commit Hooks Plugin
 
-This plugin simplifies installation of the GitHub webhooks to GitHub or GitHub Enterprise.
+This plugin allows to install GitHub webhooks for GitHub repositories used by TeamCity VCS roots.
 
 Plugin is compatible with TeamCity 10.0 or later.
 
