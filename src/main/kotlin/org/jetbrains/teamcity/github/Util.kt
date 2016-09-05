@@ -31,8 +31,6 @@ class Util {
             return parseGitRepoUrl(url)
         }
 
-        fun isAccessibleFromInternet() = TeamCityProperties.getBoolean("teamcity.accessible.from.internet")
-
         fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet<SProject>())
 
         val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()

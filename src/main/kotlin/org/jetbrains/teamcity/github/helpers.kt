@@ -37,9 +37,6 @@ fun RepositoryHook.getStatus(): Status {
 fun Iterable<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>>.filterKnownServers(connectionsManager: OAuthConnectionsManager): List<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>> {
     val cache: Cache<SProject, List<OAuthConnectionDescriptor>> = CacheBuilder.newBuilder().build()
     return this.filter { entry ->
-        if (entry.key.server == "github.com") {
-            return@filter Util.isAccessibleFromInternet()
-        }
         Util.getProjects(entry.value).any { project ->
             val connections = cache[project, { connectionsManager.getAvailableConnections(project).filterNotNull() }];
             connections.filter { Util.isConnectionToServer(it, entry.key.server) }.isNotEmpty()
