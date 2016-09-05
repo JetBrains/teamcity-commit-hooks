@@ -7,7 +7,7 @@ This plugin allows to install GitHub webhooks for GitHub repositories used by Te
 Plugin is compatible with TeamCity 10.0 or later.
 
 #Download
-[TeamCity 10.0](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned) 
+[TeamCity 10.0](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned&tab=artifacts) 
 
 #License
 
