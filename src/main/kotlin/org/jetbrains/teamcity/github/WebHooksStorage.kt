@@ -296,7 +296,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
     private fun getHooks(key: MapKey): List<HookInfo> {
         return myDataLock.read {
-            myData[key]?.let { Collections.unmodifiableList(it) }
+            myData[key]?.let { it.toList(); }
         } ?: emptyList()
     }
 
