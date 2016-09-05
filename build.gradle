@@ -19,10 +19,10 @@ apply plugin: 'idea'
 
 group = 'org.jetbrains.teamcity.github'
 
-if (PluginVersion == null || "" == PluginVersion) {
-    version = TeamCityVersion
-} else {
-    version = "$PluginVersion"
+version = ENV['BUILD_NUMBER']
+
+if (version == null || "" == version) {
+    version = "SNAPSHOT"
 }
 
 ext {
