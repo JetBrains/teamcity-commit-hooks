@@ -73,11 +73,11 @@ teamcity {
     server {
         descriptor {
             name = project.name
-            displayName = 'GitHub Webhooks'
+            displayName = 'TeamCity Commit Hooks'
             version = project.version
             vendorName = 'JetBrains, s.r.o.'
             vendorUrl = 'http://www.jetbrains.com/'
-            description = 'Allows to setup GitHub Webhooks for TeamCity VCS roots'
+            description = 'Allows to install GitHub webhooks for GitHub repositories used by TeamCity VCS roots'
 
             useSeparateClassloader = true
         }
