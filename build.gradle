@@ -19,9 +19,9 @@ apply plugin: 'idea'
 
 group = 'org.jetbrains.teamcity.github'
 
-version = ENV['BUILD_NUMBER']
+version = "$System.env.BUILD_NUMBER"
 
-if (version == null || "" == version) {
+if (version.empty) {
     version = "SNAPSHOT"
 }
 
