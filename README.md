@@ -1,6 +1,6 @@
 #Teamcity Commit Hooks Plugin 
-![plugin status]( 
-http://teamcity.jetbrains.com/app/rest/builds/buildType:TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build,pinned:true/statusIcon)
+[![plugin status]( 
+http://teamcity.jetbrains.com/app/rest/builds/buildType:TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build,pinned:true/statusIcon)](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned) 
 
 This plugin allows to install GitHub webhooks for GitHub repositories used by TeamCity VCS roots.
 
