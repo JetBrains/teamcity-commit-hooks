@@ -9,7 +9,7 @@
     <ul class="menuList">
       <c:forEach items="${repositoriesMap}" var="entry">
         <li onclick="$j('#repository').val('${entry.key.id}'); $j('#installWebhook').attr('data-connection-id', '${entry.value.id}'); $j('#installWebhook').attr('data-connection-project-id', '${entry.value.project.externalId}'); $j('#installWebhook').attr('data-connection-server', '${entry.key.server}'); BS.GitHubWebHooks.SuitableRepositoriesPopup.hidePopup(0)">
-          <c:out value="${entry.key.server}"/>
+          <c:out value="${entry.key.repositoryUrl}"/>
         </li>
       </c:forEach>
     </ul>
