@@ -21,7 +21,7 @@ group = 'org.jetbrains.teamcity.github'
 
 version = "$System.env.BUILD_NUMBER"
 
-if (version.empty) {
+if (version.length() == 0) {
     version = "SNAPSHOT"
 }
 
