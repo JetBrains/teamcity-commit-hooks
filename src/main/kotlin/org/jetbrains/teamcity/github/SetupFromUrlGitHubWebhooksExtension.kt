@@ -3,6 +3,7 @@ package org.jetbrains.teamcity.github
 import jetbrains.buildServer.log.Loggers
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildType
+import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
@@ -34,6 +35,9 @@ class SetupFromUrlGitHubWebhooksExtension(
 
         val filtered = split.entrySet()
                 .filterKnownServers(myOAuthConnectionsManager)
+                .filter {
+                    TeamCityProperties.getBoolean("teamcity.commitHooks.github.autoInstall") || !it.key.server.equals("github.com", true)
+                }
                 .map { it.key to it.value }.toMap()
 
         if (filtered.isEmpty()) return
