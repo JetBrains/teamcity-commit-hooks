@@ -4,7 +4,6 @@ import jetbrains.buildServer.dataStructures.MultiMapToSet
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.vcs.SVcsRoot
-import java.util.*
 
 class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
                               private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
@@ -46,7 +45,7 @@ class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
 
 
     override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
-        val gitRoots = HashSet<SVcsRoot>()
+        val gitRoots = mutableSetOf<SVcsRoot>()
         Util.findSuitableRoots(scope, { gitRoots.add(it); true })
 
         val split = splitRoots(gitRoots)
@@ -57,13 +56,16 @@ class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
                 }
                 .filterKnownServers(OAuthConnectionsManager)
 
+        val processed = mutableSetOf<String>();
+
         for ((info, roots) in filtered) {
             if (WebHooksManager.storage.getHooks(info).isNotEmpty()) {
                 // Something changes since filtering on '.filter' above
                 continue
             }
             for (root in roots) {
-                // 'Add WebHook' part
+                if (!processed.add(info.id)) continue; // we already created health item for this repository
+
                 val item = WebHookAddHookHealthItem(info, root)
                 resultConsumer.consumeForVcsRoot(root, item)
                 root.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
