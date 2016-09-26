@@ -35,6 +35,11 @@ ext {
     teamcityJavaHome = System.properties['java.home']
 }
 
+if (TeamCityDir != null && TeamCityDir != "") {
+    ext.teamcityDir = TeamCityDir
+    ext.teamcityDataDir = "$teamcityDir/data"
+}
+
 // Remove repositories added by plugins
 project.plugins.withType(JavaPlugin) {
     project.repositories.clear()
@@ -58,6 +63,12 @@ dependencies {
     compile("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
 
     testCompile 'org.assertj:assertj-core:2.2.0'
+
+    // For Server-side Integration tests
+    if (file("$teamcityDir").exists()) {
+        testCompile files("$teamcityDir/devPackage/tests/tests-integration.jar")
+        testCompile fileTree(dir: "$teamcityDir/webapps/ROOT/WEB-INF/lib/", include: '*.jar')
+    }
 }
 
 sourceCompatibility = "1.6"
@@ -102,6 +113,14 @@ teamcity {
 
 // Do not include version into plugin archive name
 project.tasks.getByName('serverPlugin').version = ''
+
+if (!file("$teamcityDir").exists()) {
+    logger.warn("No TeamCity installation found at '$teamcityDir', integration tests would be skipped");
+} else {
+    sourceSets {
+        test.kotlin.srcDirs += 'src/test-integration/kotlin'
+    }
+}
 
 idea {
     module {
