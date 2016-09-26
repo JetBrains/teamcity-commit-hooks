@@ -32,7 +32,7 @@ class SuitableRepositoriesPopup(descriptor: PluginDescriptor,
         val repos = linkedMapOf<GitHubRepositoryInfo, OAuthConnectionDescriptor>()
 
         if (hasConnections) {
-            val vcsRoots = Util.getVcsRootsWhereHookCanBeInstalled(project, myOauthConnectionManager)
+            val vcsRoots = Util.getVcsRootsWhereHookCanBeInstalled(project, myOauthConnectionManager, false)
             vcsRoots.mapNotNull { Util.getGitHubInfo(it) }
                     .toSet()
                     .forEach { info ->
