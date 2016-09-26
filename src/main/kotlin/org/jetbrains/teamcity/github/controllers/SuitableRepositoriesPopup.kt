@@ -28,19 +28,23 @@ class SuitableRepositoriesPopup(descriptor: PluginDescriptor,
         val projectId = request.getParameter("projectId")
         val project = myProjectManager.findProjectByExternalId(projectId) ?: return SimpleView.createTextView("Project with id: $projectId does not exist")
 
-        val vcsRoots = Util.getVcsRootsWhereHookCanBeInstalled(project, myOauthConnectionManager)
-        val repos = linkedMapOf<GitHubRepositoryInfo?,OAuthConnectionDescriptor>()
+        val hasConnections = myOauthConnectionManager.getAvailableConnections(project).isNotEmpty()
+        val repos = linkedMapOf<GitHubRepositoryInfo, OAuthConnectionDescriptor>()
 
-        for (vcsRoot in vcsRoots) {
-            val info = Util.getGitHubInfo(vcsRoot) ?: continue
-            val connections = Util.findConnections(myOauthConnectionManager, project, info.server)
-            if (connections.isEmpty()) continue
-            repos.put(info, connections[0])
+        if (hasConnections) {
+            val vcsRoots = Util.getVcsRootsWhereHookCanBeInstalled(project, myOauthConnectionManager)
+            vcsRoots.mapNotNull { Util.getGitHubInfo(it) }
+                    .toSet()
+                    .forEach { info ->
+                        val connections = Util.findConnections(myOauthConnectionManager, project, info.server)
+                        if (connections.isNotEmpty()) repos.put(info, connections.first())
+                    }
+
         }
 
         val mv = ModelAndView(myViewPath)
         mv.model.put("repositoriesMap", repos)
-        mv.model.put("hasConnections", myOauthConnectionManager.getAvailableConnections(project).isNotEmpty());
+        mv.model.put("hasConnections", hasConnections)
         mv.model.put("project", project);
         return mv
     }
