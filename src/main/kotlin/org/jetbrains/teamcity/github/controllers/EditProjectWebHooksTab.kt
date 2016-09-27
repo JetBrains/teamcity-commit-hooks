@@ -121,23 +121,10 @@ class ProjectWebHooksBean(val project: SProject,
                           val helper: TokensHelper,
                           val user: SUser,
                           val oAuthConnectionsManager: OAuthConnectionsManager) {
-    val hooks: SortedMap<GitHubRepositoryInfo, WebHookDetails> = TreeMap(comparator)
+    val hooks: SortedMap<GitHubRepositoryInfo, WebHookDetails> = TreeMap(GitHubRepositoryInfo.LexicographicalComparator)
 
     val form: ProjectWebHooksForm = ProjectWebHooksForm()
     val pager: Pager = Pager(50)
-
-    companion object {
-        private val comparator = Comparator<GitHubRepositoryInfo> { a, b ->
-            var c: Int
-            c = a.server.compareTo(b.server)
-            if (c != 0) return@Comparator c
-            c = a.owner.compareTo(b.owner)
-            if (c != 0) return@Comparator c
-            c = a.name.compareTo(b.name)
-            if (c != 0) return@Comparator c
-            0
-        }
-    }
 
     fun getNumberOfAvailableWebHooks(): Int {
         return hooks.size

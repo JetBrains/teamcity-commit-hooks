@@ -4,8 +4,21 @@ import com.google.gson.stream.JsonWriter
 import jetbrains.buildServer.util.StringUtil
 import org.eclipse.egit.github.core.RepositoryId
 import java.io.StringWriter
+import java.util.*
 
 data class GitHubRepositoryInfo(val server: String, val owner: String, val name: String) {
+    companion object {
+        val LexicographicalComparator = Comparator<GitHubRepositoryInfo> { a, b ->
+            var r: Int
+            r = a.server.compareTo(b.server)
+            if (r != 0) return@Comparator r
+            r = a.owner.compareTo(b.owner)
+            if (r != 0) return@Comparator r
+            r = a.name.compareTo(b.name)
+            if (r != 0) return@Comparator r
+            0
+        }
+    }
 
     fun getRepositoryId(): RepositoryId = RepositoryId.create(owner, name)
 

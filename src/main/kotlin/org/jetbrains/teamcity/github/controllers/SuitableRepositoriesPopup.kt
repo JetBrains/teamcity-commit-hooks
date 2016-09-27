@@ -10,6 +10,7 @@ import jetbrains.buildServer.web.openapi.WebControllerManager
 import org.jetbrains.teamcity.github.GitHubRepositoryInfo
 import org.jetbrains.teamcity.github.Util
 import org.springframework.web.servlet.ModelAndView
+import java.util.*
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
@@ -29,7 +30,7 @@ class SuitableRepositoriesPopup(descriptor: PluginDescriptor,
         val project = myProjectManager.findProjectByExternalId(projectId) ?: return SimpleView.createTextView("Project with id: $projectId does not exist")
 
         val hasConnections = myOauthConnectionManager.getAvailableConnections(project).isNotEmpty()
-        val repos = linkedMapOf<GitHubRepositoryInfo, OAuthConnectionDescriptor>()
+        val repos: SortedMap<GitHubRepositoryInfo, OAuthConnectionDescriptor> = TreeMap(GitHubRepositoryInfo.LexicographicalComparator)
 
         if (hasConnections) {
             val vcsRoots = Util.getVcsRootsWhereHookCanBeInstalled(project, myOauthConnectionManager)
