@@ -144,7 +144,18 @@ class Util {
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
-        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean = true): List<VcsRoot> {
+        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): List<VcsRoot> {
+            return doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, false)
+        }
+
+        /**
+         * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
+         */
+        fun isVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
+            return doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, true).isNotEmpty()
+        }
+
+        private fun doGetVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean = true): List<VcsRoot> {
             val roots = LinkedHashSet<SVcsRoot>()
             val parametrizedVcsRoots = LinkedHashSet<SVcsRoot>()
 
@@ -157,6 +168,7 @@ class Util {
                     if (serverHasConnectionsMap[info.server]) {
                         LOG.debug("Found Suitable GitHub-like VCS root '$root' with oauth connection to '${info.server}'")
                         roots.add(root)
+                        if (fast) return@findSuitableRoots false
                     } else {
                         LOG.debug("Found Suitable GitHub-like VCS root '$root' but there's no oauth connection to '${info.server}'")
                     }

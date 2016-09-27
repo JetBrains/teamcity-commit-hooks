@@ -71,7 +71,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
     }
 
     private fun getVcsRootsWhereHookCanBeInstalled(project: ProjectEx): List<VcsRoot> {
-        return Util.getVcsRootsWhereHookCanBeInstalled(project, myOAuthConnectionsManager!!, false)
+        return Util.getVcsRootsWhereHookCanBeInstalled(project, myOAuthConnectionsManager!!)
     }
 
     private fun addGitHubConnection(project: ProjectEx): OAuthConnectionDescriptor {
