@@ -13,7 +13,6 @@ import jetbrains.buildServer.serverSide.oauth.github.GHEOAuthProvider
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.serverSide.oauth.github.GitHubOAuthProvider
 import jetbrains.buildServer.util.StringUtil
-import jetbrains.buildServer.vcs.LVcsRoot
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.VcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
@@ -145,7 +144,7 @@ class Util {
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
-        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean = true): List<LVcsRoot> {
+        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean = true): List<VcsRoot> {
             val roots = LinkedHashSet<SVcsRoot>()
             val parametrizedVcsRoots = LinkedHashSet<SVcsRoot>()
 

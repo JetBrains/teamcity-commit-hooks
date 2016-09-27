@@ -8,10 +8,9 @@ import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GHEOAuthProvider
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.serverSide.oauth.github.GitHubOAuthProvider
-import jetbrains.buildServer.vcs.LVcsRoot
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.SVcsRootEx
-import jetbrains.buildServer.vcs.VcsRootInstance
+import jetbrains.buildServer.vcs.VcsRoot
 import org.assertj.core.api.BDDAssertions.then
 import org.testng.annotations.BeforeMethod
 import org.testng.annotations.Test
@@ -71,7 +70,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
         return roots
     }
 
-    private fun getVcsRootsWhereHookCanBeInstalled(project: ProjectEx): List<LVcsRoot> {
+    private fun getVcsRootsWhereHookCanBeInstalled(project: ProjectEx): List<VcsRoot> {
         return Util.getVcsRootsWhereHookCanBeInstalled(project, myOAuthConnectionsManager!!, false)
     }
 
