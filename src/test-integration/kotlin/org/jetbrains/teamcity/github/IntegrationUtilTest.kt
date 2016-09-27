@@ -10,7 +10,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
 import jetbrains.buildServer.serverSide.oauth.github.GitHubOAuthProvider
 import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.vcs.SVcsRootEx
-import jetbrains.buildServer.vcs.VcsRoot
+import jetbrains.buildServer.vcs.VcsRootInstance
 import org.assertj.core.api.BDDAssertions.then
 import org.testng.annotations.BeforeMethod
 import org.testng.annotations.Test
@@ -58,7 +58,32 @@ class IntegrationUtilTest : BaseServerTestCase() {
         addGitHubConnection(project)
 
         val suitable = getVcsRootsWhereHookCanBeInstalled(project)
-        then(suitable).containsExactly(vcs)
+        then(suitable).containsExactlyElementsOf(buildType.vcsRootInstances)
+    }
+
+    @Test
+    fun testGetOAuthServers() {
+        val p1 = myFixture.createProject("P1")
+        val p2 = myFixture.createProject("P2", p1)
+        var servers: Set<String>
+
+        servers = Util.getOAuthServers(p1, myOAuthConnectionsManager!!)
+        then(servers).isEmpty()
+        servers = Util.getOAuthServers(p2, myOAuthConnectionsManager!!)
+        then(servers).isEmpty()
+
+        addGitHubConnection(p1)
+        servers = Util.getOAuthServers(p1, myOAuthConnectionsManager!!)
+        then(servers).containsOnly("github.com")
+        servers = Util.getOAuthServers(p2, myOAuthConnectionsManager!!)
+        then(servers).containsOnly("github.com")
+
+        addGHEConnection(p2, "https://teamcity-github-enterprise.labs.intellij.net/")
+        servers = Util.getOAuthServers(p1, myOAuthConnectionsManager!!)
+        then(servers).containsOnly("github.com")
+        servers = Util.getOAuthServers(p2, myOAuthConnectionsManager!!)
+        then(servers).containsOnly("github.com", "teamcity-github-enterprise.labs.intellij.net")
+
     }
 
     private fun getSuitableVcsRoots(project: ProjectEx): ArrayList<SVcsRoot> {
@@ -70,7 +95,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
         return roots
     }
 
-    private fun getVcsRootsWhereHookCanBeInstalled(project: ProjectEx): List<VcsRoot> {
+    private fun getVcsRootsWhereHookCanBeInstalled(project: ProjectEx): List<VcsRootInstance> {
         return Util.getVcsRootsWhereHookCanBeInstalled(project, myOAuthConnectionsManager!!)
     }
 

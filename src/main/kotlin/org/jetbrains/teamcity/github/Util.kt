@@ -1,7 +1,5 @@
 package org.jetbrains.teamcity.github
 
-import com.google.common.cache.CacheBuilder
-import com.google.common.cache.CacheLoader
 import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.log.Loggers
 import jetbrains.buildServer.serverSide.SBuildType
@@ -18,8 +16,10 @@ import jetbrains.buildServer.vcs.VcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
 import java.net.MalformedURLException
 import java.net.URI
+import java.net.URISyntaxException
 import java.net.URL
 import java.util.*
+import java.util.regex.Pattern
 
 class Util {
     companion object {
@@ -94,24 +94,31 @@ class Util {
         }
 
         fun isSameUrl(host: String, url: String): Boolean {
-            val uri = URI(url)
-            val u: URL
-            try {
-                if (uri.scheme == null) {
-                    u = URL("http://$url")
-                } else u = uri.toURL()
-            } catch(e: MalformedURLException) {
-                return host == url
-            }
-            if (u.host == host) return true
+            val urlHost = getHost(url) ?: return url == host
+            if (urlHost == host) return true
             val u2: URL
             try {
                 u2 = URL(host)
-                return u.host == u2.host
+                return urlHost == u2.host
             } catch(e: Exception) {
                 return false
             }
         }
+
+        private fun getHost(url: String): String? {
+            try {
+                val uri = URI(url)
+                if (uri.scheme == null) {
+                    return URL("http://$url").host
+                }
+                return uri.toURL().host
+            } catch(e: MalformedURLException) {
+                return null
+            } catch(e: URISyntaxException) {
+                return null
+            }
+        }
+
 
         fun isSuitableVcsRoot(root: VcsRoot, checkUrl: Boolean = true): Boolean {
             if (root.vcsName != Constants.VCS_NAME_GIT) return false
@@ -144,7 +151,7 @@ class Util {
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
-        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): List<VcsRoot> {
+        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): List<VcsRootInstance> {
             return doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, false)
         }
 
@@ -155,66 +162,66 @@ class Util {
             return doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, true).isNotEmpty()
         }
 
-        private fun doGetVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean = true): List<VcsRoot> {
-            val roots = LinkedHashSet<SVcsRoot>()
-            val parametrizedVcsRoots = LinkedHashSet<SVcsRoot>()
+        private fun doGetVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean): List<VcsRootInstance> {
+            val start = System.currentTimeMillis()
 
-            val serverHasConnectionsMap = CacheBuilder.newBuilder().build<String, Boolean>(
-                    CacheLoader.from({ server -> server != null && Util.findConnections(connectionsManager, project, server).isNotEmpty() }))
+            val oauthServers = getOAuthServers(project, connectionsManager)
+            if (oauthServers.isEmpty()) return emptyList()
 
-            Util.findSuitableRoots(project, recursive = true) { root ->
-                val info = getGitHubInfo(root)
-                if (info != null) {
-                    if (serverHasConnectionsMap[info.server]) {
-                        LOG.debug("Found Suitable GitHub-like VCS root '$root' with oauth connection to '${info.server}'")
-                        roots.add(root)
-                        if (fast) return@findSuitableRoots false
-                    } else {
-                        LOG.debug("Found Suitable GitHub-like VCS root '$root' but there's no oauth connection to '${info.server}'")
-                    }
-                } else if (StringUtil.hasParameterReferences(root.properties[Constants.VCS_PROPERTY_GIT_URL])) {
-                    LOG.debug("Parametrized Suitable GitHub-like VCS root '$root'")
-                    parametrizedVcsRoots.add(root)
-                } else {
-                    LOG.debug("Suitable GitHub-like VCS root '$root' ignored: GitHubInfo is null, url has no parameter references")
-                }
-                true
-            }
+            val oauthServersPattern = Pattern.compile(oauthServers.joinToString(separator = "|") { Pattern.quote(it) })
 
-            if (roots.isNotEmpty() && fast) {
-                val result = roots.toList()
-                LOG.info("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection in fast mode")
-                LOG.debug("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection in fast mode: $result")
-                return result
-            }
+            val result: MutableCollection<VcsRootInstance> = if (fast) ArrayList(0) else LinkedHashSet()
 
-            val instances = LinkedHashSet<VcsRootInstance>()
-            for (root in parametrizedVcsRoots) {
-                val rootInstances = root.usagesInConfigurations
-                        .filter { bt -> bt.belongsTo(project) }
-                        .mapNotNull { bt -> bt.getVcsRootInstanceForParent(root) }
-                LOG.debug("Found ${rootInstances.size} VCS root instance${rootInstances.size.s} for VCS root '$root' in project '$project': $rootInstances")
-                for (vri in rootInstances) {
-                    val info = getGitHubInfo(vri)
-                    if (info != null) {
-                        if (serverHasConnectionsMap[info.server]) {
-                            LOG.debug("Found Suitable GitHub-like VCS root instance '$vri' with oauth connection to '${info.server}'")
-                            instances.add(vri)
-                        } else {
-                            LOG.debug("Found Suitable GitHub-like VCS root instance '$vri' but there's no oauth connection to '${info.server}'")
+            for (bt in project.buildTypes) {
+                if (bt.project.isArchived) continue
+                for (root in bt.vcsRoots) {
+                    if (isSuitableVcsRoot(root, false)) {
+                        val vri = bt.getVcsRootInstanceForParent(root) ?: continue
+                        val url = vri.properties[Constants.VCS_PROPERTY_GIT_URL] ?: continue
+                        if (!oauthServersPattern.matcher(url).find()) {
+                            LOG.debug("Found Git VCS root instance '$vri' but it's url ($url) not mentions any of oauth connected servers: $oauthServers")
+                            continue
                         }
-                    } else if (StringUtil.hasParameterReferences(vri.properties[Constants.VCS_PROPERTY_GIT_URL])) {
-                        LOG.debug("Suitable GitHub-like VCS root instance still has unresolved parameters '$vri'")
-                    } else {
-                        LOG.debug("Suitable GitHub-like VCS root instance '$vri' ignored: GitHubInfo is null, url has no parameter references")
+                        val info = getGitHubInfo(vri)
+                        if (info == null) {
+                            LOG.debug("Suitable GitHub-like VCS root instance '$vri' ignored: GitHubInfo is null, url is: $url")
+                        } else if (!oauthServers.contains(info.server)) {
+                            LOG.debug("Suitable GitHub-like VCS root instance '$vri' ignored: there's no oauth connection to '${info.server}'")
+                        } else {
+                            LOG.debug("Found Suitable GitHub-like VCS root instance '$vri' with oauth connection to '${info.server}'")
+                            if (fast) {
+                                LOG.info("In project '$project' found at least one VCS root instance with OAuth connection in fast mode in ~${System.currentTimeMillis() - start} ms")
+                                return listOf(vri)
+                            }
+                            result.add(vri)
+                        }
                     }
                 }
             }
-
-            val result = roots.toList().plus(instances)
-            LOG.info("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection")
+            LOG.info("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection in ~${System.currentTimeMillis() - start} ms")
             LOG.debug("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection: $result")
-            return result
+            return result.toList()
+        }
+
+        fun getOAuthServers(project: SProject, connectionsManager: OAuthConnectionsManager): Set<String> {
+            return connectionsManager
+                    .getAvailableConnections(project)
+                    .filterNotNull()
+                    .filter {
+                        it.parameters[GitHubConstants.CLIENT_ID_PARAM] != null && it.parameters[GitHubConstants.CLIENT_SECRET_PARAM] != null
+                    }
+                    .mapNotNull {
+                        when (it.oauthProvider.type) {
+                            GHEOAuthProvider.TYPE -> {
+                                it.parameters[GitHubConstants.GITHUB_URL_PARAM]?.let { getHost(it) }
+                            }
+                            GitHubOAuthProvider.TYPE -> {
+                                "github.com"
+                            }
+                            else -> null
+                        }
+                    }
+                    .toHashSet()
         }
     }
 }
