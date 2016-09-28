@@ -3,16 +3,17 @@ package org.jetbrains.teamcity.github
 import jetbrains.buildServer.dataStructures.MultiMapToSet
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
-import jetbrains.buildServer.vcs.SVcsRoot
+import jetbrains.buildServer.vcs.VcsRoot
+import jetbrains.buildServer.vcs.VcsRootInstance
 
-class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
-                              private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
+open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
+                                   private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
         val TYPE = "GitHubWebHooksSuggestion"
         val CATEGORY: ItemCategory = SuggestionCategory(ItemSeverity.INFO, "Reduce GitHub repository overhead and speedup changes detection by switching to GitHub webhook", null)
 
-        fun splitRoots(vcsRoots: Set<SVcsRoot>): MultiMapToSet<GitHubRepositoryInfo, SVcsRoot> {
-            val map = MultiMapToSet<GitHubRepositoryInfo, SVcsRoot>()
+        fun <T : VcsRoot> splitRoots(vcsRoots: Collection<T>): MultiMapToSet<GitHubRepositoryInfo, T> {
+            val map = MultiMapToSet<GitHubRepositoryInfo, T>()
 
             for (root in vcsRoots) {
                 val info = Util.Companion.getGitHubInfo(root) ?: continue
@@ -45,31 +46,24 @@ class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
 
 
     override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
-        val gitRoots = mutableSetOf<SVcsRoot>()
-        Util.findSuitableRoots(scope, { gitRoots.add(it); true })
+        val vcsRoots = Util.getVcsRootsWhereHookCanBeInstalled(scope.buildTypes, OAuthConnectionsManager)
 
-        val split = splitRoots(gitRoots)
-
-        val filtered = split.entrySet()
-                .filter {
-                    WebHooksManager.storage.getHooks(it.key).isEmpty()
-                }
-                .filterKnownServers(OAuthConnectionsManager)
+        val split: MultiMapToSet<GitHubRepositoryInfo, VcsRootInstance> = splitRoots<VcsRootInstance>(vcsRoots)
 
         val processed = mutableSetOf<String>();
 
-        for ((info, roots) in filtered) {
-            if (WebHooksManager.storage.getHooks(info).isNotEmpty()) {
-                // Something changes since filtering on '.filter' above
-                continue
-            }
-            for (root in roots) {
+        for ((info, instances) in split.entrySet()) {
+            if (hasHooksInStorage(info)) continue
+
+            for (instance in instances) {
                 if (!processed.add(info.id)) continue; // we already created health item for this repository
 
-                val item = WebHookAddHookHealthItem(info, root)
-                resultConsumer.consumeForVcsRoot(root, item)
-                root.usagesInConfigurations.forEach { resultConsumer.consumeForBuildType(it, item) }
+                val item = WebHookAddHookHealthItem(info, instance.parent)
+                resultConsumer.consumeForVcsRoot(instance.parent, item)
+                instance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
             }
         }
     }
+
+    protected open fun hasHooksInStorage(info: GitHubRepositoryInfo) = WebHooksManager.storage.getHooks(info).isNotEmpty()
 }

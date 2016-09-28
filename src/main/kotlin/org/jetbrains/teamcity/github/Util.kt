@@ -153,7 +153,19 @@ class Util {
          */
         fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): List<VcsRootInstance> {
             val result: MutableCollection<VcsRootInstance> = LinkedHashSet()
-            doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, false, result)
+            doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, false, project, recursive = true, result = result)
+            return result.toList()
+        }
+
+        /**
+         * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
+         */
+        fun getVcsRootsWhereHookCanBeInstalled(buildTypes: Collection<SBuildType>, connectionsManager: OAuthConnectionsManager): List<VcsRootInstance> {
+            val result: MutableCollection<VcsRootInstance> = LinkedHashSet()
+            val mapProjectToBuildTypes = buildTypes.groupBy { it.project }
+            for ((project, types) in mapProjectToBuildTypes) {
+                doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, false, project, buildTypes = types, recursive = false, result = result)
+            }
             return result.toList()
         }
 
@@ -162,17 +174,17 @@ class Util {
          */
         fun isVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
             val result: MutableCollection<VcsRootInstance> = ArrayList(1);
-            doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, true, result)
+            doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, true, project, recursive = true, result = result)
             return result.isNotEmpty()
         }
 
-        private fun doGetVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean, result: MutableCollection<VcsRootInstance>, inner:Boolean = false) {
+        private fun doGetVcsRootsWhereHookCanBeInstalled(connectionsManager: OAuthConnectionsManager, fast: Boolean, project: SProject, buildTypes: List<SBuildType> = project.ownBuildTypes, inner: Boolean = false, recursive: Boolean = true, result: MutableCollection<VcsRootInstance>) {
             val start = if (!inner) System.currentTimeMillis() else 0
 
             val oauthServers = getOAuthServers(project, connectionsManager)
             val oauthServersPattern = Pattern.compile(oauthServers.joinToString(separator = "|") { Pattern.quote(it) })
 
-            if (oauthServers.isNotEmpty()) for (bt in project.ownBuildTypes) {
+            if (oauthServers.isNotEmpty()) for (bt in buildTypes) {
                 if (bt.project.isArchived) continue
                 for (root in bt.vcsRoots) {
                     if (isSuitableVcsRoot(root, false)) {
@@ -199,8 +211,8 @@ class Util {
                 }
             }
 
-            for (subProject in project.ownProjects) {
-                doGetVcsRootsWhereHookCanBeInstalled(subProject, connectionsManager, fast, result, true)
+            if (recursive) for (subProject in project.ownProjects) {
+                doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, fast, subProject, recursive = recursive, result = result, inner = true)
                 if (fast && result.isNotEmpty()) return
             }
 

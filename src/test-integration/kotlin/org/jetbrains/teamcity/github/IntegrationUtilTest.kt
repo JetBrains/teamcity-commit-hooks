@@ -110,6 +110,22 @@ class IntegrationUtilTest : BaseServerTestCase() {
 
     }
 
+    @Test
+    fun testHealthItemWouldBeShownForParametrizedRoot() {
+        val p1 = myFixture.createProject("P1")
+        val bt1 = registerBuildType("BT1", p1, "Ant")
+
+        val vcs = addGitVcsRoot(p1, "https://github.com/%owner%/%name%")
+        bt1.addVcsRoot(vcs)
+        bt1.addParameter(SimpleParameter("owner", "A"))
+        bt1.addParameter(SimpleParameter("name", "B"))
+
+        addGitHubConnection(p1)
+
+        val list = Util.getVcsRootsWhereHookCanBeInstalled(listOf(bt1), myOAuthConnectionsManager!!)
+        then(list).containsExactlyElementsOf(bt1.vcsRootInstances)
+    }
+
     private fun getSuitableVcsRoots(project: ProjectEx): Set<SVcsRoot> {
         val roots = LinkedHashSet<SVcsRoot>()
         Util.findSuitableRoots(project, true) {
