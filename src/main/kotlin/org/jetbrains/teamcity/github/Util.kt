@@ -152,27 +152,27 @@ class Util {
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
         fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): List<VcsRootInstance> {
-            return doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, false)
+            val result: MutableCollection<VcsRootInstance> = LinkedHashSet()
+            doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, false, result)
+            return result.toList()
         }
 
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
         fun isVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
-            return doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, true).isNotEmpty()
+            val result: MutableCollection<VcsRootInstance> = ArrayList(1);
+            doGetVcsRootsWhereHookCanBeInstalled(project, connectionsManager, true, result)
+            return result.isNotEmpty()
         }
 
-        private fun doGetVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean): List<VcsRootInstance> {
-            val start = System.currentTimeMillis()
+        private fun doGetVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager, fast: Boolean, result: MutableCollection<VcsRootInstance>, inner:Boolean = false) {
+            val start = if (!inner) System.currentTimeMillis() else 0
 
             val oauthServers = getOAuthServers(project, connectionsManager)
-            if (oauthServers.isEmpty()) return emptyList()
-
             val oauthServersPattern = Pattern.compile(oauthServers.joinToString(separator = "|") { Pattern.quote(it) })
 
-            val result: MutableCollection<VcsRootInstance> = if (fast) ArrayList(0) else LinkedHashSet()
-
-            for (bt in project.buildTypes) {
+            if (oauthServers.isNotEmpty()) for (bt in project.ownBuildTypes) {
                 if (bt.project.isArchived) continue
                 for (root in bt.vcsRoots) {
                     if (isSuitableVcsRoot(root, false)) {
@@ -189,18 +189,25 @@ class Util {
                             LOG.debug("Suitable GitHub-like VCS root instance '$vri' ignored: there's no oauth connection to '${info.server}'")
                         } else {
                             LOG.debug("Found Suitable GitHub-like VCS root instance '$vri' with oauth connection to '${info.server}'")
-                            if (fast) {
-                                LOG.info("In project '$project' found at least one VCS root instance with OAuth connection in fast mode in ~${System.currentTimeMillis() - start} ms")
-                                return listOf(vri)
-                            }
                             result.add(vri)
+                            if (fast) {
+                                if (!inner) LOG.info("In project '$project' found at least one VCS root instance with OAuth connection in fast mode in ~${System.currentTimeMillis() - start} ms")
+                                return
+                            }
                         }
                     }
                 }
             }
-            LOG.info("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection in ~${System.currentTimeMillis() - start} ms")
-            LOG.debug("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection: $result")
-            return result.toList()
+
+            for (subProject in project.ownProjects) {
+                doGetVcsRootsWhereHookCanBeInstalled(subProject, connectionsManager, fast, result, true)
+                if (fast && result.isNotEmpty()) return
+            }
+
+            if (!inner) {
+                LOG.info("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection in ~${System.currentTimeMillis() - start} ms")
+                LOG.debug("In project '$project' found ${result.size} VCS root${result.size.s} with OAuth connection: $result")
+            }
         }
 
         fun getOAuthServers(project: SProject, connectionsManager: OAuthConnectionsManager): Set<String> {

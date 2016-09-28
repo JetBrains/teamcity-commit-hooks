@@ -62,6 +62,30 @@ class IntegrationUtilTest : BaseServerTestCase() {
     }
 
     @Test
+    fun testSuitableVcsRootDetectedFromSubproject() {
+        val p1 = myFixture.createProject("P1")
+        val p2 = myFixture.createProject("P2", p1)
+
+        val bt1 = registerBuildType("BT1", p1, "Ant")
+        val bt2 = registerBuildType("BT2", p2, "Ant")
+
+        val vcs = addGitVcsRoot(p1, "https://github.com/Owner/Name")
+
+        bt1.addVcsRoot(vcs)
+        bt2.addVcsRoot(vcs)
+
+        then(getSuitableVcsRoots(p1)).containsExactly(vcs)
+        then(getSuitableVcsRoots(p2)).containsExactly(vcs)
+
+        // Note: there's no connection in P1
+        addGitHubConnection(p2)
+
+        then(getVcsRootsWhereHookCanBeInstalled(p2)).containsExactlyElementsOf(bt2.vcsRootInstances)
+
+        then(getVcsRootsWhereHookCanBeInstalled(p1)).containsExactlyElementsOf(bt2.vcsRootInstances)
+    }
+
+    @Test
     fun testGetOAuthServers() {
         val p1 = myFixture.createProject("P1")
         val p2 = myFixture.createProject("P2", p1)
@@ -86,8 +110,8 @@ class IntegrationUtilTest : BaseServerTestCase() {
 
     }
 
-    private fun getSuitableVcsRoots(project: ProjectEx): ArrayList<SVcsRoot> {
-        val roots = ArrayList<SVcsRoot>()
+    private fun getSuitableVcsRoots(project: ProjectEx): Set<SVcsRoot> {
+        val roots = LinkedHashSet<SVcsRoot>()
         Util.findSuitableRoots(project, true) {
             roots.add(it)
             true
