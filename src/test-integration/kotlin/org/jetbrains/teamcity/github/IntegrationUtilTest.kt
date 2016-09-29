@@ -135,6 +135,13 @@ class IntegrationUtilTest : BaseServerTestCase() {
         return roots
     }
 
+    @Test
+    fun testRootProjectFullName() {
+        val p1 = createProject("P1")
+        println(p1.fullName)
+        println(p1.parentProject!!.fullName)
+    }
+
     private fun getVcsRootsWhereHookCanBeInstalled(project: ProjectEx): List<VcsRootInstance> {
         return Util.getVcsRootsWhereHookCanBeInstalled(project, myOAuthConnectionsManager!!)
     }
