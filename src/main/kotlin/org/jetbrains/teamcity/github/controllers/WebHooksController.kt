@@ -158,7 +158,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         } else {
             connections = getConnections(info.server, project)
             if (connections.isEmpty()) {
-                return gh_json("NoOAuthConnections", getNoOAuthConnectionMessage(info, project, request), info)
+                return gh_json("NoOAuthConnections", getNoOAuthConnectionMessage(info, project, request), info, false)
             }
             // Let's use connection from most nested project. (connections sorted in reverse project hierarchy order)
             connection = connections.first()
@@ -240,7 +240,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
     private fun getNoOAuthConnectionMessage(info: GitHubRepositoryInfo, project: SProject, request: HttpServletRequest): String {
         val createOAuthConnectionUrl = getUrlToCreateOAuthConnection(request, project, info.server)
-        return "No OAuth connection found for the GitHub server '${info.server}' in the project '${StringUtil.escapeHTML(project.fullName,false)}'. Please <a href=\"$createOAuthConnectionUrl\">configure</a> OAuth connection."
+        return "No OAuth connection found for the GitHub server '${info.server}' in the project '${StringUtil.formatTextForWeb(project.fullName)}'. Please <a href=\"$createOAuthConnectionUrl\">configure</a> OAuth connection."
     }
 
     private fun getUrlToCreateOAuthConnection(request: HttpServletRequest, project: SProject, server: String): String {
@@ -280,10 +280,10 @@ class WebHooksController(descriptor: PluginDescriptor,
         val url = result.second.getUIUrl()
         when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a> is already <a href=\"$url\" target=\"_blank\">installed</a>", info)
+                return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a> is already <a href=\"$url\" target=\"_blank\">installed</a>", info, false)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Successfully installed <a href=\"$url\" target=\"_blank\">webhook</a> for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a>", info)
+                return gh_json(result.first.name, "Successfully installed <a href=\"$url\" target=\"_blank\">webhook</a> for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a>", info, false)
             }
         }
     }
@@ -401,7 +401,7 @@ class WebHooksController(descriptor: PluginDescriptor,
             if (connections.isEmpty()) {
                 for (info in infos) {
                     val message = getNoOAuthConnectionMessage(info, project, request)
-                    val obj = gh_json("NoOAuthConnections", message, info)
+                    val obj = gh_json("NoOAuthConnections", message, info, false)
                     obj.addProperty("error", message)
                     obj.addProperty("user_action_required", true)
                     arr.add(obj)
@@ -502,7 +502,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
 
     fun gh_json(result: String, message: String, info: GitHubRepositoryInfo, escape: Boolean = true): JsonObject {
-        val message1 = if (escape) StringUtil.escapeHTML(message, false) else message
+        val message1 = if (escape) StringUtil.formatTextForWeb(message) else message
         return gh_json(result, message1, info, myWebHooksManager)
     }
 }
