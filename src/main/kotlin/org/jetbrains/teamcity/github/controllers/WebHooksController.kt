@@ -240,7 +240,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
     private fun getNoOAuthConnectionMessage(info: GitHubRepositoryInfo, project: SProject, request: HttpServletRequest): String {
         val createOAuthConnectionUrl = getUrlToCreateOAuthConnection(request, project, info.server)
-        return "No OAuth connection found for the GitHub server '${info.server}' in the project '${StringUtil.escapeHTML(project.fullName)}'. Please <a href=\"$createOAuthConnectionUrl\">configure</a> OAuth connection."
+        return "No OAuth connection found for the GitHub server '${info.server}' in the project '${StringUtil.escapeHTML(project.fullName,false)}'. Please <a href=\"$createOAuthConnectionUrl\">configure</a> OAuth connection."
     }
 
     private fun getUrlToCreateOAuthConnection(request: HttpServletRequest, project: SProject, server: String): String {
@@ -501,8 +501,9 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
 
-    fun gh_json(result: String, message: String, info: GitHubRepositoryInfo): JsonObject {
-        return gh_json(result, message, info, myWebHooksManager)
+    fun gh_json(result: String, message: String, info: GitHubRepositoryInfo, escape: Boolean = true): JsonObject {
+        val message1 = if (escape) StringUtil.escapeHTML(message, false) else message
+        return gh_json(result, message1, info, myWebHooksManager)
     }
 }
 
