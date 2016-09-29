@@ -1,8 +1,8 @@
 package org.jetbrains.teamcity.github
 
 import com.google.gson.Gson
+import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
-import jetbrains.buildServer.vcs.SVcsRoot
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
 import jetbrains.buildServer.web.openapi.healthStatus.HealthStatusItemPageExtension
@@ -24,10 +24,10 @@ class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places:
         super.fillModel(model, request)
         val item = getStatusItem(request)
         val user = SessionUser.getUser(request)!!
-        val root: SVcsRoot = item.additionalData["VcsRoot"] as SVcsRoot
+        val project: SProject = item.additionalData["Project"] as SProject
         val info: GitHubRepositoryInfo = item.additionalData["GitHubInfo"] as GitHubRepositoryInfo
 
-        val connections = helper.getConnections(root.project, info.server)
+        val connections = helper.getConnections(project, info.server)
         model.put("has_connections", connections.isNotEmpty())
         val tokens = helper.getExistingTokens(connections, user)
         model.put("has_tokens", tokens.isNotEmpty())
@@ -38,7 +38,7 @@ class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places:
 
     override fun isAvailable(request: HttpServletRequest): Boolean {
         val item = getStatusItem(request)
-        val root = item.additionalData["VcsRoot"] ?: return false;
-        return Util.isVcsRootsWhereHookCanBeInstalled((root as SVcsRoot).project, connectionsManager);
+        val project = item.additionalData["Project"] as SProject? ?: return false;
+        return Util.isVcsRootsWhereHookCanBeInstalled(project, connectionsManager);
     }
 }

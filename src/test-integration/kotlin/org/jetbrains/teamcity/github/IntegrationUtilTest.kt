@@ -62,7 +62,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
     }
 
     @Test
-    fun testSuitableVcsRootDetectedFromSubproject() {
+    fun testSuitableVcsRootIsDetectedFromSubproject() {
         val p1 = myFixture.createProject("P1")
         val p2 = myFixture.createProject("P2", p1)
 
@@ -82,7 +82,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
 
         then(getVcsRootsWhereHookCanBeInstalled(p2)).containsExactlyElementsOf(bt2.vcsRootInstances)
 
-        then(getVcsRootsWhereHookCanBeInstalled(p1)).containsExactlyElementsOf(bt2.vcsRootInstances)
+        then(getVcsRootsWhereHookCanBeInstalled(p1)).isEmpty()
     }
 
     @Test
@@ -111,7 +111,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
     }
 
     @Test
-    fun testHealthItemWouldBeShownForParametrizedRoot() {
+    fun testParametrizedRootInstanceDetectedProperly() {
         val p1 = myFixture.createProject("P1")
         val bt1 = registerBuildType("BT1", p1, "Ant")
 
@@ -122,7 +122,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
 
         addGitHubConnection(p1)
 
-        val list = Util.getVcsRootsWhereHookCanBeInstalled(listOf(bt1), myOAuthConnectionsManager!!)
+        val list = Util.getVcsRootsWhereHookCanBeInstalled(listOf(bt1), myOAuthConnectionsManager!!).map { it.second }
         then(list).containsExactlyElementsOf(bt1.vcsRootInstances)
     }
 

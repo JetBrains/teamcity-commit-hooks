@@ -152,16 +152,16 @@ class Util {
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
         fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): List<VcsRootInstance> {
-            val result: MutableCollection<VcsRootInstance> = LinkedHashSet()
+            val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = LinkedHashSet()
             doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, false, project, recursive = true, result = result)
-            return result.toList()
+            return result.map { it.second }.toSet().toList()
         }
 
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
-        fun getVcsRootsWhereHookCanBeInstalled(buildTypes: Collection<SBuildType>, connectionsManager: OAuthConnectionsManager): List<VcsRootInstance> {
-            val result: MutableCollection<VcsRootInstance> = LinkedHashSet()
+        fun getVcsRootsWhereHookCanBeInstalled(buildTypes: Collection<SBuildType>, connectionsManager: OAuthConnectionsManager): List<Pair<SBuildType, VcsRootInstance>> {
+            val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = LinkedHashSet()
             val mapProjectToBuildTypes = buildTypes.groupBy { it.project }
             for ((project, types) in mapProjectToBuildTypes) {
                 doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, false, project, buildTypes = types, recursive = false, result = result)
@@ -173,15 +173,16 @@ class Util {
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
         fun isVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
-            val result: MutableCollection<VcsRootInstance> = ArrayList(1);
+            val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = ArrayList(1);
             doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, true, project, recursive = true, result = result)
             return result.isNotEmpty()
         }
 
-        private fun doGetVcsRootsWhereHookCanBeInstalled(connectionsManager: OAuthConnectionsManager, fast: Boolean, project: SProject, buildTypes: List<SBuildType> = project.ownBuildTypes, inner: Boolean = false, recursive: Boolean = true, result: MutableCollection<VcsRootInstance>) {
+        private fun doGetVcsRootsWhereHookCanBeInstalled(connectionsManager: OAuthConnectionsManager, fast: Boolean, project: SProject, buildTypes: List<SBuildType> = project.ownBuildTypes, inner: Boolean = false, recursive: Boolean = true, result: MutableCollection<Pair<SBuildType, VcsRootInstance>>) {
             val start = if (!inner) System.currentTimeMillis() else 0
 
             val oauthServers = getOAuthServers(project, connectionsManager)
+            if (oauthServers.isEmpty()) return
             val oauthServersPattern = Pattern.compile(oauthServers.joinToString(separator = "|") { Pattern.quote(it) })
 
             if (oauthServers.isNotEmpty()) for (bt in buildTypes) {
@@ -201,7 +202,7 @@ class Util {
                             LOG.debug("Suitable GitHub-like VCS root instance '$vri' ignored: there's no oauth connection to '${info.server}'")
                         } else {
                             LOG.debug("Found Suitable GitHub-like VCS root instance '$vri' with oauth connection to '${info.server}'")
-                            result.add(vri)
+                            result.add(bt to vri)
                             if (fast) {
                                 if (!inner) LOG.info("In project '$project' found at least one VCS root instance with OAuth connection in fast mode in ~${System.currentTimeMillis() - start} ms")
                                 return

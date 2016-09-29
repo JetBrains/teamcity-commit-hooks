@@ -1,10 +1,13 @@
 package org.jetbrains.teamcity.github
 
 import jetbrains.buildServer.dataStructures.MultiMapToSet
+import jetbrains.buildServer.serverSide.SBuildType
+import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.healthStatus.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.vcs.VcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
+import java.util.*
 
 open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
                                    private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
@@ -24,6 +27,44 @@ open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
                 map.add(info, root)
             }
             return map
+        }
+
+        fun report(buildTypes: Collection<SBuildType>, resultConsumer: HealthStatusItemConsumer, oauthConnectionsManager: OAuthConnectionsManager, hasHooksInStorage: (GitHubRepositoryInfo) -> Boolean) {
+            val pairs = Util.getVcsRootsWhereHookCanBeInstalled(buildTypes, oauthConnectionsManager)
+
+            val groupByGitHubInfo: Map<GitHubRepositoryInfo?, List<Pair<SBuildType, VcsRootInstance>>> = pairs.groupBy { Util.getGitHubInfo(it.second) }
+
+            val processed = HashSet<GitHubRepositoryInfo>()
+
+            for ((info, pairs) in groupByGitHubInfo) {
+                if (info == null) continue
+                // Ignore roots with unresolved references in url
+                if (info.isHasParameterReferences()) continue
+                if (hasHooksInStorage(info)) continue
+
+                val groupByProject: Map<SProject, List<Pair<SBuildType, VcsRootInstance>>> = pairs.groupBy { it.first.project }
+
+                for ((project, pairs) in groupByProject) {
+                    val item = WebHookAddHookHealthItem(info, project)
+
+                    // we already created health item for this repository
+                    if (!processed.add(info)) continue
+
+                    val instances: List<VcsRootInstance> = pairs.map { it.second }
+
+                    // Project
+                    resultConsumer.consumeForProject(project, item)
+
+                    // BuildTypes
+                    pairs.map { it.first }.forEach { resultConsumer.consumeForBuildType(it, item) }
+
+                    // VcsRoots
+                    instances
+                            .map { it.parent }
+                            .filter { it.project.belongsTo(project) }
+                            .forEach { resultConsumer.consumeForVcsRoot(it, item) }
+                }
+            }
         }
     }
 
@@ -46,24 +87,6 @@ open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
 
 
     override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
-        val vcsRoots = Util.getVcsRootsWhereHookCanBeInstalled(scope.buildTypes, OAuthConnectionsManager)
-
-        val split: MultiMapToSet<GitHubRepositoryInfo, VcsRootInstance> = splitRoots<VcsRootInstance>(vcsRoots)
-
-        val processed = mutableSetOf<String>();
-
-        for ((info, instances) in split.entrySet()) {
-            if (hasHooksInStorage(info)) continue
-
-            for (instance in instances) {
-                if (!processed.add(info.id)) continue; // we already created health item for this repository
-
-                val item = WebHookAddHookHealthItem(info, instance.parent)
-                resultConsumer.consumeForVcsRoot(instance.parent, item)
-                instance.usages.keys.forEach { resultConsumer.consumeForBuildType(it, item) }
-            }
-        }
+        Companion.report(scope.buildTypes, resultConsumer, OAuthConnectionsManager) { WebHooksManager.storage.getHooks(it).isNotEmpty() }
     }
-
-    protected open fun hasHooksInStorage(info: GitHubRepositoryInfo) = WebHooksManager.storage.getHooks(info).isNotEmpty()
 }
