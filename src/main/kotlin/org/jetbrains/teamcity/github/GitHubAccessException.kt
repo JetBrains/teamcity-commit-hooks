@@ -8,6 +8,7 @@ class GitHubAccessException(val type: Type, message: String? = null) : Exception
         NoAccess,
         UserHaveNoAccess,
         InternalServerError,
+        Moved,
     }
 }
 

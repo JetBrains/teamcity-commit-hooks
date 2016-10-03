@@ -4,13 +4,18 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
+import org.eclipse.egit.github.core.Repository
 import org.eclipse.egit.github.core.RepositoryHook
+import org.eclipse.egit.github.core.client.GitHubRequest
+import org.eclipse.egit.github.core.client.IGitHubConstants
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
 import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.controllers.bad
+import java.net.HttpRetryException
+import java.net.URL
 
 object CreateWebHookAction {
 
@@ -66,6 +71,21 @@ object CreateWebHookAction {
                 }
             }
             throw e
+        } catch (e: HttpRetryException) {
+            val location = e.location ?: throw GitHubAccessException(GitHubAccessException.Type.InternalServerError, e.message)
+            LOG.warn("Received redirect (${e.responseCode()} from GitHub to location '$location'")
+            val repository: Repository
+            val id = URL(location).path.split('/').dropLast(1).last()
+            try {
+                val request = GitHubRequest()
+                request.uri = IGitHubConstants.SEGMENT_REPOSITORIES + "/" + id
+                request.type = Repository::class.java
+                repository = client.get(request).body as Repository
+            } catch(e1: Throwable) {
+                LOG.warn("Cannot obtain information about repository with id '$id' from server ${info.server}")
+                throw GitHubAccessException(GitHubAccessException.Type.InternalServerError, e.message)
+            }
+            throw GitHubAccessException(GitHubAccessException.Type.Moved, "${info.server}/${repository.generateId()}")
         }
 
 

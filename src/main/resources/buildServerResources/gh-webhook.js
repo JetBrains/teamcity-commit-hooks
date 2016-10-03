@@ -23,6 +23,7 @@ BS.GitHubWebHooks = {};
             WH.forcePopup[server] = true
         } else if ("NoAccess" == result) {
             error = true;
+        } else if ("Moved" == result) {
         } else if ("InternalServerError" == result) {
         } else if ("UserHaveNoAccess" == result) {
             error = true;

@@ -344,6 +344,9 @@ class WebHooksController(descriptor: PluginDescriptor,
             GitHubAccessException.Type.NoAccess -> {
                 return gh_json(e.type.name, "No access to repository '${info.id}'", info)
             }
+            GitHubAccessException.Type.Moved -> {
+                return gh_json(e.type.name, "Repository '${StringUtil.formatTextForWeb(info.id)}' was moved to <a href='//${e.message}'>${e.message}</a>", info, false)
+            }
             GitHubAccessException.Type.InternalServerError -> {
                 LOG.warn("GitHub server ${info.server} returned 500")
                 val contact =

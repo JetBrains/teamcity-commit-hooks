@@ -247,6 +247,10 @@ class WebhookPeriodicalChecker(
                             LOG.warn("No access to repository ${info.id} for unknown reason, cannot check hook status")
                             retry = false
                         }
+                        GitHubAccessException.Type.Moved -> {
+                            LOG.info("Repository '${StringUtil.formatTextForWeb(info.id)}' was moved to ${e.message}")
+                            retry = false
+                        }
                         GitHubAccessException.Type.InternalServerError -> {
                             LOG.info("Cannot check hooks status for repository ${info.id}: Error on GitHub side. Will try later")
                             ignoredServers.add(info.server)
