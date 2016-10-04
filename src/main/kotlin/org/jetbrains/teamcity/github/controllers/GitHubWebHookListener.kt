@@ -75,9 +75,9 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         // Looks like GET is not necessary, POST is enough
         setSupportedMethods(METHOD_POST)
         WebControllerManager.registerController(PATH, this)
-        WebControllerManager.registerController(PATH + "/*", this)
+        WebControllerManager.registerController(PATH + "/**", this)
         AuthorizationInterceptor.addPathNotRequiringAuth(PATH)
-        AuthorizationInterceptor.addPathNotRequiringAuth(PATH + "/*")
+        AuthorizationInterceptor.addPathNotRequiringAuth(PATH + "/**")
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
