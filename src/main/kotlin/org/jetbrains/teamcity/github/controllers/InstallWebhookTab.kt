@@ -1,6 +1,5 @@
 package org.jetbrains.teamcity.github.controllers
 
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SProject
@@ -20,7 +19,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
                         private val projectsManager: ProjectManager
 ) : EditProjectTab(places, "installWebHook", descriptor.getPluginResourcesPath("installPage.jsp"), "Install GitHub Webhook") {
 
-    private val LOG = Logger.getInstance(InstallWebhookTab::class.java.name)
+    private val LOG = Util.getLogger(InstallWebhookTab::class.java)
 
     init {
         addCssFile("/css/admin/projectConfig.css")

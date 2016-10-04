@@ -2,7 +2,6 @@ package org.jetbrains.teamcity.github
 
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.serverSide.executors.ExecutorServices
@@ -41,7 +40,7 @@ class WebhookPeriodicalChecker(
     private var myTask: ScheduledFuture<*>? = null
 
     companion object {
-        private val LOG = Logger.getInstance(WebhookPeriodicalChecker::class.java.name)
+        private val LOG = Util.getLogger(WebhookPeriodicalChecker::class.java)
         val TYPE = "GitHubWebHookProblem"
         val CATEGORY: ItemCategory = ItemCategory("GitHubWebHookProblem", "GitHub webhook problem", ItemSeverity.WARN)
 

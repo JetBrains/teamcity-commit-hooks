@@ -7,7 +7,6 @@ import com.google.gson.JsonObject
 import com.google.gson.stream.JsonWriter
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.controllers.SimpleView
-import jetbrains.buildServer.log.Loggers
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildServer
 import jetbrains.buildServer.serverSide.SProject
@@ -60,7 +59,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     companion object {
         val PATH = "/webhooks/github/webhooks.html"
 
-        private val LOG = Loggers.SERVER
+        private val LOG = Util.getLogger(WebHooksController::class.java)
 
         class MyRequestException private constructor(val element: JsonElement) : Exception() {
             constructor(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int) : this(error_json(message, code)) {

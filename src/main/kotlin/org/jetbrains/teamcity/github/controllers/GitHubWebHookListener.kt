@@ -3,7 +3,6 @@ package org.jetbrains.teamcity.github.controllers
 import com.google.common.io.LimitInputStream
 import com.google.gson.JsonIOException
 import com.google.gson.JsonSyntaxException
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.serverSide.SecurityContextEx
@@ -45,7 +44,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
         val MaxPayloadSize = 5 * FileUtil.MEGABYTE.toLong() + 1
 
-        private val LOG = Logger.getInstance(GitHubWebHookListener::class.java.name)
+        private val LOG = Util.getLogger(GitHubWebHookListener::class.java)
 
         fun getPubKeyFromRequestPath(path: String): String? {
             val indexOfPathPart = path.indexOf(PATH + "/")

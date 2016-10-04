@@ -1,6 +1,5 @@
 package org.jetbrains.teamcity.github.action
 
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.WebLinks
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
@@ -17,7 +16,7 @@ open class ActionContext(val storage: WebHooksStorage,
                          protected val links: WebLinks) {
 
     companion object {
-        private val LOG = Logger.getInstance(ActionContext::class.java.name)
+        private val LOG = Util.getLogger(ActionContext::class.java)
     }
 
     fun getCallbackUrl(authData: AuthDataStorage.AuthData? = null): String {

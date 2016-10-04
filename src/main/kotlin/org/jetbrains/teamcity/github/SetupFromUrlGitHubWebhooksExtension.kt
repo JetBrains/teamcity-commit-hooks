@@ -1,6 +1,5 @@
 package org.jetbrains.teamcity.github
 
-import jetbrains.buildServer.log.Loggers
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildType
 import jetbrains.buildServer.serverSide.TeamCityProperties
@@ -22,7 +21,7 @@ class SetupFromUrlGitHubWebhooksExtension(
         private val myTokensHelper: TokensHelper
 ) : SetupFromUrlExtension {
     companion object {
-        private val LOG = Loggers.SERVER
+        private val LOG = Util.getLogger(SetupFromUrlGitHubWebhooksExtension::class.java)
     }
 
     override fun afterCreate(buildType: SBuildType, user: SUser) {

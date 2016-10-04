@@ -1,6 +1,5 @@
 package org.jetbrains.teamcity.github.action
 
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
@@ -19,7 +18,7 @@ import java.net.URL
 
 object CreateWebHookAction {
 
-    private val LOG = Logger.getInstance(CreateWebHookAction::class.java.name)
+    private val LOG = Util.getLogger(CreateWebHookAction::class.java)
 
     @Throws(GitHubAccessException::class)
     fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHooksStorage.HookInfo> {

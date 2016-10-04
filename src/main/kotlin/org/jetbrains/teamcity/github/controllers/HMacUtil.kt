@@ -1,13 +1,13 @@
 package org.jetbrains.teamcity.github.controllers
 
-import com.intellij.openapi.diagnostic.Logger
 import org.apache.commons.codec.binary.Hex
+import org.jetbrains.teamcity.github.Util
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 class HMacUtil {
     companion object {
-        private val LOG = Logger.getInstance(HMacUtil::class.java.name)
+        private val LOG = Util.getLogger(HMacUtil::class.java)
         val HMAC_Algorithm = "HmacSHA1"
 
         fun checkHMac(message: ByteArray, key: ByteArray, expected: String): Boolean {

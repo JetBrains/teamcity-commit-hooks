@@ -34,7 +34,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
                       private val myServerPaths: ServerPaths,
                       private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
     companion object {
-        private val LOG: Logger = Logger.getInstance(WebHooksStorage::class.java.name)
+        private val LOG: Logger = Util.getLogger(WebHooksStorage::class.java)
         private val ourDataTypeToken: TypeToken<Map<String, AuthData>> = object : TypeToken<Map<String, AuthData>>() {}
         internal val gson: Gson = GsonBuilder()
                 .setPrettyPrinting()

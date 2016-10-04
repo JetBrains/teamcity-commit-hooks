@@ -1,6 +1,5 @@
 package org.jetbrains.teamcity.github.action
 
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.client.RequestException
@@ -14,7 +13,7 @@ import java.net.HttpURLConnection.HTTP_NOT_FOUND
  */
 object GetAllWebHooksAction {
 
-    private val LOG = Logger.getInstance(GetAllWebHooksAction::class.java.name)
+    private val LOG = Util.getLogger(GetAllWebHooksAction::class.java)
 
     @Throws(GitHubAccessException::class)
     fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext): Map<RepositoryHook, WebHooksStorage.HookInfo> {

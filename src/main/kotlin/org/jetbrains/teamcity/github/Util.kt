@@ -24,7 +24,15 @@ import java.util.regex.Pattern
 class Util {
     companion object {
         val LOG_CATEGORY = Loggers.SERVER_CATEGORY + ".CommitHooks"
-        private val LOG = Logger.getInstance(LOG_CATEGORY + ".Util")
+        private val LOG = getLogger("Util")
+
+        fun getLogger(name: String): Logger {
+            return Logger.getInstance(LOG_CATEGORY + "." + name)
+        }
+
+        fun getLogger(clazz: Class<out Any>): Logger {
+            return getLogger(clazz.simpleName)
+        }
 
         fun getGitHubInfo(root: VcsRoot): GitHubRepositoryInfo? {
             if (root.vcsName != Constants.VCS_NAME_GIT) return null

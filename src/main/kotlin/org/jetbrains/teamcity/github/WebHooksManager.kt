@@ -1,6 +1,5 @@
 package org.jetbrains.teamcity.github
 
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.WebLinks
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
@@ -44,7 +43,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     companion object {
-        private val LOG = Logger.getInstance(WebHooksManager::class.java.name)
+        private val LOG = Util.getLogger(WebHooksManager::class.java)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)

@@ -1,16 +1,12 @@
 package org.jetbrains.teamcity.github.action
 
-import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import org.eclipse.egit.github.core.client.RequestException
 import org.eclipse.egit.github.core.service.RepositoryService
-import org.jetbrains.teamcity.github.GitHubAccessException
-import org.jetbrains.teamcity.github.GitHubRepositoryInfo
-import org.jetbrains.teamcity.github.TokensHelper
-import org.jetbrains.teamcity.github.WebHooksStorage
+import org.jetbrains.teamcity.github.*
 
 object TestWebHookAction {
-    private val LOG = Logger.getInstance(TestWebHookAction::class.java.name)
+    private val LOG = Util.getLogger(TestWebHookAction::class.java)
 
     @Throws(GitHubAccessException::class)
     fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext, hook: WebHooksStorage.HookInfo) {
