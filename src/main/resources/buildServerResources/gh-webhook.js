@@ -24,6 +24,7 @@ BS.GitHubWebHooks = {};
         } else if ("NoAccess" == result) {
             error = true;
         } else if ("Moved" == result) {
+            error = true;
         } else if ("InternalServerError" == result) {
         } else if ("UserHaveNoAccess" == result) {
             error = true;
