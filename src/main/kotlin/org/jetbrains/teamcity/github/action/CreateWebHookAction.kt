@@ -5,6 +5,7 @@ import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.users.SUser
 import org.eclipse.egit.github.core.Repository
 import org.eclipse.egit.github.core.RepositoryHook
+import org.eclipse.egit.github.core.RepositoryHookEx
 import org.eclipse.egit.github.core.client.GitHubRequest
 import org.eclipse.egit.github.core.client.IGitHubConstants
 import org.eclipse.egit.github.core.client.RequestException
@@ -39,11 +40,15 @@ object CreateWebHookAction {
 
         val callbackUrl = context.getCallbackUrl(authData)
 
-        val hook = RepositoryHook().setActive(true).setName("web").setConfig(mapOf(
-                "url" to callbackUrl,
-                "content_type" to "json",
-                "secret" to authData.secret
-                // TODO: Investigate ssl option
+        val hook = RepositoryHookEx()
+                .setEvents(arrayOf("push", "pull_request"))
+                .setActive(true)
+                .setName("web")
+                .setConfig(mapOf(
+                        "url" to callbackUrl,
+                        "content_type" to "json",
+                        "secret" to authData.secret
+                        // TODO: Investigate ssl option
         ))
 
         val created: RepositoryHook

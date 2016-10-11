@@ -4,8 +4,10 @@ import org.assertj.core.api.Assertions
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.client.IGitHubConstants
 import org.eclipse.egit.github.core.event.PingWebHookPayload
+import org.eclipse.egit.github.core.event.PullRequestPayload
 import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.testng.annotations.BeforeClass
+import org.testng.annotations.DataProvider
 import org.testng.annotations.Test
 import java.io.File
 import java.text.SimpleDateFormat
@@ -47,6 +49,30 @@ class WebHookPayloadDeserializeTest {
         Assertions.assertThat(event.sender).isNotNull()
         Assertions.assertThat(event.zen).isNotNull()
         Assertions.assertThat(event.hook_id).isEqualTo(event.hook.id.toInt())
+    }
+
+    @DataProvider(name = "PullRequestPayloads")
+    fun PullRequestPayloads(): Array<Array<String>> {
+        return listOf("example-pull-request-opened-payload.json",
+                      "example-pull-request-synchronize-payload.json")
+                .map { arrayOf(it) }.toTypedArray();
+    }
+
+    @Test(dataProvider = "PullRequestPayloads")
+    fun testPullRequestPayloadParsed(fileName: String) {
+        val file = getTestFile(fileName)
+        Assertions.assertThat(file).exists().isFile()
+        val input = file.readText()
+        Assertions.assertThat(input).isNotEmpty()
+        val event = GsonUtilsEx.fromJson(input, PullRequestPayload::class.java)
+        Assertions.assertThat(event).isNotNull()
+        Assertions.assertThat(event.action).isNotNull()
+        Assertions.assertThat(event.number).isNotNull()
+        Assertions.assertThat(event.pullRequest).isNotNull()
+        Assertions.assertThat(event.pullRequest.head).isNotNull()
+        Assertions.assertThat(event.pullRequest.head.repo).isNotNull()
+        Assertions.assertThat(event.pullRequest.head.repo.htmlUrl).isNotNull()
+        Assertions.assertThat(event.pullRequest.head.sha).isNotNull()
     }
 
     private fun getTestFile(path: String): File {

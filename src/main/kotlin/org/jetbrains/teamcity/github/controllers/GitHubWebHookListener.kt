@@ -14,6 +14,7 @@ import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.WebUtil
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.event.PingWebHookPayload
+import org.eclipse.egit.github.core.event.PullRequestPayload
 import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
@@ -40,9 +41,11 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         val X_GitHub_Event = "X-GitHub-Event"
         val X_Hub_Signature = "X-Hub-Signature"
 
-        val SupportedEvents = listOf("ping", "push")
+        val SupportedEvents = listOf("ping", "push", "pull_request")
 
         val MaxPayloadSize = 5 * FileUtil.MEGABYTE.toLong() + 1
+
+        private val AcceptedPullRequestActions = listOf("opened", "reopened", "synchronize")
 
         private val LOG = Util.getLogger(GitHubWebHookListener::class.java)
 
@@ -173,6 +176,11 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                     val pair = doHandlePushEvent(payload, hookInfo, request, response, user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
+                "pull_request" -> {
+                    val payload = GsonUtilsEx.fromJson(contentReader, PullRequestPayload::class.java)
+                    val pair = doHandlePullRequestEvent(payload, hookInfo, request, response, user)
+                    return pair?.let { simpleText(response, pair.first, pair.second) }
+                }
             }
         } catch(e: Exception) {
             val message: String
@@ -224,7 +232,36 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             return SC_SERVICE_UNAVAILABLE to message
         }
         updateLastUsed(hookInfo)
-        updateBranches(payload, hookInfo)
+        updateBranches(hookInfo, payload.ref, payload.after)
+
+        return doForwardToRestApi(info, user, request, response)
+    }
+
+    private fun doHandlePullRequestEvent(payload: PullRequestPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+        if (payload.action !in AcceptedPullRequestActions) {
+            LOG.info("Ignoring 'pull_request' event with action '${payload.action} as unrelated")
+            return SC_ACCEPTED to "Unrelated action, expected one of " + AcceptedPullRequestActions
+        }
+        val repository = payload.pullRequest?.base?.repo
+        val url = repository?.htmlUrl
+        if (url == null) {
+            val message = "pull_request' event payload has no repository url specified in object path 'pull_request.base.repo.html_url'"
+            LOG.warn(message)
+            return SC_BAD_REQUEST to message
+        }
+        LOG.info("Received pull_request payload from webhook for repo ${repository?.owner?.login}/${repository?.name}")
+        val info = Util.getGitHubInfo(url)
+        if (info == null) {
+            val message = "Cannot determine repository info from url '$url'"
+            LOG.warn(message)
+            return SC_SERVICE_UNAVAILABLE to message
+        }
+        updateLastUsed(hookInfo)
+        val id = payload.number
+        updateBranches(hookInfo, "refs/heads/pull/$id/head", payload.pullRequest.head.sha)
+
+        // TODO: Report merge branch. There's no such property in github-java library
+        // updateBranches(hookInfo, "refs/heads/pull/$id/merge", payload.pullRequest.mergeCommitSha)
 
         return doForwardToRestApi(info, user, request, response)
     }
@@ -247,7 +284,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         WebHooksManager.updateLastUsed(hookInfo, Date())
     }
 
-    private fun updateBranches(payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo) {
-        WebHooksManager.updateBranchRevisions(hookInfo, mapOf(payload.ref to payload.after))
+    private fun updateBranches(hookInfo: WebHooksStorage.HookInfo, branch: String, commitSha: String) {
+        WebHooksManager.updateBranchRevisions(hookInfo, mapOf(branch to commitSha))
     }
 }
