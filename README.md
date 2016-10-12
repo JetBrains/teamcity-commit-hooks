@@ -1,4 +1,4 @@
-#Teamcity Commit Hooks Plugin 
+#TeamCity Commit Hooks Plugin 
 [![plugin status]( 
 http://teamcity.jetbrains.com/app/rest/builds/buildType:TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build,pinned:true/statusIcon.svg)](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned) 
 
@@ -12,7 +12,7 @@ The plugin also installs webhook automatically when a build configuration is cre
 The plugin is compatible with TeamCity 10.0 or later.
 
 #Download
-[TeamCity 10.0](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned&tab=artifacts) 
+[TeamCity 10.0](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned&tab=artifacts&guest=1) 
 
 #License
 
