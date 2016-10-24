@@ -212,7 +212,7 @@ class Util {
                             LOG.debug("Found Suitable GitHub-like VCS root instance '$vri' with oauth connection to '${info.server}'")
                             result.add(bt to vri)
                             if (fast) {
-                                if (!inner) LOG.info("In project '$project' found at least one VCS root instance with OAuth connection in fast mode in ~${System.currentTimeMillis() - start} ms")
+                                if (!inner) LOG.debug("In project '$project' found at least one VCS root instance with OAuth connection in fast mode in ~${System.currentTimeMillis() - start} ms")
                                 return
                             }
                         }
