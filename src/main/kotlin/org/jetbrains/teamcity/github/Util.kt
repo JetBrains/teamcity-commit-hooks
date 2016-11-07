@@ -23,7 +23,7 @@ import java.util.regex.Pattern
 
 class Util {
     companion object {
-        val LOG_CATEGORY = Loggers.SERVER_CATEGORY + ".CommitHooks"
+        private val LOG_CATEGORY = Loggers.VCS_CATEGORY + ".CommitHooks"
         private val LOG = getLogger("Util")
 
         fun getLogger(name: String): Logger {
