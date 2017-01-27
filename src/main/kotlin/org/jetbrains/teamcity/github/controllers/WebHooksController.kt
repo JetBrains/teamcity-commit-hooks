@@ -63,8 +63,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         private val LOG = Util.getLogger(WebHooksController::class.java)
 
         class MyRequestException private constructor(val element: JsonElement) : Exception() {
-            constructor(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int) : this(error_json(message, code)) {
-            }
+            constructor(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int) : this(error_json(message, code))
         }
 
         fun getRepositoryInfo(info: GitHubRepositoryInfo?, manager: WebHooksManager): JsonObject {
@@ -75,7 +74,7 @@ class WebHooksController(descriptor: PluginDescriptor,
             if (info == null) {
                 element.addProperty("error", "not a GitHub repository URL")
             }
-            element.addProperty("repository", info?.id.toString())
+            element.addProperty("repository", info?.id)
             element.add("info", Gson().toJsonTree(info))
             element.add("hook", Gson().toJsonTree(hook))
             element.add("status", Gson().toJsonTree(status.status))
@@ -184,10 +183,10 @@ class WebHooksController(descriptor: PluginDescriptor,
                     postponedResult = gh_json("NoTokens", "Could not obtain token from GitHub using connection ${connection.connectionDisplayName}.\nPlease ensure connection is configured properly.", info)
                     continue@attempts
                 }
-                val params = linkedMapOf("action" to "tokenGranted", "popup" to popup, "id" to inId, "connectionId" to connection.id, "connectionProjectId" to connection.project.externalId)
-                if (inProjectId != null) {
-                    params.put("projectId", inProjectId)
-                }
+                val params = linkedMapOf("action" to "tokenGranted", "popup" to popup,
+                                         "id" to inId, "connectionId" to connection.id,
+                                         "connectionProjectId" to connection.project.externalId,
+                                         "projectId" to inProjectId)
                 return redirect_json(url(request.contextPath + "/oauth/github/accessToken.html",
                                          "action" to "obtainToken",
                                          "connectionId" to connection.id,
