@@ -95,7 +95,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
         val action = request.getParameter("action")
         val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
-        val element: JsonElement
+        var element: JsonElement
         try {
             if (action in listOf("add", "check", "delete", "ping", "install")) {
                 element = doHandleAction(request, action, popup)
@@ -202,7 +202,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                 for (token in value) {
                     LOG.info("Trying with token: ${token.oauthLogin}, connector is ${key.id}")
                     ghc.setOAuth2Token(token.accessToken)
-                    val element: JsonElement?
+                    var element: JsonElement?
 
                     try {
                         @Suppress("NAME_SHADOWING")
