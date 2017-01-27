@@ -3,6 +3,7 @@ package org.jetbrains.teamcity.github.controllers
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.auth.Permission
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.users.SUser
@@ -33,8 +34,9 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
         val projectMenuExtension = object : SimplePageExtension(myPagePlaces) {
             override fun isAvailable(request: HttpServletRequest): Boolean {
                 val project = request.getAttribute("project") as SProject? ?: return false
-
-                return Util.isVcsRootsWhereHookCanBeInstalled(project, connectionsManager);
+                val user = SessionUser.getUser(request) ?: return false
+                return user.isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)
+                       && Util.isVcsRootsWhereHookCanBeInstalled(project, connectionsManager);
             }
         }
         projectMenuExtension.pluginName = "installWebhookAction"
