@@ -13,7 +13,11 @@ The plugin is compatible with TeamCity 10.0 or later.
 
 # Download
 
-[TeamCity Commit Hooks Plugin](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned&tab=artifacts&guest=1) 
+[TeamCity Commit Hooks Plugin](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned&tab=artifacts&guest=1)
+
+# Install
+- Download the file above
+- [Guide to Installing TeamCity Plugins](https://confluence.jetbrains.com/display/TCD9/Installing+Additional+Plugins)
 
 # License
 
