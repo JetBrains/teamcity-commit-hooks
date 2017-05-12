@@ -124,5 +124,10 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
         }
         return tokens.keys to true
     }
+
+    override fun isAvailable(request: HttpServletRequest): Boolean {
+        val project = getProject(request)
+        return project != null && SessionUser.getUser(request).isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)
+    }
 }
 
