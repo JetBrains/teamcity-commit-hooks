@@ -2,6 +2,7 @@ package org.jetbrains.teamcity.github
 
 import com.google.gson.Gson
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.auth.Permission
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
@@ -39,6 +40,7 @@ class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places:
     override fun isAvailable(request: HttpServletRequest): Boolean {
         val item = getStatusItem(request)
         val project = item.additionalData["Project"] as SProject? ?: return false;
+        if (!SessionUser.getUser(request).isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) return false;
         return Util.isVcsRootsWhereHookCanBeInstalled(project, connectionsManager);
     }
 }
