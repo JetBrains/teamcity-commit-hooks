@@ -14,6 +14,7 @@ import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.controllers.GitHubWebHookListener
 import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.controllers.bad
+import org.jetbrains.teamcity.github.controllers.good
 import java.net.HttpRetryException
 import java.net.URL
 
@@ -101,10 +102,20 @@ object CreateWebHookAction {
             throw IllegalStateException("GitHub returned incorrect hook")
         }
 
-        val hookInfo = context.addHook(created)
+        var hookInfo = context.addHook(created)
         if (hookInfo == null) {
             context.authDataStorage.remove(authData)
             throw IllegalStateException("GitHub returned incorrect hook")
+        }
+
+        if (callbackUrl != hookInfo.callbackUrl) {
+            // context.addHook returned another hook.
+            context.storage.delete(info) { !it.status.good }
+            hookInfo = context.addHook(created)
+            if (hookInfo == null) {
+                context.authDataStorage.remove(authData)
+                throw IllegalStateException("GitHub returned incorrect hook")
+            }
         }
 
         // Remove missing hooks from storage as they don't exists remotely and we just created good one
