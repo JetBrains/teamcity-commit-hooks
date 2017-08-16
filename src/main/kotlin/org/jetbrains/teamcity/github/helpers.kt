@@ -43,3 +43,5 @@ fun Iterable<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>>.filterKnownServers(
         }
     }
 }
+
+fun String?.nullIfBlank(): String? = if (this.isNullOrBlank()) null else this

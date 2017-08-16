@@ -62,9 +62,12 @@ class WebHooksController(descriptor: PluginDescriptor,
 
         private val LOG = Util.getLogger(WebHooksController::class.java)
 
-        class MyRequestException private constructor(val element: JsonElement) : Exception() {
+        private open class MyRequestException private constructor(val element: JsonElement) : Exception() {
             constructor(message: String, @MagicConstant(flagsFromClass = HttpServletResponse::class) code: Int) : this(error_json(message, code))
         }
+
+        private class NotFoundException(message: String) : MyRequestException(message, HttpServletResponse.SC_NOT_FOUND)
+        private class AccessDeniedException(message: String) : MyRequestException(message, HttpServletResponse.SC_FORBIDDEN)
 
         fun getRepositoryInfo(info: GitHubRepositoryInfo?, manager: WebHooksManager): JsonObject {
             val element = JsonObject()
@@ -140,16 +143,16 @@ class WebHooksController(descriptor: PluginDescriptor,
         val inProjectId = request.getParameter("projectId")?.trim()
 
         if (inId == null || inId.isBlank()) return error_json("Required parameter 'id (Repository URL) is not specified", HttpServletResponse.SC_BAD_REQUEST)
-        if (inProjectId == null || inProjectId.isEmpty()) return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
+        if (inProjectId == null || inProjectId.isBlank()) return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
 
-        val project = myProjectManager.findProjectByExternalId(inProjectId) ?: return error_json("There is no project with external id '$inProjectId'", HttpServletResponse.SC_NOT_FOUND)
         val info = Util.Companion.getGitHubInfo(inId) ?: return error_json("Malformed GitHub repository URL: $inId", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+        val project = getProject(inProjectId)
 
         if (!user.isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) {
             return error_json("User has no permission to edit project '${project.fullName}'", HttpServletResponse.SC_FORBIDDEN)
         }
 
-        var connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId, user)
+        var connection: OAuthConnectionDescriptor? = getConnection(request, project, user)
 
         LOG.info("Trying to create a webhook for the GitHub repository with id '$inId', repository info is '${info.id}', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
 
@@ -368,10 +371,10 @@ class WebHooksController(descriptor: PluginDescriptor,
         val user = SessionUser.getUser(request) ?: return error_json("Not authenticated", HttpServletResponse.SC_UNAUTHORIZED)
 
         val inProjectId = request.getParameter("projectId")
-        if (inProjectId == null || inProjectId.isEmpty()) {
+        if (inProjectId == null || inProjectId.isBlank()) {
             return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
         }
-        val project = myProjectManager.findProjectByExternalId(inProjectId) ?: return error_json("There is no project with external id $inProjectId", HttpServletResponse.SC_NOT_FOUND)
+        val project = getProject(inProjectId)
 
         if (!user.isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) {
             return error_json("User has no permission to edit project '${project.fullName}'", HttpServletResponse.SC_FORBIDDEN)
@@ -380,7 +383,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         val recursive = PropertiesUtil.getBoolean(request.getParameter("recursive"))
 
         // If connection info specified, only webhooks from that server would be checked
-        val connection: OAuthConnectionDescriptor? = getConnection(request, inProjectId, user)
+        val connection: OAuthConnectionDescriptor? = getConnection(request, project, user)
 
         if (popup && connection == null) {
             return error_json("Popup==true requires connection parameters", HttpServletResponse.SC_BAD_REQUEST)
@@ -483,27 +486,30 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
     @Throws(MyRequestException::class)
-    private fun getConnection(request: HttpServletRequest, inProjectId: String?, user: SUser): OAuthConnectionDescriptor? {
-        val inConnectionId = request.getParameter("connectionId")
-        val inConnectionProjectId = request.getParameter("connectionProjectId") ?: inProjectId
-        if (inConnectionId.isNullOrBlank() || inConnectionId.isNullOrBlank()) {
-            return null
+    private fun getConnection(request: HttpServletRequest, project: SProject, user: SUser): OAuthConnectionDescriptor? {
+        val inConnectionId = request.getParameter("connectionId").nullIfBlank() ?: return null
+        val inConnectionProjectId = request.getParameter("connectionProjectId").nullIfBlank()
+        val connectionOwnerProject: SProject
+        if (inConnectionProjectId != null) {
+            connectionOwnerProject = getProject(inConnectionProjectId)
+            if (!user.isPermissionGrantedForProject(connectionOwnerProject.projectId, Permission.EDIT_PROJECT)) {
+                throw AccessDeniedException("User has no permission to edit project '${connectionOwnerProject.fullName}'")
+            }
+        } else {
+            connectionOwnerProject = project
         }
-        val connectionOwnerProject = myProjectManager.findProjectByExternalId(inConnectionProjectId)
-        @Suppress("IfNullToElvis")
-        if (connectionOwnerProject == null) {
-            throw MyRequestException("There no project with external id $inConnectionProjectId", HttpServletResponse.SC_NOT_FOUND)
-        }
-        if (!user.isPermissionGrantedForProject(connectionOwnerProject.projectId, Permission.EDIT_PROJECT)) {
-            throw MyRequestException("User has no permission to edit project '${connectionOwnerProject.fullName}'", HttpServletResponse.SC_FORBIDDEN)
-        }
+
         val connection = myOAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
         @Suppress("IfNullToElvis")
         if (connection == null) {
-            throw MyRequestException("There is no connection with id '$inConnectionId' found in the project ${connectionOwnerProject.fullName}", HttpServletResponse.SC_NOT_FOUND)
+            throw NotFoundException("There's no connection with id '$inConnectionId' found in the project ${connectionOwnerProject.fullName} and it parents")
         }
         return connection
     }
+
+    private fun getProject(externalId: String?): SProject =
+            myProjectManager.findProjectByExternalId(externalId) ?:
+            throw NotFoundException("There's no project with external id $externalId")
 
     fun gh_json(result: String, message: String, info: GitHubRepositoryInfo, escape: Boolean = true): JsonObject {
         val message1 = if (escape) StringUtil.formatTextForWeb(message) else message

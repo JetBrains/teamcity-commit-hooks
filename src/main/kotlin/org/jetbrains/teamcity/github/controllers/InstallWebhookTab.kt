@@ -12,6 +12,7 @@ import jetbrains.buildServer.web.util.CameFromSupport
 import jetbrains.buildServer.web.util.SessionUser
 import org.jetbrains.teamcity.github.TokensHelper
 import org.jetbrains.teamcity.github.Util
+import org.jetbrains.teamcity.github.nullIfBlank
 import javax.servlet.http.HttpServletRequest
 
 class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
@@ -92,8 +93,8 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
     }
 
     private fun getConnection(request: HttpServletRequest, project: SProject): OAuthConnectionDescriptor? {
-        val connectionId = request.getParameter("connectionId")
-        val connectionProjectId = request.getParameter("connectionProjectId")
+        val connectionId = request.getParameter("connectionId").nullIfBlank()
+        val connectionProjectId = request.getParameter("connectionProjectId").nullIfBlank()
 
         if (connectionId != null) {
             val connectionProject: SProject?
@@ -130,4 +131,3 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
         return project != null && SessionUser.getUser(request).isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)
     }
 }
-
