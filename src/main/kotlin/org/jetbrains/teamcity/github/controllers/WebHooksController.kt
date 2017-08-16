@@ -53,7 +53,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     private val myTokenGrantedPath = descriptor.getPluginResourcesPath("tokenGranted.jsp")
 
 
-    fun register(): Unit {
+    fun register() {
         myWebControllerManager.registerController(PATH, this)
     }
 
@@ -152,7 +152,7 @@ class WebHooksController(descriptor: PluginDescriptor,
             return error_json("User has no permission to edit project '${project.fullName}'", HttpServletResponse.SC_FORBIDDEN)
         }
 
-        var connection: OAuthConnectionDescriptor? = getConnection(request, project, user)
+        var connection: OAuthConnectionDescriptor? = getConnection(request, project)
 
         LOG.info("Trying to create a webhook for the GitHub repository with id '$inId', repository info is '${info.id}', user is '${user.describe(false)}', connection is ${connection?.id ?: "not specified in request"}")
 
@@ -258,15 +258,13 @@ class WebHooksController(descriptor: PluginDescriptor,
         val currentPageUrl = request.getParameter("currentPageUrl")
         if (currentPageUrl != null) {
             params["afterAddUrl"] = currentPageUrl
-        };
-        val hash: String
-        if (Util.isSameUrl(server, "github.com")) {
-            hash = "addDialog=GitHub"
-        } else {
-            hash = "addDialog=GHE&gitHubUrl=${WebUtil.encode(server)}"
         }
-        val createOAuthConnectionUrl = url(request.contextPath + "/admin/editProject.html", params) + "#$hash";
-        return createOAuthConnectionUrl
+        val hash = if (Util.isSameUrl(server, "github.com")) {
+            "addDialog=GitHub"
+        } else {
+            "addDialog=GHE&gitHubUrl=${WebUtil.encode(server)}"
+        }
+        return url(request.contextPath + "/admin/editProject.html", params) + "#$hash"
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
@@ -383,7 +381,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         val recursive = PropertiesUtil.getBoolean(request.getParameter("recursive"))
 
         // If connection info specified, only webhooks from that server would be checked
-        val connection: OAuthConnectionDescriptor? = getConnection(request, project, user)
+        val connection: OAuthConnectionDescriptor? = getConnection(request, project)
 
         if (popup && connection == null) {
             return error_json("Popup==true requires connection parameters", HttpServletResponse.SC_BAD_REQUEST)
@@ -486,7 +484,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
     @Throws(MyRequestException::class)
-    private fun getConnection(request: HttpServletRequest, project: SProject, user: SUser): OAuthConnectionDescriptor? {
+    private fun getConnection(request: HttpServletRequest, project: SProject): OAuthConnectionDescriptor? {
         val inConnectionId = request.getParameter("connectionId").nullIfBlank() ?: return null
         val inConnectionProjectId = request.getParameter("connectionProjectId").nullIfBlank()
         val connectionOwnerProject = inConnectionProjectId?.let { getProject(it) } ?: project
