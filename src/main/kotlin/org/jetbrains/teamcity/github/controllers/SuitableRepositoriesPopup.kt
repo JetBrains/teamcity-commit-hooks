@@ -46,7 +46,7 @@ class SuitableRepositoriesPopup(descriptor: PluginDescriptor,
         val mv = ModelAndView(myViewPath)
         mv.model.put("repositoriesMap", repos)
         mv.model.put("hasConnections", hasConnections)
-        mv.model.put("project", project);
+        mv.model.put("project", project)
         return mv
     }
 }

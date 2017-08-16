@@ -62,7 +62,7 @@ class TokensHelper(
     }
 
 
-    enum class HookAccessType() : Comparable<HookAccessType> {
+    enum class HookAccessType : Comparable<HookAccessType> {
         NO_ACCESS, // nothing
         READ, // read + ping
         WRITE, // READ + add + modify

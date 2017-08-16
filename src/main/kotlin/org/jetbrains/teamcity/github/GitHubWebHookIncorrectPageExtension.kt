@@ -15,12 +15,12 @@ class GitHubWebHookIncorrectPageExtension(descriptor: PluginDescriptor, places: 
     }
 
     override fun isAvailable(request: HttpServletRequest): Boolean {
-        if (!super.isAvailable(request)) return false;
+        if (!super.isAvailable(request)) return false
         val item = getStatusItem(request)
         @Suppress("UNCHECKED_CAST")
-        val projects = item.additionalData["Projects"] as Set<SProject>? ?: return false;
-        val user = SessionUser.getUser(request);
+        val projects = item.additionalData["Projects"] as Set<SProject>? ?: return false
+        val user = SessionUser.getUser(request)
 
-        return projects.any { user.isPermissionGrantedForProject(it.projectId, Permission.EDIT_PROJECT) };
+        return projects.any { user.isPermissionGrantedForProject(it.projectId, Permission.EDIT_PROJECT) }
     }
 }

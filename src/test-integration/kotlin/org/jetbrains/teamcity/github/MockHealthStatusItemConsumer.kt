@@ -43,9 +43,9 @@ class MockHealthStatusItemConsumer : HealthStatusItemConsumer {
         all.add(p1)
     }
 
-    public fun merge(other: MockHealthStatusItemConsumer): MockHealthStatusItemConsumer {
-        this.all.addAll(other.all);
-        this.global.addAll(other.global);
+    fun merge(other: MockHealthStatusItemConsumer): MockHealthStatusItemConsumer {
+        this.all.addAll(other.all)
+        this.global.addAll(other.global)
         other.buildType.forEach { bt, set -> this.buildType.getOrPut(bt) { HashSet<HealthStatusItem>() }.addAll(set) }
         other.template.forEach { bt, set -> this.template.getOrPut(bt) { HashSet<HealthStatusItem>() }.addAll(set) }
         other.project.forEach { bt, set -> this.project.getOrPut(bt) { HashSet<HealthStatusItem>() }.addAll(set) }

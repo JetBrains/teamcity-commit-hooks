@@ -109,7 +109,7 @@ class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerMana
 
 }
 
-class ProjectWebHooksForm() {
+class ProjectWebHooksForm {
     var keyword: String? = null
     var recursive: Boolean = false
     var page: Int = 0
@@ -131,7 +131,7 @@ class ProjectWebHooksBean(val project: SProject,
     }
 
     fun getNumberOfCorrectWebHooks(): Int {
-        return hooks.count() { getHookStatus(it.value.info).status.good }
+        return hooks.count { getHookStatus(it.value.info).status.good }
     }
 
     @Used("jps") fun getVisibleHooks(): List<Map.Entry<GitHubRepositoryInfo, WebHookDetails>> {

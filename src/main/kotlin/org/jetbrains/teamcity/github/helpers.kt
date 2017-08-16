@@ -38,7 +38,7 @@ fun Iterable<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>>.filterKnownServers(
     val cache: Cache<SProject, List<OAuthConnectionDescriptor>> = CacheBuilder.newBuilder().build()
     return this.filter { entry ->
         Util.getProjects(entry.value).any { project ->
-            val connections = cache[project, { connectionsManager.getAvailableConnections(project).filterNotNull() }];
+            val connections = cache[project, { connectionsManager.getAvailableConnections(project).filterNotNull() }]
             connections.filter { Util.isConnectionToServer(it, entry.key.server) }.isNotEmpty()
         }
     }

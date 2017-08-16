@@ -33,7 +33,7 @@ object CreateWebHookAction {
 
         for (hook in context.storage.getHooks(info)) {
             if (checkExisting(client, context, hook, info)) {
-                return HookAddOperationResult.AlreadyExists to hook;
+                return HookAddOperationResult.AlreadyExists to hook
             }
         }
 

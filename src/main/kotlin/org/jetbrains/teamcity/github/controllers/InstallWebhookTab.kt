@@ -37,7 +37,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
                 val project = request.getAttribute("project") as SProject? ?: return false
                 val user = SessionUser.getUser(request) ?: return false
                 return user.isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)
-                       && Util.isVcsRootsWhereHookCanBeInstalled(project, connectionsManager);
+                       && Util.isVcsRootsWhereHookCanBeInstalled(project, connectionsManager)
             }
         }
         projectMenuExtension.pluginName = "installWebhookAction"
@@ -73,8 +73,8 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
             if (connections != null && connections.size == 1) {
                 connection = connections.first()
             }
-            hasConnections = connections?.isNotEmpty() ?: false
-            hasToken = pair?.second ?: false
+            hasConnections = connections?.isNotEmpty() == true
+            hasToken = pair?.second == true
         }
 
         model["connectionId"] = connection?.id.orEmpty()

@@ -181,7 +181,7 @@ class Util {
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
         fun isVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
-            val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = ArrayList(1);
+            val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = ArrayList(1)
             doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, true, project, recursive = true, result = result)
             return result.isNotEmpty()
         }

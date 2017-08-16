@@ -55,7 +55,7 @@ class WebHookPayloadDeserializeTest {
     fun PullRequestPayloads(): Array<Array<String>> {
         return listOf("example-pull-request-opened-payload.json",
                       "example-pull-request-synchronize-payload.json")
-                .map { arrayOf(it) }.toTypedArray();
+                .map { arrayOf(it) }.toTypedArray()
     }
 
     @Test(dataProvider = "PullRequestPayloads")

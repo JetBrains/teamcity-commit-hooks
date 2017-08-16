@@ -36,7 +36,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     companion object {
         private val LOG: Logger = Util.getLogger(WebHooksStorage::class.java)
 
-        private val VERSION: Int = 1;
+        private val VERSION: Int = 1
 
         private val hooksListType = object : TypeToken<List<HookInfo>>() {}.type
         val gson: Gson = GsonBuilder()
@@ -246,7 +246,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
                 hooks = mutableListOf(toAdd)
                 myData.put(mapKey, hooks)
             } else {
-                hooks = hooks;
+                hooks = hooks
                 hooks.add(toAdd)
                 myData.put(mapKey, hooks)
             }

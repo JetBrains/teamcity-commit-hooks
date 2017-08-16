@@ -61,7 +61,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
 
     private val myData = TreeMap<String, AuthData>()
     private val myDataLock = ReentrantReadWriteLock()
-    private var myDataModificationCounter: Int = 0;
+    private var myDataModificationCounter: Int = 0
     private var myStoredDataModificationCounter: Int = 0
 
     private val myExecutor = executorServices.lowPriorityExecutorService
