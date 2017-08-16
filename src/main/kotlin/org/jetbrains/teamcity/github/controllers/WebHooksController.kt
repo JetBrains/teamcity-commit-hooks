@@ -489,15 +489,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     private fun getConnection(request: HttpServletRequest, project: SProject, user: SUser): OAuthConnectionDescriptor? {
         val inConnectionId = request.getParameter("connectionId").nullIfBlank() ?: return null
         val inConnectionProjectId = request.getParameter("connectionProjectId").nullIfBlank()
-        val connectionOwnerProject: SProject
-        if (inConnectionProjectId != null) {
-            connectionOwnerProject = getProject(inConnectionProjectId)
-            if (!user.isPermissionGrantedForProject(connectionOwnerProject.projectId, Permission.EDIT_PROJECT)) {
-                throw AccessDeniedException("User has no permission to edit project '${connectionOwnerProject.fullName}'")
-            }
-        } else {
-            connectionOwnerProject = project
-        }
+        val connectionOwnerProject = inConnectionProjectId?.let { getProject(it) } ?: project
 
         val connection = myOAuthConnectionsManager.findConnectionById(connectionOwnerProject, inConnectionId)
         @Suppress("IfNullToElvis")
