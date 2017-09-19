@@ -1,6 +1,8 @@
-# TeamCity Commit Hooks Plugin 
-[![plugin status]( 
+[![official JetBrains project](http://jb.gg/badges/official-plastic.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![plugin status]( 
 http://teamcity.jetbrains.com/app/rest/builds/buildType:TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build,pinned:true/statusIcon.svg)](https://teamcity.jetbrains.com/viewLog.html?buildTypeId=TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build&buildId=lastPinned&guest=1)
+
+# TeamCity Commit Hooks Plugin 
+
 
 This plugin allows installing GitHub webhooks for GitHub repositories used by TeamCity VCS roots. At the moment the plugin does three things:
 * it shows a suggestion to install a GitHub webhook if it finds a GitHub repository in a project without such a webhook
@@ -19,9 +21,6 @@ You can download the plugin build and install it as an [additional TeamCity plug
 |----------|---------------|
 | [Download](https://teamcity.jetbrains.com/repository/download/TeamCityPluginsByJetBrains_TeamcityCommitHooks_Build/.lastPinned/teamcity-commit-hooks.zip?guest=1) | TeamCity 10+ |
 
-# License
-
-Apache 2.0
 
 # Bugs
 
