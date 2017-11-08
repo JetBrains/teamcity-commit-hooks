@@ -239,7 +239,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun doHandlePullRequestEvent(payload: PullRequestPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         if (payload.action !in AcceptedPullRequestActions) {
-            LOG.info("Ignoring 'pull_request' event with action '${payload.action} as unrelated")
+            LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo ${hookInfo}")
             return SC_ACCEPTED to "Unrelated action, expected one of " + AcceptedPullRequestActions
         }
         val repository = payload.pullRequest?.base?.repo
