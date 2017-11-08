@@ -180,7 +180,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
 
         override fun toString(): String {
-            return "HookInfo(url='$url', callbackUrl='$callbackUrl', status=$status, lastUsed=$lastUsed, lastBranchRevisions=$lastBranchRevisions)"
+            return "HookInfo(url='$url', callbackUrl='$callbackUrl', status=$status, lastUsed=$lastUsed)"
         }
     }
 
@@ -214,11 +214,11 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    fun init(): Unit {
+    fun init() {
         myServerEventDispatcher.addListener(myServerListener)
     }
 
-    fun destroy(): Unit {
+    fun destroy() {
         myServerEventDispatcher.removeListener(myServerListener)
     }
 
