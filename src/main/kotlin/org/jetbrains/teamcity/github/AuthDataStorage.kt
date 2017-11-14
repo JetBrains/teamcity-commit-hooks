@@ -96,6 +96,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
         if (store) {
             store(data)
         }
+        LOG.info("Created auth data $data")
         return data
     }
 
@@ -105,6 +106,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
             myData.put(data.public, data)
             myDataModificationCounter++
         }
+        LOG.info("Stored auth data $data")
         schedulePersisting()
     }
 
@@ -114,6 +116,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
                 myDataModificationCounter++
             }
         }
+        LOG.info("Removed auth data $data")
         schedulePersisting()
     }
 
@@ -129,13 +132,14 @@ class AuthDataStorage(executorServices: ExecutorServices,
                     myDataLock.read {
                         myData.entries.filter { it.value.userId == userId }.map { it.key }
                     }
-            if (keysToRemove.isEmpty()) return
+            if (keysToRemove.isEmpty()) break
             myDataLock.write {
                 myData.keys.removeAll(keysToRemove)
                 myDataModificationCounter++
             }
             schedulePersisting()
         }
+        LOG.info("Removed all auth data related for user $userId")
     }
 
     fun delete(pubKey: String) {
@@ -144,11 +148,13 @@ class AuthDataStorage(executorServices: ExecutorServices,
                 myDataModificationCounter++
             }
         }
+        LOG.info("Removed auth data for pubkey $pubKey")
         schedulePersisting()
     }
 
     // NOTE: Should not be called inside myDataLock
     private fun schedulePersisting() {
+        LOG.debug("Scheduling persisting of internal storage onto disk")
         assert(!myDataLock.isWriteLockedByCurrentThread)
         try {
             myExecutor.submit { persist() }
@@ -159,9 +165,13 @@ class AuthDataStorage(executorServices: ExecutorServices,
 
     @Synchronized private fun persist(): Boolean {
         val (data, counter) = myDataLock.read {
-            if (myDataModificationCounter == myStoredDataModificationCounter) return true
+            if (myDataModificationCounter == myStoredDataModificationCounter) {
+                LOG.info("Storage is not modified, nothing to save on disk")
+                return true
+            }
             TreeMap(myData) to myDataModificationCounter
         }
+        LOG.info("Persisting internal storage onto disk, MC=$counter, SMC=$myStoredDataModificationCounter")
 
         val file = getStorageFile()
 
@@ -198,6 +208,8 @@ class AuthDataStorage(executorServices: ExecutorServices,
             LOG.warn("Stored map is null")
             return false
         }
+
+        LOG.info("Loaded ${map.size} elements into internal storage from disk")
 
         myDataLock.write {
             myData.clear()
