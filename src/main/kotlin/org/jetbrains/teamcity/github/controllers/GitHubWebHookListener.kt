@@ -5,12 +5,12 @@ import com.google.gson.JsonIOException
 import com.google.gson.JsonSyntaxException
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
-import jetbrains.buildServer.serverSide.SecurityContextEx
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.users.impl.UserEx
 import jetbrains.buildServer.util.FileUtil
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.web.openapi.WebControllerManager
+import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.event.PingWebHookPayload
@@ -18,6 +18,7 @@ import org.eclipse.egit.github.core.event.PullRequestPayload
 import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
+import org.jetbrains.teamcity.github.util.LayeredHttpServletRequest
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import java.io.BufferedReader
@@ -33,7 +34,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                             private val AuthorizationInterceptor: AuthorizationInterceptor,
                             private val AuthDataStorage: AuthDataStorage,
                             private val UserModel: UserModelEx,
-                            private val SecurityContext: SecurityContextEx,
                             private val WebHooksManager: WebHooksManager) : BaseController() {
 
     companion object {
@@ -239,7 +239,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun doHandlePullRequestEvent(payload: PullRequestPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         if (payload.action !in AcceptedPullRequestActions) {
-            LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo ${hookInfo}")
+            LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo $hookInfo")
             return SC_ACCEPTED to "Unrelated action, expected one of " + AcceptedPullRequestActions
         }
         val repository = payload.pullRequest?.base?.repo
@@ -272,9 +272,9 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         val dispatcher = request.getRequestDispatcher("/app/rest/vcs-root-instances/commitHookNotification?" +
                                                       "locator=type:jetbrains.git,or:(property:(name:url,value:$httpId,matchType:contains),property:(name:url,value:$sshId,matchType:contains))")
         if (dispatcher != null) {
-            SecurityContext.runAs(user) {
-                dispatcher.forward(request, response)
-            }
+            val layered = LayeredHttpServletRequest(request)
+            SessionUser.setUser(layered, user)
+            dispatcher.forward(layered, response)
             return null
         }
         return SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
