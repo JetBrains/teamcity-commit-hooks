@@ -138,8 +138,13 @@ class WebhookPeriodicalChecker(
             }
             val authData = myAuthDataStorage.find(pubKey)
             if (authData == null) {
-                LOG.warn("Cannot find auth data for hook '${hook.url}'")
-                report(info, hook, "Webhook callback url is incorrect or internal storage was corrupted")
+                if (TeamCityProperties.getBooleanOrTrue("teamcity.github-webhooks.remove-corrupted-hooks")) {
+                    LOG.warn("Cannot find auth data for hook '${hook.url}', removing hook from storage")
+                    myWebHooksStorage.delete(hook)
+                } else {
+                    LOG.warn("Cannot find auth data for hook '${hook.url}'")
+                    report(info, hook, "Webhook callback url is incorrect or internal storage was corrupted")
+                }
                 continue
             }
 
