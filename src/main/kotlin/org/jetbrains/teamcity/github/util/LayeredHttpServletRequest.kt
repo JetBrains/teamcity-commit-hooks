@@ -12,11 +12,9 @@ class LayeredHttpServletRequest(request: HttpServletRequest) : HttpServletReques
     @Volatile private var mySession: FakeHttpSession? = null
     private val myAttributes = ConcurrentHashMap<String, Any>()
 
-    override fun getSession(): HttpSession {
-        return getSession(true)
-    }
+    override fun getSession() = getSession(true)!!
 
-    override fun getSession(create: Boolean): HttpSession {
+    override fun getSession(create: Boolean): HttpSession? {
         val session = mySession
         if (session != null && session.isInvalidated) {
             mySession = null
@@ -26,7 +24,7 @@ class LayeredHttpServletRequest(request: HttpServletRequest) : HttpServletReques
             mySession = FakeHttpSession()
         }
 
-        return mySession!!
+        return mySession
     }
 
 
