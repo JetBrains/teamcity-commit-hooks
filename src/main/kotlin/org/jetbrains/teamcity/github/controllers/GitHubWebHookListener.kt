@@ -9,6 +9,7 @@ import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.users.impl.UserEx
 import jetbrains.buildServer.util.FileUtil
 import jetbrains.buildServer.util.StringUtil
+import jetbrains.buildServer.util.ThreadUtil
 import jetbrains.buildServer.web.openapi.WebControllerManager
 import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
@@ -26,6 +27,7 @@ import java.io.ByteArrayInputStream
 import java.io.IOException
 import java.io.InputStreamReader
 import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import javax.servlet.http.HttpServletResponse.*
@@ -125,11 +127,10 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             return simpleText(response, SC_NOT_FOUND, "User installed webhook no longer registered in TeamCity. Remove and reinstall webhook.")
         }
 
-        val hookInfo = WebHooksManager.getHookForPubKey(authData)
+        val hookInfo = getHookInfoWithWaiting(authData, eventType)
         if (hookInfo == null) {
             // Seems local cache was cleared
             LOG.warn("No stored hook info found for public key '$pubKey' and repository '${authData.repository}'")
-            AuthDataStorage.delete(pubKey)
             return simpleText(response, SC_NOT_FOUND, "No stored hook info found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
         }
 
@@ -195,6 +196,17 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return null
     }
 
+    private fun getHookInfoWithWaiting(authData: AuthDataStorage.AuthData, eventType: String?): WebHooksStorage.HookInfo? {
+        // There's possibility that listener invoked prior to 'CreateWebHookAction' finishes storing it in WebHooksManager
+        // Seems it's ok to do that since we already checked that request presumable comes from GitHub
+        for (i in 1..10) {
+            val info = WebHooksManager.getHookForPubKey(authData)
+            if (info != null) return info
+            if (eventType != "ping") return null
+            ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(1))
+        }
+        return null
+    }
 
     private fun getAuthData(subPath: String) = AuthDataStorage.find(subPath)
 
