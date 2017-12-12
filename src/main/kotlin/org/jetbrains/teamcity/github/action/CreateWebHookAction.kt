@@ -121,6 +121,8 @@ object CreateWebHookAction {
         // Remove missing hooks from storage as they don't exists remotely and we just created good one
         context.storage.delete(info) { it.status == Status.MISSING }
 
+        LOG.info("Successfully created hook $hookInfo")
+
         return HookAddOperationResult.Created to hookInfo
 
     }

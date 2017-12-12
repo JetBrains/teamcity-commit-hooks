@@ -231,7 +231,10 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
         val hooks = getHooks(mapKey)
         val hook = hooks.firstOrNull { it.isSame(created) }
-        if (hook != null) return hook
+        if (hook != null) {
+            LOG.info("Already exist $hook")
+            return hook
+        }
 
         myDataLock.write {
             @Suppress("NAME_SHADOWING")
@@ -250,11 +253,13 @@ class WebHooksStorage(cacheProvider: CacheProvider,
                 hooks.add(toAdd)
                 myData.put(mapKey, hooks)
             }
+            LOG.info("Added $toAdd")
             return toAdd
         }
     }
 
     fun delete(hookInfo: HookInfo) {
+        LOG.info("Removing $hookInfo")
         myDataLock.write {
             myData[hookInfo.key.toMapKey()]?.remove(hookInfo)
         }
