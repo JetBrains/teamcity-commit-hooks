@@ -286,6 +286,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         if (dispatcher != null) {
             val layered = LayeredHttpServletRequest(request)
             SessionUser.setUser(layered, user)
+            layered.setAttribute("INTERNAL_REQUEST", true);
             dispatcher.forward(layered, response)
             return null
         }
