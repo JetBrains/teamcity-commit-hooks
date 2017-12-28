@@ -261,7 +261,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             LOG.warn(message)
             return SC_BAD_REQUEST to message
         }
-        LOG.info("Received pull_request payload from webhook for repo ${repository?.owner?.login}/${repository?.name}")
+        LOG.info("Received pull_request payload from webhook for repo ${repository.owner?.login}/${repository.name}")
         val info = Util.getGitHubInfo(url)
         if (info == null) {
             val message = "Cannot determine repository info from url '$url'"
