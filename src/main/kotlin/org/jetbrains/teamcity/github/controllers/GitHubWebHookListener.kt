@@ -52,7 +52,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
         private val LOG = Util.getLogger(GitHubWebHookListener::class.java)
 
-        private const val PullRequestsIdleTimeProperty = "teamcity.githubWebhooks.pullRequest.timeout.millis";
+        private const val PullRequestsIdleTimeProperty = "teamcity.githubWebhooks.pullRequest.timeout.seconds";
 
         fun getPubKeyFromRequestPath(path: String): String? {
             val indexOfPathPart = path.indexOf(PATH + "/")
@@ -279,8 +279,10 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         // Lets wait for some time and then schedule check for changes
         // Also we're unable to update branch info due to both missing hash and egit-github library api lack related field
 
-        val timeout = TeamCityProperties.getLong(PullRequestsIdleTimeProperty, 1000);
-        ThreadUtil.sleep(timeout)
+        val timeout = TimeUnit.SECONDS.toMillis(TeamCityProperties.getLong(PullRequestsIdleTimeProperty, 1));
+        if (timeout > 0) {
+            ThreadUtil.sleep(timeout)
+        }
 
         return doForwardToRestApi(info, user, request, response)
     }
