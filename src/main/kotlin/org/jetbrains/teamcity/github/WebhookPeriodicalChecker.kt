@@ -38,6 +38,7 @@ class WebhookPeriodicalChecker(
 
 
     private var myTask: ScheduledFuture<*>? = null
+    private val myAuthDataCleaner = AuthDataCleaner()
 
     companion object {
         private val LOG = Util.getLogger(WebhookPeriodicalChecker::class.java)
@@ -118,6 +119,8 @@ class WebhookPeriodicalChecker(
         LOG.info("Periodical GitHub Webhooks checker started")
         val ignoredServers = ArrayList<String>()
 
+        myAuthDataCleaner.cleanup()
+
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
         val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, WebHooksStorage.HookInfo>>()
         if (toCheck.isEmpty()) {
@@ -138,7 +141,7 @@ class WebhookPeriodicalChecker(
             }
             val authData = myAuthDataStorage.find(pubKey)
             if (authData == null) {
-                if (TeamCityProperties.getBooleanOrTrue("teamcity.github-webhooks.remove-corrupted-hooks")) {
+                if (TeamCityProperties.getBooleanOrTrue("teamcity.githubWebhooks.removeCorruptedHooks")) {
                     LOG.warn("Cannot find auth data for hook '${hook.url}', removing hook from storage")
                     myWebHooksStorage.delete(hook)
                 } else {
@@ -195,7 +198,7 @@ class WebhookPeriodicalChecker(
                         LOG.info("$removed ${removed.size.pluralize("webhook")} missing on remote server and would be removed locally")
                         val pubKeysToRemove = removed.map { GitHubWebHookListener.getPubKeyFromRequestPath(it.callbackUrl) }.filterNotNull()
                         myWebHooksStorage.delete(info) {it in removed}
-                        myAuthDataStorage.findAllForRepository(info).filter { it.public in pubKeysToRemove }.forEach { myAuthDataStorage.remove(it) }
+                        myAuthDataStorage.remove(myAuthDataStorage.findAllForRepository(info).filter { it.public in pubKeysToRemove })
                     }
 
                     // Update info for all loaded hooks
@@ -285,6 +288,27 @@ class WebhookPeriodicalChecker(
 
 
         LOG.info("Periodical GitHub Webhooks checker finished")
+    }
+
+    private inner class AuthDataCleaner {
+        private var myLastCheckUnusedData: List<AuthDataStorage.AuthData>? = null
+        private var myLastCheckTimestamp: Long = 0
+
+        fun cleanup() {
+            if (!TeamCityProperties.getBooleanOrTrue("teamcity.githubWebhooks.cleanupAuthData")) return
+
+            val unused = myLastCheckUnusedData
+            val currentTime = System.currentTimeMillis()
+            if (unused == null || currentTime - myLastCheckTimestamp > TimeUnit.MINUTES.toMillis(25)) {
+                val usedPublicKeys = myWebHooksStorage.getAll()
+                        .mapNotNull { GitHubWebHookListener.getPubKeyFromRequestPath(it.second.callbackUrl) }.toHashSet()
+                if (unused != null) {
+                    myAuthDataStorage.remove(unused.filter { !usedPublicKeys.contains(it.public) })
+                }
+                myLastCheckUnusedData = myAuthDataStorage.getAll().filter { !usedPublicKeys.contains(it.public) }
+                myLastCheckTimestamp = currentTime
+            }
+        }
     }
 
     private fun checkQuotaLimit(ghc: GitHubClientEx, ignoredServers: ArrayList<String>, info: GitHubRepositoryInfo) {

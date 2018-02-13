@@ -17,6 +17,7 @@ import java.io.File
 import java.util.*
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.collections.ArrayList
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
@@ -117,6 +118,17 @@ class AuthDataStorage(executorServices: ExecutorServices,
             }
         }
         LOG.info("Removed auth data $data")
+        schedulePersisting()
+    }
+
+    fun remove(datas: Collection<AuthData>) {
+        if (datas.isEmpty()) return
+        val keysToRemove = datas.map { it.public }.toHashSet()
+        if (keysToRemove.isEmpty()) return
+        myDataLock.write {
+            if (myData.keys.removeAll(keysToRemove)) myDataModificationCounter++
+        }
+        LOG.info("Removed auth data $datas")
         schedulePersisting()
     }
 
@@ -227,5 +239,9 @@ class AuthDataStorage(executorServices: ExecutorServices,
 
     fun findAllForRepository(repository: GitHubRepositoryInfo): List<AuthData> {
         return myData.values.filter { it.repository == repository }
+    }
+
+    fun getAll(): Collection<AuthData> {
+        return ArrayList(myData.values)
     }
 }
