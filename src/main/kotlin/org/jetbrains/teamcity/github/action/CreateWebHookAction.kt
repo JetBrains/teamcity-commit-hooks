@@ -37,7 +37,7 @@ object CreateWebHookAction {
             }
         }
 
-        val authData = context.authDataStorage.create(user, info, connection, false)
+        val authData = context.authDataStorage.create(user, info, connection)
 
         val callbackUrl = context.getCallbackUrl(authData)
 
