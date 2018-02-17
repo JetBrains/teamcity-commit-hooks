@@ -132,7 +132,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                 }
             }
         }
-        return SimpleView.createTextView("Unrecognized request: " + WebUtil.getRequestDump(request))
+        return SimpleView.createTextView("Unrecognized request: " + WebUtil.getRequestDump(request) + ", action result: " + element.toString())
     }
 
     @Throws(MyRequestException::class)
