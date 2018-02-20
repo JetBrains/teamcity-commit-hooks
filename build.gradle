@@ -84,7 +84,7 @@ teamcity {
     server {
         descriptor {
             name = project.name
-            displayName = 'TeamCity Commit Hooks'
+            displayName = 'GitHub Commit Hooks'
             version = project.version
             vendorName = 'JetBrains, s.r.o.'
             vendorUrl = 'http://www.jetbrains.com/'
