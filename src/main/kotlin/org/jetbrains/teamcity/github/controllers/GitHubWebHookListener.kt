@@ -5,7 +5,6 @@ import com.google.gson.JsonIOException
 import com.google.gson.JsonSyntaxException
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
-import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.users.impl.UserEx
 import jetbrains.buildServer.util.FileUtil
@@ -51,8 +50,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         private val AcceptedPullRequestActions = listOf("opened", "reopened", "synchronize")
 
         private val LOG = Util.getLogger(GitHubWebHookListener::class.java)
-
-        private const val PullRequestsIdleTimeProperty = "teamcity.githubWebhooks.pullRequest.timeout.seconds";
 
         fun getPubKeyFromRequestPath(path: String): String? {
             val indexOfPathPart = path.indexOf(PATH + "/")
@@ -276,13 +273,8 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         updateBranches(hookInfo, "refs/heads/pull/$id/head", payload.pullRequest.head.sha)
 
         // Sometimes GitHub triggers 'pull_request' event before merge branch is created
-        // Lets wait for some time and then schedule check for changes
+        // To ensure 'merge' branch created request to GitHub API should be made
         // Also we're unable to update branch info due to both missing hash and egit-github library api lack related field
-
-        val timeout = TimeUnit.SECONDS.toMillis(TeamCityProperties.getLong(PullRequestsIdleTimeProperty, 1));
-        if (timeout > 0) {
-            ThreadUtil.sleep(timeout)
-        }
 
         return doForwardToRestApi(info, user, request, response)
     }
