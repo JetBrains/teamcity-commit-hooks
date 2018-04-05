@@ -77,9 +77,7 @@ class WebHooksManager(links: WebLinks,
 
     fun updateBranchRevisions(hookInfo: WebHooksStorage.HookInfo, map: Map<String, String>) {
         hookInfo.status = Status.OK
-        val lbr = hookInfo.lastBranchRevisions ?: HashMap()
-        lbr.putAll(map)
-        hookInfo.lastBranchRevisions = lbr
+        hookInfo.updateBranchMapping(map)
     }
 
     private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>): Boolean {
@@ -87,7 +85,7 @@ class WebHooksManager(links: WebLinks,
 
         // Maybe we have forgot about revisions (cache cleanup after server restart)
         if (hookBranches == null) {
-            hook.lastBranchRevisions = HashMap(newBranches)
+            hook.updateBranchMapping(newBranches)
             return true
         }
         for ((name, hash) in newBranches.entries) {

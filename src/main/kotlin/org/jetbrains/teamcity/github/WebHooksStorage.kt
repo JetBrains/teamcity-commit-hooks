@@ -20,6 +20,7 @@ import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.io.File
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.collections.HashMap
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
@@ -177,6 +178,12 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             var result = url.hashCode()
             result = 31 * result + callbackUrl.hashCode()
             return result
+        }
+
+        fun updateBranchMapping(update: Map<String, String>): Map<String, String> {
+            if (lastBranchRevisions == null) lastBranchRevisions = HashMap()
+            lastBranchRevisions!!.putAll(update)
+            return lastBranchRevisions!!
         }
 
         override fun toString(): String {
