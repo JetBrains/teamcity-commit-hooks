@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.client.IGitHubConstants
 import org.eclipse.egit.github.core.event.PingWebHookPayload
-import org.eclipse.egit.github.core.event.PullRequestPayload
+import org.eclipse.egit.github.core.event.PullRequestPayloadEx
 import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.testng.annotations.BeforeClass
 import org.testng.annotations.DataProvider
@@ -64,7 +64,7 @@ class WebHookPayloadDeserializeTest {
         Assertions.assertThat(file).exists().isFile()
         val input = file.readText()
         Assertions.assertThat(input).isNotEmpty()
-        val event = GsonUtilsEx.fromJson(input, PullRequestPayload::class.java)
+        val event = GsonUtilsEx.fromJson(input, PullRequestPayloadEx::class.java)
         Assertions.assertThat(event).isNotNull()
         Assertions.assertThat(event.action).isNotNull()
         Assertions.assertThat(event.number).isNotNull()
@@ -73,6 +73,7 @@ class WebHookPayloadDeserializeTest {
         Assertions.assertThat(event.pullRequest.head.repo).isNotNull()
         Assertions.assertThat(event.pullRequest.head.repo.htmlUrl).isNotNull()
         Assertions.assertThat(event.pullRequest.head.sha).isNotNull()
+        Assertions.assertThat(event.pullRequest.mergeCommitSha).isNotNull()
     }
 
     private fun getTestFile(path: String): File {
