@@ -15,7 +15,7 @@ import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.event.PingWebHookPayload
-import org.eclipse.egit.github.core.event.PullRequestPayload
+import org.eclipse.egit.github.core.event.PullRequestPayloadEx
 import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
@@ -36,6 +36,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                             private val AuthorizationInterceptor: AuthorizationInterceptor,
                             private val AuthDataStorage: AuthDataStorage,
                             private val UserModel: UserModelEx,
+                            private val PullRequestMergeBranchChecker: PullRequestMergeBranchChecker,
                             private val WebHooksManager: WebHooksManager) : BaseController() {
 
     companion object {
@@ -178,7 +179,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
                 "pull_request" -> {
-                    val payload = GsonUtilsEx.fromJson(contentReader, PullRequestPayload::class.java)
+                    val payload = GsonUtilsEx.fromJson(contentReader, PullRequestPayloadEx::class.java)
                     val pair = doHandlePullRequestEvent(payload, hookInfo, request, response, user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
@@ -249,7 +250,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return doForwardToRestApi(info, user, request, response)
     }
 
-    private fun doHandlePullRequestEvent(payload: PullRequestPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         if (payload.action !in AcceptedPullRequestActions) {
             LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo $hookInfo")
             return SC_ACCEPTED to "Unrelated action, expected one of " + AcceptedPullRequestActions
@@ -272,6 +273,16 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         val id = payload.number
         updateBranches(hookInfo, "refs/heads/pull/$id/head", payload.pullRequest.head.sha)
 
+        val mergeCommitSha = payload.pullRequest.mergeCommitSha
+        val mergeBranchName = "refs/heads/pull/$id/merge"
+        if (!mergeCommitSha.isNullOrBlank()) {
+            updateBranches(hookInfo, mergeBranchName, mergeCommitSha!!)
+        } else if (hookInfo.lastBranchRevisions?.get(mergeBranchName).isNullOrEmpty()) {
+            // Firstly discovered merge branch, probably PR is just created.
+            // Lets wait for branch to appear in background (using REST API polling)
+            // then notify git subsystem to schedule checking for changes (using mock rest request)
+            PullRequestMergeBranchChecker.schedule(info, hookInfo, user, id)
+        }
         // Sometimes GitHub triggers 'pull_request' event before merge branch is created
         // To ensure 'merge' branch created request to GitHub API should be made
         // Also we're unable to update branch info due to both missing hash and egit-github library api lack related field

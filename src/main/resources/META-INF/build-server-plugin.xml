@@ -34,4 +34,5 @@
 
     <bean class="org.jetbrains.teamcity.github.SetupFromUrlGitHubWebhooksExtension"/>
 
+    <bean class="org.jetbrains.teamcity.github.controllers.PullRequestMergeBranchChecker"/>
 </beans>
