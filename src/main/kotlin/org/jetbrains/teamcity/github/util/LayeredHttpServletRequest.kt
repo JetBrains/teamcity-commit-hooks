@@ -68,7 +68,7 @@ class LayeredHttpServletRequest(request: HttpServletRequest) : HttpServletReques
      * API 3.1
      */
     @Suppress("unused")
-    fun changeSessionId(): String? {
+    override fun changeSessionId(): String? {
         return null
     }
 
