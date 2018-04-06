@@ -271,10 +271,10 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         }
         updateLastUsed(hookInfo)
         val id = payload.number
-        updateBranches(hookInfo, "refs/heads/pull/$id/head", payload.pullRequest.head.sha)
+        updateBranches(hookInfo, "refs/pull/$id/head", payload.pullRequest.head.sha)
 
         val mergeCommitSha = payload.pullRequest.mergeCommitSha
-        val mergeBranchName = "refs/heads/pull/$id/merge"
+        val mergeBranchName = "refs/pull/$id/merge"
         if (!mergeCommitSha.isNullOrBlank()) {
             updateBranches(hookInfo, mergeBranchName, mergeCommitSha!!)
         } else if (hookInfo.lastBranchRevisions?.get(mergeBranchName).isNullOrEmpty()) {
