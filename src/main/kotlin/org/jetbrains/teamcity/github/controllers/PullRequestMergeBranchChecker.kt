@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 class PullRequestMergeBranchChecker(
         private val myProjectManager: ProjectManager,
@@ -29,14 +30,15 @@ class PullRequestMergeBranchChecker(
         private val LOG = Util.getLogger(PullRequestMergeBranchChecker::class.java)
     }
 
-    private val myExecutor = ExecutorServices.normalExecutorService
+    private val myNormalExecutor = ExecutorServices.normalExecutorService
+    private val myLowPrioExecutor = ExecutorServices.lowPriorityExecutorService
     private val myScheduledActions = ConcurrentHashMap<GitHubRepositoryInfo, Action>()
 
     fun schedule(info: GitHubRepositoryInfo, hookInfo: WebHooksStorage.HookInfo, user: UserEx, prNumber: Int) {
         LOG.info("Scheduling check for repo ${info.id} PR #$prNumber")
         val action = Action(info, hookInfo, user, prNumber)
         myScheduledActions.remove(info)?.cancel() // Cancel previous action
-        action.schedule(myExecutor)
+        action.schedule(myNormalExecutor)
     }
 
     inner class Action(val info: GitHubRepositoryInfo, val hook: WebHooksStorage.HookInfo, val user: UserEx, private val prNumber: Int) : Runnable {
@@ -44,6 +46,7 @@ class PullRequestMergeBranchChecker(
         @Volatile
         private var active = true
         private var future: ScheduledFuture<*>? = null
+        private val runningInLowPriorityPool = AtomicBoolean(false)
 
         fun cancel() {
             active = false
@@ -65,12 +68,25 @@ class PullRequestMergeBranchChecker(
 
         override fun run() {
             if (!active) return
-            if (!doCheck()) {
-                // GC
-                myScheduledActions.remove(info, this)
-            } else {
-                // Retry
-                schedule(myExecutor)
+            if (runningInLowPriorityPool.get()) {
+                // Still running or scheduled
+                schedule(myNormalExecutor)
+                return
+            }
+            runningInLowPriorityPool.set(true)
+            myLowPrioExecutor.execute {
+                try {
+                    val retry = doCheck()
+                    if (!retry) {
+                        // Cleanup
+                        myScheduledActions.remove(info, this)
+                    } else {
+                        // Retry
+                        schedule(myNormalExecutor)
+                    }
+                } finally {
+                    runningInLowPriorityPool.set(false)
+                }
             }
         }
 
