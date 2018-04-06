@@ -283,10 +283,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             // then notify git subsystem to schedule checking for changes (using mock rest request)
             PullRequestMergeBranchChecker.schedule(info, hookInfo, user, id)
         }
-        // Sometimes GitHub triggers 'pull_request' event before merge branch is created
-        // To ensure 'merge' branch created request to GitHub API should be made
-        // Also we're unable to update branch info due to both missing hash and egit-github library api lack related field
-
         return doForwardToRestApi(info, user, request, response)
     }
 
