@@ -4,6 +4,7 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd"
        default-autowire="constructor">
 
+    <bean class="org.jetbrains.teamcity.impl.fakes.FakeHttpRequestsFactory"/>
     <bean class="org.jetbrains.teamcity.impl.RestApiFacade"/>
 
     <bean class="org.jetbrains.teamcity.github.controllers.GitHubWebHookListener" init-method="register"/>
