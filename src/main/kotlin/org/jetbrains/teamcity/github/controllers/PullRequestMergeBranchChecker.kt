@@ -33,6 +33,7 @@ class PullRequestMergeBranchChecker(
     private val myScheduledActions = ConcurrentHashMap<GitHubRepositoryInfo, Action>()
 
     fun schedule(info: GitHubRepositoryInfo, hookInfo: WebHooksStorage.HookInfo, user: UserEx, prNumber: Int) {
+        LOG.info("Scheduling check for repo ${info.id} PR #$prNumber")
         val action = Action(info, hookInfo, user, prNumber)
         myScheduledActions.remove(info)?.cancel() // Cancel previous action
         action.schedule(myExecutor)
@@ -110,7 +111,7 @@ class PullRequestMergeBranchChecker(
                     val sha = pr.mergeCommitSha
                     if (sha.isNullOrBlank()) return true
                     // Since there's merge commit sha there should be a branch ref also
-                    LOG.warn("For repo ${info.id} Pull Request #$prNumber merge commit sha is $sha")
+                    LOG.info("For repo ${info.id} Pull Request #$prNumber merge commit sha is $sha")
                     onSucceed()
                     return false
                 } catch (e: GitHubAccessException) {
@@ -130,7 +131,7 @@ class PullRequestMergeBranchChecker(
             val httpId = info.id
             val sshId = info.server + ":" + info.owner + "/" + info.name
             try {
-                val response = RestApiFacade.getJson(user, "/app/rest/vcs-root-instances/commitHookNotification", "locator=type:jetbrains.git,or:(property:(name:url,value:$httpId,matchType:contains),property:(name:url,value:$sshId,matchType:contains))", emptyMap())
+                val response = RestApiFacade.request("POST", user, "text/plain", "/app/rest/vcs-root-instances/commitHookNotification", "locator=type:jetbrains.git,or:(property:(name:url,value:$httpId,matchType:contains),property:(name:url,value:$sshId,matchType:contains))", emptyMap())
                 if (response == null) {
                     LOG.warn("REST is unavailable, failed to start checking for changes")
                 } else {

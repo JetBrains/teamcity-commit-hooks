@@ -57,13 +57,22 @@ class RestApiFacade(private val myUrlMapping: UrlMapping,
      * Execute the request under the specified user.
      */
     @Throws(InternalRestApiCallException::class)
-    operator fun get(user: SUser, contentType: String, path: String, query: String, requestAttrs: Map<String, Any>): String? {
+    fun get(user: SUser, contentType: String, path: String, query: String, requestAttrs: Map<String, Any>): String? {
+        return request("GET", user, contentType, path, query, requestAttrs)
+    }
+
+    /**
+     * Execute the request under the specified user.
+     */
+    @Throws(InternalRestApiCallException::class)
+    fun request(method: String, user: SUser, contentType: String, path: String, query: String, requestAttrs: Map<String, Any>): String? {
         try {
             return mySecurityContext.runAs<String>(user) {
                 val controller = myRestController ?: return@runAs null
 
                 val request = myFakeHttpRequestsFactory.get(path, query)
                 request.setHeader("Accept", contentType)
+                request.method = method
 
                 val response = FakeHttpServletResponse()
                 request.setAttribute("INTERNAL_REQUEST", true)
