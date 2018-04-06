@@ -11,7 +11,6 @@ import jetbrains.spring.web.UrlMapping
 import org.jetbrains.teamcity.impl.fakes.FakeHttpRequestsFactory
 import org.jetbrains.teamcity.impl.fakes.FakeHttpServletResponse
 import java.util.Collections.emptyMap
-import java.util.concurrent.atomic.AtomicReference
 
 class RestApiFacade(private val myUrlMapping: UrlMapping,
                     private val myFakeHttpRequestsFactory: FakeHttpRequestsFactory,
@@ -19,20 +18,19 @@ class RestApiFacade(private val myUrlMapping: UrlMapping,
                     private val mySecurityContext: SecurityContextEx) {
     private val myUserModel: UserModel
 
-    private val myRestController: AtomicReference<BaseController?> by lazy {
+    private val myRestController: BaseController? by lazy {
         val handler = myUrlMapping.handlerMap["/app/rest/**"]
         if (handler == null) {
             Loggers.SERVER.error("Unable to initialize internal Rest Api Facade: no controllers are found for the '/app/rest/**' path. UI will not refresh.")
-            return@lazy AtomicReference<BaseController?>(null)
+            return@lazy null
         }
 
         if (handler !is BaseController) {
             Loggers.SERVER.error("Unable to initialize internal Rest Api Facade: unexpected handler was found for the '/app/rest/**' path: $handler. UI will not refresh.")
-            return@lazy AtomicReference<BaseController?>(null)
+            return@lazy null
         }
 
-        val controller = handler as BaseController?
-        return@lazy AtomicReference(controller)
+        return@lazy handler as BaseController?
     }
 
     init {
@@ -62,7 +60,7 @@ class RestApiFacade(private val myUrlMapping: UrlMapping,
     operator fun get(user: SUser, contentType: String, path: String, query: String, requestAttrs: Map<String, Any>): String? {
         try {
             return mySecurityContext.runAs<String>(user) {
-                val controller = myRestController.get() ?: return@runAs null
+                val controller = myRestController ?: return@runAs null
 
                 val request = myFakeHttpRequestsFactory.get(path, query)
                 request.setHeader("Accept", contentType)
