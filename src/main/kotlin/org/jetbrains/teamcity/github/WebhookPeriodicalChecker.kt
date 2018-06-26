@@ -217,12 +217,12 @@ class WebhookPeriodicalChecker(
                             }
                             in 400..599 -> {
                                 val reason = "Last payload delivery failed: (${lastResponse.code}) ${lastResponse.message}"
-                                LOG.debug(reason)
+                                LOG.info(reason)
                                 report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
                             }
                             else -> {
                                 val reason = "Unexpected payload delivery response: (${lastResponse.code}) ${lastResponse.message}"
-                                LOG.debug(reason)
+                                LOG.info(reason)
                                 report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
                             }
                         }
