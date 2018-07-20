@@ -51,7 +51,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
     data class AuthData(val userId: Long,
                         val public: String,
                         val secret: String,
-                        val repository: GitHubRepositoryInfo,
+                        val repository: GitHubRepositoryInfo?,
                         val connection: ConnectionInfo) {
         companion object {
             fun fromJson(string: String): AuthData? = gson.fromJson(string, AuthData::class.java)

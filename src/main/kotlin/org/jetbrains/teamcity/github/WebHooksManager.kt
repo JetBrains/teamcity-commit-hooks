@@ -103,7 +103,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     fun getHookForPubKey(authData: AuthDataStorage.AuthData): WebHooksStorage.HookInfo? {
-        return storage.getHooks(authData.repository).firstOrNull { it.callbackUrl.endsWith(authData.public) }
+        return authData.repository?.let { storage.getHooks(it).firstOrNull { it.callbackUrl.endsWith(authData.public) } }
     }
 
 }

@@ -130,9 +130,8 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
         val hookInfo = getHookInfoWithWaiting(authData, eventType)
         if (hookInfo == null) {
-            // Seems local cache was cleared
+            // Seems local cache was cleared or it's a organization hook
             LOG.warn("No stored hook info found for public key '$pubKey' and repository '${authData.repository}'")
-            return simpleText(response, SC_NOT_FOUND, "No stored hook info found for public key '$pubKey'. Seems hook created not by this TeamCity server. Reinstall hook via TeamCity UI.")
         }
 
         if (request.contentLength >= MaxPayloadSize) {
@@ -211,7 +210,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun getAuthData(subPath: String) = AuthDataStorage.find(subPath)
 
-    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHooksStorage.HookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         val url = payload.repository?.gitUrl
         LOG.info("Received ping payload from webhook:${payload.hook_id}(${payload.hook.url}) for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
@@ -225,12 +224,14 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             LOG.warn(message)
             return SC_SERVICE_UNAVAILABLE to message
         }
-        updateLastUsed(hookInfo)
+        if (hookInfo != null) {
+            updateLastUsed(hookInfo)
+        }
 
         return doForwardToRestApi(info, user, request, response)
     }
 
-    private fun doHandlePushEvent(payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePushEvent(payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         val url = payload.repository?.gitUrl
         LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
@@ -244,13 +245,15 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             LOG.warn(message)
             return SC_SERVICE_UNAVAILABLE to message
         }
-        updateLastUsed(hookInfo)
-        updateBranches(hookInfo, payload.ref, payload.after)
+        if (hookInfo != null) {
+            updateLastUsed(hookInfo)
+            updateBranches(hookInfo, payload.ref, payload.after)
+        }
 
         return doForwardToRestApi(info, user, request, response)
     }
 
-    private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHooksStorage.HookInfo, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHooksStorage.HookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         if (payload.action !in AcceptedPullRequestActions) {
             LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo $hookInfo")
             return SC_ACCEPTED to "Unrelated action, expected one of " + AcceptedPullRequestActions
@@ -269,19 +272,21 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             LOG.warn(message)
             return SC_SERVICE_UNAVAILABLE to message
         }
-        updateLastUsed(hookInfo)
-        val id = payload.number
-        updateBranches(hookInfo, "refs/pull/$id/head", payload.pullRequest.head.sha)
+        if (hookInfo != null) {
+            updateLastUsed(hookInfo)
+            val id = payload.number
+            updateBranches(hookInfo, "refs/pull/$id/head", payload.pullRequest.head.sha)
 
-        val mergeCommitSha = payload.pullRequest.mergeCommitSha
-        val mergeBranchName = "refs/pull/$id/merge"
-        if (!mergeCommitSha.isNullOrBlank()) {
-            updateBranches(hookInfo, mergeBranchName, mergeCommitSha!!)
-        } else if (hookInfo.lastBranchRevisions?.get(mergeBranchName).isNullOrEmpty()) {
-            // Firstly discovered merge branch, probably PR is just created.
-            // Lets wait for branch to appear in background (using REST API polling)
-            // then notify git subsystem to schedule checking for changes (using mock rest request)
-            PullRequestMergeBranchChecker.schedule(info, hookInfo, user, id)
+            val mergeCommitSha = payload.pullRequest.mergeCommitSha
+            val mergeBranchName = "refs/pull/$id/merge"
+            if (!mergeCommitSha.isNullOrBlank()) {
+                updateBranches(hookInfo, mergeBranchName, mergeCommitSha!!)
+            } else if (hookInfo.lastBranchRevisions?.get(mergeBranchName).isNullOrEmpty()) {
+                // Firstly discovered merge branch, probably PR is just created.
+                // Lets wait for branch to appear in background (using REST API polling)
+                // then notify git subsystem to schedule checking for changes (using mock rest request)
+                PullRequestMergeBranchChecker.schedule(info, hookInfo, user, id)
+            }
         }
         return doForwardToRestApi(info, user, request, response)
     }
