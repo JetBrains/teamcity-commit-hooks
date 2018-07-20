@@ -318,6 +318,10 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
     private fun wrapResponseIfNeeded(response: HttpServletResponse, authData: AuthDataStorage.AuthData): HttpServletResponse {
         if (authData.repository != null) return response;
 
+        // If per-organization GitHub webhook sends us information about repository TC not aware of,
+        // TC server (REST API) would return 404,
+        // After several non 2xx codes GitHub would no longer send webhooks at all.
+        // We've to emulate that TC is aware of all repos
         return object : HttpServletResponseWrapper(response) {
             private fun fix404(sc: Int): Int {
                 if (sc == 404) return 200;
