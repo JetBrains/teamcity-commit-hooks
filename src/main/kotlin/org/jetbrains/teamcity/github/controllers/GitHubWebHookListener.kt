@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import javax.servlet.http.HttpServletResponse.*
+import javax.servlet.http.HttpServletResponseWrapper
 
 class GitHubWebHookListener(private val WebControllerManager: WebControllerManager,
                             private val AuthorizationInterceptor: AuthorizationInterceptor,
@@ -169,17 +170,17 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             when (eventType) {
                 "ping" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PingWebHookPayload::class.java)
-                    val pair = doHandlePingEvent(payload, hookInfo, request, response, user)
+                    val pair = doHandlePingEvent(payload, hookInfo, request, wrapResponseIfNeeded(response, authData), user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PushWebHookPayload::class.java)
-                    val pair = doHandlePushEvent(payload, hookInfo, request, response, user)
+                    val pair = doHandlePushEvent(payload, hookInfo, request, wrapResponseIfNeeded(response, authData), user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
                 "pull_request" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PullRequestPayloadEx::class.java)
-                    val pair = doHandlePullRequestEvent(payload, hookInfo, request, response, user)
+                    val pair = doHandlePullRequestEvent(payload, hookInfo, request, wrapResponseIfNeeded(response, authData), user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
             }
@@ -312,5 +313,32 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun updateBranches(hookInfo: WebHooksStorage.HookInfo, branch: String, commitSha: String) {
         WebHooksManager.updateBranchRevisions(hookInfo, mapOf(branch to commitSha))
+    }
+
+    private fun wrapResponseIfNeeded(response: HttpServletResponse, authData: AuthDataStorage.AuthData): HttpServletResponse {
+        if (authData.repository != null) return response;
+
+        return object : HttpServletResponseWrapper(response) {
+            private fun fix404(sc: Int): Int {
+                if (sc == 404) return 200;
+                return sc;
+            }
+
+            override fun setStatus(sc: Int) {
+                super.setStatus(fix404(sc))
+            }
+
+            override fun setStatus(sc: Int, sm: String?) {
+                super.setStatus(fix404(sc), sm)
+            }
+
+            override fun sendError(sc: Int, msg: String?) {
+                super.sendError(fix404(sc), msg)
+            }
+
+            override fun sendError(sc: Int) {
+                super.sendError(fix404(sc))
+            }
+        }
     }
 }
