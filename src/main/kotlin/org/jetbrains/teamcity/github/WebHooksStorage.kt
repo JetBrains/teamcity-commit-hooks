@@ -8,6 +8,8 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.serverSide.ServerPaths
+import jetbrains.buildServer.serverSide.TeamCityProperties
+import jetbrains.buildServer.serverSide.impl.FileWatcherFactory
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.FileUtil
 import jetbrains.buildServer.util.cache.CacheProvider
@@ -20,7 +22,6 @@ import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.io.File
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.collections.HashMap
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
@@ -32,6 +33,7 @@ import kotlin.concurrent.write
  * Data persisted onto disk only on server stop
  */
 class WebHooksStorage(cacheProvider: CacheProvider,
+                      fileWatcherFactory: FileWatcherFactory,
                       private val myServerPaths: ServerPaths,
                       private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
     companion object {
@@ -204,9 +206,16 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     private val myData = HashMap<MapKey, MutableList<HookInfo>>()
     private val myDataLock = ReentrantReadWriteLock()
 
+    private val myFileWatcher = fileWatcherFactory.createSingleFilesWatcher(getStorageFile(), TeamCityProperties.getInteger("teamcity.commitHooks.webHookStorage.watchInterval", 5000))
+
     private val myServerListener = object : BuildServerAdapter() {
         override fun serverStartup() {
             load()
+
+            myFileWatcher.registerListener {
+                load()
+            }
+            myFileWatcher.start()
 
             // Drop old caches from pre-release versions of plugin
             try {
@@ -218,6 +227,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
         override fun serverShutdown() {
             persist()
+            myFileWatcher.stop()
         }
     }
 
@@ -350,7 +360,14 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         return File(myServerPaths.pluginDataDirectory, "commit-hooks/webhooks.json")
     }
 
-    @Synchronized private fun persist(): Boolean {
+    private fun persist() {
+        myFileWatcher.runActionWithDisabledObserver {
+            persistImpl()
+        }
+    }
+
+    @Synchronized
+    private fun persistImpl() {
         val obj = myDataLock.read {
             getJsonObjectFromData(myData.values.flatten())
         }
@@ -363,10 +380,8 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             writer.use {
                 gson.toJson(obj, it)
             }
-            return true
         } catch(e: Exception) {
             LOG.warnAndDebugDetails("Cannot write auth-data to file '${file.absolutePath}'", e)
-            return false
         }
     }
 
