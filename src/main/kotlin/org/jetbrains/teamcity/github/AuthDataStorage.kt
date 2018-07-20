@@ -7,7 +7,9 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.serverSide.ServerPaths
+import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.serverSide.executors.ExecutorServices
+import jetbrains.buildServer.serverSide.impl.FileWatcherFactory
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.EventDispatcher
@@ -32,6 +34,7 @@ import kotlin.concurrent.write
  * File read/write (#load(), #persist()) - on object
  */
 class AuthDataStorage(executorServices: ExecutorServices,
+                      fileWatcherFactory: FileWatcherFactory,
                       private val myServerPaths: ServerPaths,
                       private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
     companion object {
@@ -67,13 +70,21 @@ class AuthDataStorage(executorServices: ExecutorServices,
 
     private val myExecutor = executorServices.lowPriorityExecutorService
 
+    private val myFileWatcher = fileWatcherFactory.createSingleFilesWatcher(getStorageFile(), TeamCityProperties.getInteger("teamcity.commitHooks.authDataStorage.watchInterval", 5000))
+
     private val myServerListener = object : BuildServerAdapter() {
         override fun serverStartup() {
             load()
+
+            myFileWatcher.registerListener {
+                load()
+            }
+            myFileWatcher.start()
         }
 
         override fun serverShutdown() {
             persist()
+            myFileWatcher.stop()
         }
     }
 
@@ -175,14 +186,21 @@ class AuthDataStorage(executorServices: ExecutorServices,
         }
     }
 
-    @Synchronized private fun persist(): Boolean {
+    private fun persist() {
+        myFileWatcher.runActionWithDisabledObserver {
+            persistImpl()
+        }
+    }
+
+    @Synchronized private fun persistImpl() {
         val (data, counter) = myDataLock.read {
             if (myDataModificationCounter == myStoredDataModificationCounter) {
                 LOG.info("Storage is not modified, nothing to save on disk")
-                return true
+                return
             }
             TreeMap(myData) to myDataModificationCounter
         }
+
         LOG.info("Persisting internal storage onto disk, MC=$counter, SMC=$myStoredDataModificationCounter")
 
         val file = getStorageFile()
@@ -194,10 +212,8 @@ class AuthDataStorage(executorServices: ExecutorServices,
                 gson.toJson(data, ourDataTypeToken.type, it)
             }
             myDataLock.write { myStoredDataModificationCounter = counter }
-            return true
-        } catch(e: Exception) {
+        } catch (e: Exception) {
             LOG.warnAndDebugDetails("Cannot write auth-data to file '${file.absolutePath}'", e)
-            return false
         }
     }
 
