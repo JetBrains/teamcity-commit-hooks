@@ -305,7 +305,10 @@ class WebhookPeriodicalChecker(
                 if (unused != null) {
                     myAuthDataStorage.remove(unused.filter { !usedPublicKeys.contains(it.public) })
                 }
-                myLastCheckUnusedData = myAuthDataStorage.getAll().filter { !usedPublicKeys.contains(it.public) }
+                myLastCheckUnusedData = myAuthDataStorage.getAll().filter {
+                    !usedPublicKeys.contains(it.public)
+                    && (it.repository != null || TeamCityProperties.getBoolean("teamcity.githubWebhooks.cleanupAuthData.withoutRepository"))
+                }
                 myLastCheckTimestamp = currentTime
             }
         }
