@@ -19,7 +19,6 @@ import java.io.File
 import java.util.*
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.collections.ArrayList
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
@@ -61,6 +60,10 @@ class AuthDataStorage(executorServices: ExecutorServices,
         }
 
         fun toJson(): String = gson.toJson(this)
+
+        override fun toString(): String {
+            return "AuthData(user=$userId, public=$public, connection=$connection, repository=$repository)"
+        }
     }
 
     private val myData = TreeMap<String, AuthData>()
