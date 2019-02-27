@@ -54,7 +54,7 @@ class WebHooksStorageTest {
 
     @Test
     fun testHookURLToKey() {
-        doHookURLToKey("http://teamcity-github-enterprise.labs.intellij.net/api/v3/repos/Vlad/test/hooks/88", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test", 88)
+        doHookURLToKey("https://teamcity-github-enterprise.labs.intellij.net/api/v3/repos/Vlad/test/hooks/88", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test", 88)
         doHookURLToKey("https://api.github.com/repos/VladRassokhin/intellij-hcl/hooks/9124004", "github.com", "VladRassokhin", "intellij-hcl", 9124004)
     }
 

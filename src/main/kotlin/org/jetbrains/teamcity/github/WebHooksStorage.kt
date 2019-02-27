@@ -72,7 +72,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     }
 
     // URLs:
-    // http://teamcity-github-enterprise.labs.intellij.net/api/v3/repos/Vlad/test/hooks/88
+    // https://teamcity-github-enterprise.labs.intellij.net/api/v3/repos/Vlad/test/hooks/88
     // https://api.github.com/repos/VladRassokhin/intellij-hcl/hooks/9124004
 
     // Keys:

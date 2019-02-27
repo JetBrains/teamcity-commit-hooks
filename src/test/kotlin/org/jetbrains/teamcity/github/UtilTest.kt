@@ -15,7 +15,7 @@ class UtilTest {
 
         doSuccessUrlParsingTest("git@teamcity-github-enterprise:1test1Z.-_-./1name1Z.-_-..git", "teamcity-github-enterprise", "1test1Z.-_-.", "1name1Z.-_-.")
 
-        doSuccessUrlParsingTest("http://teamcity-github-enterprise.labs.intellij.net/Vlad/test-repo-1", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test-repo-1")
+        doSuccessUrlParsingTest("https://teamcity-github-enterprise.labs.intellij.net/Vlad/test-repo-1", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test-repo-1")
         doSuccessUrlParsingTest("git@teamcity-github-enterprise.labs.intellij.net:Vlad/test-repo-1.git", "teamcity-github-enterprise.labs.intellij.net", "Vlad", "test-repo-1")
 
         doSuccessUrlParsingTest("github.com/VladRassokhin/intellij-hcl", "github.com", "VladRassokhin", "intellij-hcl")
@@ -34,7 +34,7 @@ class UtilTest {
 
     @Test
     fun testIsSameUrl() {
-        val GHE = "http://teamcity-github-enterprise.labs.intellij.net"
+        val GHE = "https://teamcity-github-enterprise.labs.intellij.net"
         val GH = "https://github.com"
 
         doTestSameUrl(GHE, GHE, true)
