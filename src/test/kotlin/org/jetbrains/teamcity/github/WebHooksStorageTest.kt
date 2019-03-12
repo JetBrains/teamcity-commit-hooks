@@ -21,6 +21,29 @@ class WebHooksStorageTest {
     }
 
     @Test
+    fun testMapKeyInAMap() {
+        val key1 = WebHooksStorage.MapKey("GitHub.com", RepositoryId.create("OwNer", "nAMe"))
+        val key2 = WebHooksStorage.MapKey("github.com", RepositoryId.create("owner", "name"))
+        val key3 = WebHooksStorage.MapKey("GITHUB.com", RepositoryId.create("Owner", "Name"))
+
+        val key4_incorrect = WebHooksStorage.MapKey("GitHub_WRONG.com", RepositoryId.create("OwNer", "nAMe"))
+        val key5_incorrect = WebHooksStorage.MapKey("GitHub.com", RepositoryId.create("OwNer_WRONG", "nAMe"))
+        val key6_incorrect = WebHooksStorage.MapKey("GitHub.com", RepositoryId.create("OwNer", "nAMe_WRONG"))
+
+        val m = hashMapOf(key1 to "something");
+        then(m.contains(key1)).isTrue();
+        then(m[key1]).isEqualTo("something");
+        then(m.contains(key2)).isTrue();
+        then(m[key2]).isEqualTo("something");
+        then(m.contains(key3)).isTrue();
+        then(m[key3]).isEqualTo("something");
+
+        then(m.contains(key4_incorrect)).isFalse();
+        then(m.contains(key5_incorrect)).isFalse();
+        then(m.contains(key6_incorrect)).isFalse();
+    }
+
+    @Test
     fun testHookInfoSerialization() {
         doHookInfoSerializationTest(WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/10", callbackUrl = callback, id = 10, status = Status.OK))
         doHookInfoSerializationTest(WebHooksStorage.HookInfo("http://server/api/v3/repos/owner/repo/hooks/10", callbackUrl = callback, id = 10, status = Status.DISABLED, lastUsed = Date(), lastBranchRevisions = mutableMapOf("1" to "2", "3" to "4")))

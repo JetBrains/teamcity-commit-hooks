@@ -194,13 +194,33 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     }
 
     data class MapKey internal constructor(val server: String, val owner: String, val name: String) {
+
+        private val hashCode: Int;
+
         constructor(server: String, repo: RepositoryId) : this(server.trimEnd('/'), repo.owner, repo.name)
+
+        init {
+            hashCode = Objects.hash(server.toLowerCase(), owner.toLowerCase(), name.toLowerCase());
+        }
+
 
         override fun toString(): String {
             return "$server/$owner/$name"
         }
 
         fun toInfo(): GitHubRepositoryInfo = GitHubRepositoryInfo(server, owner, name)
+
+        override fun equals(other: Any?): Boolean  {
+            return if (other is MapKey) {
+                server.equals(other.server, true) && owner.equals(other.owner, true) && name.equals(other.name, true);
+            } else {
+                false
+            }
+        }
+
+        override fun hashCode(): Int {
+            return hashCode;
+        }
     }
 
     private val myData = HashMap<MapKey, MutableList<HookInfo>>()
