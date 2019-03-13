@@ -7,7 +7,7 @@ buildscript {
         }
     }
     dependencies {
-        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '0.9.1'
+        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '1.2'
         classpath group: 'org.jetbrains.kotlin', name: 'kotlin-gradle-plugin', version: "${kotlinVersion}"
     }
 }
@@ -21,7 +21,7 @@ group = 'org.jetbrains.teamcity.github'
 
 version = "$System.env.BUILD_NUMBER"
 
-if (version.length() == 0) {
+if (version.length() == 0 || version == 'null') {
     version = "SNAPSHOT"
 }
 
