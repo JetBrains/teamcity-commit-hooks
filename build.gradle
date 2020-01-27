@@ -104,7 +104,7 @@ teamcity {
             name = project.name
             displayName = 'GitHub Commit Hooks'
             version = project.version
-            vendorName = 'JetBrains, s.r.o.'
+            vendorName = 'JetBrains'
             vendorUrl = 'https://www.jetbrains.com/'
             description = 'Allows installing GitHub webhooks for GitHub repositories used by TeamCity VCS roots'
 
