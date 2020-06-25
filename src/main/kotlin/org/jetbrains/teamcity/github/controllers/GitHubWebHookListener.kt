@@ -21,6 +21,7 @@ import com.google.gson.JsonIOException
 import com.google.gson.JsonSyntaxException
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
+import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.users.impl.UserEx
 import jetbrains.buildServer.util.FileUtil
@@ -63,7 +64,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
         val SupportedEvents = listOf("ping", "push", "pull_request")
 
-        val MaxPayloadSize = 5 * FileUtil.MEGABYTE.toLong() + 1
+        val MaxPayloadSize = TeamCityProperties.getLong("teamcity.githubWebhooks.payload.maxKb", 5 * 1024L) * 1024L;
 
         private val AcceptedPullRequestActions = listOf("opened", "reopened", "synchronize")
 
