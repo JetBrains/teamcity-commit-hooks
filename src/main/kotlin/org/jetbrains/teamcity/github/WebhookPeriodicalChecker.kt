@@ -220,7 +220,7 @@ class WebhookPeriodicalChecker(
                     // Update info for all loaded hooks
                     for ((key, hook) in loaded) {
                         val lastResponse = key.lastResponse
-                        if (lastResponse == null) {
+                        if (lastResponse == null || lastResponse.code == 0) {
                             LOG.debug("No last response info for hook ${key.url!!}")
                             // Lets ask GH to send us ping request, so next time there would be some 'lastResponse'
                             toPing.add(Triple(info, ghc to token.accessToken, hook))
