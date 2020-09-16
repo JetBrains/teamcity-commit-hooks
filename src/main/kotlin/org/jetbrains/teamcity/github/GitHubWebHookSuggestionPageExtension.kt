@@ -54,6 +54,7 @@ class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places:
     }
 
     override fun isAvailable(request: HttpServletRequest): Boolean {
+        if (!super.isAvailable(request)) return false;
         val item = getStatusItem(request)
         val project = item.additionalData["Project"] as SProject? ?: return false
         if (!SessionUser.getUser(request).isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) return false
