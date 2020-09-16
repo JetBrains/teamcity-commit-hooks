@@ -15,7 +15,7 @@ The latest version of the plugin is compatible with TeamCity version 2017.2 or h
 
 # Download
 
-You can download the plugin build and install it as an [additional TeamCity plugin](https://confluence.jetbrains.com/display/TCDL/Installing+Additional+Plugins).
+You can download the plugin build and install it as an [additional TeamCity plugin](https://www.jetbrains.com/help/teamcity/installing-additional-plugins.html).
 
 | Download | Compatibility |
 |----------|---------------|
