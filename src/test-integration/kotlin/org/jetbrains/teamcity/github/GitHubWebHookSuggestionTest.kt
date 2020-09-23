@@ -21,7 +21,7 @@ class GitHubWebHookSuggestionTest : BaseServerTestCase() {
     @BeforeMethod(alwaysRun = true)
     override fun setUp() {
         super.setUp()
-        myOAuthConnectionsManager = OAuthConnectionsManager(myServer)
+        myOAuthConnectionsManager = OAuthConnectionsManager(myServer, myWebLinks)
     }
 
     @Test
