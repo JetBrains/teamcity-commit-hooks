@@ -22,7 +22,7 @@ class IntegrationUtilTest : BaseServerTestCase() {
     @BeforeMethod(alwaysRun = true)
     override fun setUp() {
         super.setUp()
-        myOAuthConnectionsManager = OAuthConnectionsManager(myServer, myWebLinks)
+        myOAuthConnectionsManager = OAuthConnectionsManager(myServer)
     }
 
     @Test
