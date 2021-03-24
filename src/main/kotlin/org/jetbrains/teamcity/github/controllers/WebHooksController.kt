@@ -352,7 +352,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         when (e.type) {
             GitHubAccessException.Type.InvalidCredentials -> {
                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                myOAuthTokensStorage.removeToken(connection.id, token)
             }
             GitHubAccessException.Type.TokenScopeMismatch -> {
                 LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")

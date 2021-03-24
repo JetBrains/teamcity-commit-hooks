@@ -249,7 +249,7 @@ class WebhookPeriodicalChecker(
                     when (e.type) {
                         GitHubAccessException.Type.InvalidCredentials -> {
                             LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                            myOAuthTokensStorage.removeToken(connection.id, token.accessToken)
+                            myOAuthTokensStorage.removeToken(connection.id, token)
                             retry = true
                         }
                         GitHubAccessException.Type.TokenScopeMismatch -> {
