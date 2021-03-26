@@ -38,13 +38,13 @@ class WebHooksStorageTest {
 
     @Test
     fun testMapKeyInAMap() {
-        val key1 = WebHooksStorage.MapKey("GitHub.com", RepositoryId.create("OwNer", "nAMe"))
-        val key2 = WebHooksStorage.MapKey("github.com", RepositoryId.create("owner", "name"))
-        val key3 = WebHooksStorage.MapKey("GITHUB.com", RepositoryId.create("Owner", "Name"))
+        val key1 = RepoKey("GitHub.com", RepositoryId.create("OwNer", "nAMe"))
+        val key2 = RepoKey("github.com", RepositoryId.create("owner", "name"))
+        val key3 = RepoKey("GITHUB.com", RepositoryId.create("Owner", "Name"))
 
-        val key4_incorrect = WebHooksStorage.MapKey("GitHub_WRONG.com", RepositoryId.create("OwNer", "nAMe"))
-        val key5_incorrect = WebHooksStorage.MapKey("GitHub.com", RepositoryId.create("OwNer_WRONG", "nAMe"))
-        val key6_incorrect = WebHooksStorage.MapKey("GitHub.com", RepositoryId.create("OwNer", "nAMe_WRONG"))
+        val key4_incorrect = RepoKey("GitHub_WRONG.com", RepositoryId.create("OwNer", "nAMe"))
+        val key5_incorrect = RepoKey("GitHub.com", RepositoryId.create("OwNer_WRONG", "nAMe"))
+        val key6_incorrect = RepoKey("GitHub.com", RepositoryId.create("OwNer", "nAMe_WRONG"))
 
         val m = hashMapOf(key1 to "something");
         then(m.contains(key1)).isTrue();
@@ -106,19 +106,19 @@ class WebHooksStorageTest {
 
         val map = WebHooksStorage.getDataFromJsonObject(obj)
         then(map).isNotNull()
-        val key = WebHooksStorage.MapKey("server", "owner", "repo")
+        val key = RepoKey("server", "owner", "repo")
         then(map!!).containsOnlyKeys(key)
         then(map[key]).containsOnly(hook)
     }
 
     private fun doHookURLToKey(url: String, server: String, owner: String, name: String, id: Long) {
-        val key = WebHooksStorage.Key.fromHookUrl(url)
+        val key = HookKey.fromHookUrl(url)
         val (s, o, n, i) = key
         then(s).isEqualTo(server)
         then(o).isEqualTo(owner)
         then(n).isEqualTo(name)
         then(i).isEqualTo(id)
-        then(WebHooksStorage.Key.fromString(key.toString())).isEqualTo(key)
+        then(HookKey.fromString(key.toString())).isEqualTo(key)
     }
 
     private fun doHookInfoSerializationTest(first: WebHookInfo) {
@@ -140,7 +140,7 @@ class WebHooksStorageTest {
     }
 
     fun doKeyTest(server: String, owner: String, name: String, expectedKey: String) {
-        val key = WebHooksStorage.MapKey(server, RepositoryId.create(owner, name))
+        val key = RepoKey(server, RepositoryId.create(owner, name))
         then(key.toString()).isEqualTo(expectedKey)
         val (a, b, c) = key
         then(Triple(a, b, c)).isEqualTo(Triple(server.trimEnd('/'), owner, name))

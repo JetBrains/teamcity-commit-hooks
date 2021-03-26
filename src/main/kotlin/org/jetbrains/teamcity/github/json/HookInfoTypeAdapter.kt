@@ -17,8 +17,8 @@
 package org.jetbrains.teamcity.github.json
 
 import com.google.gson.*
+import org.jetbrains.teamcity.github.HookKey
 import org.jetbrains.teamcity.github.WebHookInfo
-import org.jetbrains.teamcity.github.WebHooksStorage
 import org.jetbrains.teamcity.github.controllers.Status
 import java.lang.reflect.Type
 import java.util.*
@@ -43,7 +43,7 @@ object HookInfoTypeAdapter : JsonDeserializer<WebHookInfo>, JsonSerializer<WebHo
         val url = json.getAsJsonPrimitive("url").asString
         val callbackUrl = json.getAsJsonPrimitive("callbackUrl").asString
 
-        val key = WebHooksStorage.Key.fromHookUrl(url)
+        val key = HookKey.fromHookUrl(url)
 
         val status = context.deserialize<Status>(json.get("status"), Status::class.java)
         val lastUsed = json.get("lastUsed")?.let { context.deserialize<Date>(it, Date::class.java) }

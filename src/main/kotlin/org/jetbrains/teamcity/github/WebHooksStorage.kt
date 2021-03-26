@@ -75,7 +75,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             return obj
         }
 
-        internal fun getDataFromJsonObject(obj: JsonObject): Map<MapKey, List<WebHookInfo>>? {
+        internal fun getDataFromJsonObject(obj: JsonObject): Map<RepoKey, List<WebHookInfo>>? {
             val version = obj.getAsJsonPrimitive("version").asInt
             if (version != VERSION) {
                 LOG.warn("Stored data have outdated version $version")
@@ -96,70 +96,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     // teamcity-github-enterprise.labs.intellij.net/Vlad/test/88
     // github.com/VladRassokhin/intellij-hcl/9124004
 
-    data class Key(val server: String, val owner: String, val name: String, val id: Long) {
-        companion object {
-            fun fromString(serialized: String): Key {
-                val split = serialized.split('/')
-                if (split.size < 4) throw IllegalArgumentException("Not an proper key: \"$serialized\"")
-                val id = split[split.lastIndex].toLong()
-                val name = split[split.lastIndex - 1]
-                val owner = split[split.lastIndex - 2]
-                val server = split.dropLast(3).joinToString("/")
-                return Key(server, owner, name, id)
-            }
-
-            fun fromHookUrl(hookUrl: String): Key {
-                val split = ArrayDeque(hookUrl.split('/'))
-                assert(split.size >= 8)
-                val id = split.pollLast().toLong()
-                split.pollLast() // "hooks"
-                val name = split.pollLast()
-                val owner = split.pollLast()
-                split.pollLast() // "repos"
-                val serverOfV3 = split.pollLast()
-                val server = if (serverOfV3 == "api.github.com")  "github.com" else {
-                    split.pollLast()
-                    split.pollLast()
-                }
-                return Key(server, owner, name, id)
-            }
-        }
-
-        override fun toString(): String {
-            return "$server/$owner/$name/$id"
-        }
-
-        fun toMapKey(): MapKey {
-            return MapKey(server.trimEnd('/'), owner, name)
-        }
-    }
-
-    data class MapKey internal constructor(val server: String, val owner: String, val name: String) {
-
-        private val hashCode = Objects.hash(server.toLowerCase(), owner.toLowerCase(), name.toLowerCase())
-
-        constructor(server: String, repo: RepositoryId) : this(server.trimEnd('/'), repo.owner, repo.name)
-
-        override fun toString(): String {
-            return "$server/$owner/$name"
-        }
-
-        fun toInfo(): GitHubRepositoryInfo = GitHubRepositoryInfo(server, owner, name)
-
-        override fun equals(other: Any?): Boolean  {
-            return if (other is MapKey) {
-                server.equals(other.server, true) && owner.equals(other.owner, true) && name.equals(other.name, true)
-            } else {
-                false
-            }
-        }
-
-        override fun hashCode(): Int {
-            return hashCode
-        }
-    }
-
-    private val myData = HashMap<MapKey, MutableList<WebHookInfo>>()
+    private val myData = HashMap<RepoKey, MutableList<WebHookInfo>>()
     private val myDataLock = ReentrantReadWriteLock()
 
     private val myFileWatcher = fileWatcherFactory.createSingleFilesWatcher(getStorageFile(),
@@ -200,7 +137,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
      * Adds hook if it not existed previously
      */
     fun getOrAdd(created: RepositoryHook): WebHookInfo {
-        val key = Key.fromHookUrl(created.url)
+        val key = HookKey.fromHookUrl(created.url)
         val mapKey = key.toMapKey()
 
         val hooks = getHooks(mapKey)
@@ -241,7 +178,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     fun delete(info: GitHubRepositoryInfo, deleteFilter: (WebHookInfo) -> Boolean) {
         if (!getHooks(info).any { deleteFilter(it) }) return
 
-        val key = MapKey(info.server, info.getRepositoryId())
+        val key = RepoKey(info.server, info.getRepositoryId())
         myDataLock.write {
             val hooks = myData[key]?.toMutableList() ?: return
             val filtered = hooks.filter { !deleteFilter(it) }.toMutableList()
@@ -254,7 +191,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     }
 
     fun update(server: String, repo: RepositoryId, update: (WebHookInfo) -> Unit): Boolean {
-        val key = MapKey(server, repo)
+        val key = RepoKey(server, repo)
         val hooks = myDataLock.read {
             myData[key]?.toMutableList() ?: return false
         }
@@ -269,10 +206,10 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     }
 
     fun getHooks(server: String, repo: RepositoryId): List<WebHookInfo> {
-        return getHooks(MapKey(server, repo))
+        return getHooks(RepoKey(server, repo))
     }
 
-    private fun getHooks(key: MapKey): List<WebHookInfo> {
+    private fun getHooks(key: RepoKey): List<WebHookInfo> {
         return myDataLock.read {
             myData[key]?.toList()
         } ?: emptyList()

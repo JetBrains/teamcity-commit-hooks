@@ -1,6 +1,7 @@
 package org.jetbrains.teamcity.github
 
 import org.eclipse.egit.github.core.RepositoryHook
+import org.jetbrains.teamcity.github.WebHooksStorage.Companion.gson
 import org.jetbrains.teamcity.github.controllers.Status
 import java.util.*
 
@@ -11,7 +12,7 @@ import java.util.*
 class WebHookInfo(val url: String, // API URL
                   val callbackUrl: String, // TC URL (GitHubWebHookListener)
 
-                  val key: WebHooksStorage.Key = WebHooksStorage.Key.fromHookUrl(url),
+                  val key: HookKey = HookKey.fromHookUrl(url),
                   val id: Long = key.id,
 
                   var status: Status,
@@ -19,8 +20,8 @@ class WebHookInfo(val url: String, // API URL
                   var lastBranchRevisions: MutableMap<String, String>? = null
 ) {
     companion object {
-        private fun oneFromJson(string: String): WebHookInfo? = WebHooksStorage.gson.fromJson(string, WebHookInfo::class.java)
-        private fun listFromJson(string: String): List<WebHookInfo> = WebHooksStorage.gson.fromJson(string, WebHooksStorage.hooksListType) ?: emptyList()
+        private fun oneFromJson(string: String): WebHookInfo? = gson.fromJson(string, WebHookInfo::class.java)
+        private fun listFromJson(string: String): List<WebHookInfo> = gson.fromJson(string, WebHooksStorage.hooksListType) ?: emptyList()
 
         fun fromJson(json: String): List<WebHookInfo> {
             return when {
@@ -37,13 +38,13 @@ class WebHookInfo(val url: String, // API URL
         }
 
         fun toJson(hooks: List<WebHookInfo>): String {
-            return WebHooksStorage.gson.toJson(hooks)
+            return gson.toJson(hooks)
         }
     }
 
     @Suppress("DeprecatedCallableAddReplaceWith")
     @Deprecated("")
-    fun toJson(): String = WebHooksStorage.gson.toJson(this)
+    fun toJson(): String = gson.toJson(this)
 
     fun isSame(hook: RepositoryHook): Boolean {
         return id == hook.id && url == hook.url && callbackUrl == hook.callbackUrl
