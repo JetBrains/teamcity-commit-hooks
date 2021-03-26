@@ -74,7 +74,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
     companion object {
-        val PATH = "/webhooks/github/webhooks.html"
+        const val PATH = "/webhooks/github/webhooks.html"
 
         private val LOG = Util.getLogger(WebHooksController::class.java)
 
@@ -103,7 +103,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
 
         fun gh_json(result: String, message: String, info: GitHubRepositoryInfo, webHooksManager: WebHooksManager): JsonObject {
-            val obj = WebHooksController.getRepositoryInfo(info, webHooksManager)
+            val obj = getRepositoryInfo(info, webHooksManager)
             obj.addProperty("result", result)
             obj.addProperty("message", message)
             return obj
@@ -115,18 +115,24 @@ class WebHooksController(descriptor: PluginDescriptor,
         val popup = PropertiesUtil.getBoolean(request.getParameter("popup"))
         var element: JsonElement
         try {
-            if (action in listOf("add", "check", "delete", "ping", "install")) {
-                element = doHandleAction(request, action, popup)
-            } else if ("tokenGranted" == action) {
-                return ModelAndView(myTokenGrantedPath)
-            } else if ("check-all" == action) {
-                element = doHandleCheckAllAction(request, popup)
-            } else if ("get-info" == action) {
-                element = doHandleGetInfoAction(request)
-            } else {
-                LOG.warn("Unknown action '$action'")
-                response.status = HttpServletResponse.SC_NOT_FOUND
-                return simpleView("Unknown action '$action'")
+            when (action) {
+                in listOf("add", "check", "delete", "ping", "install") -> {
+                    element = doHandleAction(request, action, popup)
+                }
+                "tokenGranted" -> {
+                    return ModelAndView(myTokenGrantedPath)
+                }
+                "check-all" -> {
+                    element = doHandleCheckAllAction(request, popup)
+                }
+                "get-info" -> {
+                    element = doHandleGetInfoAction(request)
+                }
+                else -> {
+                    LOG.warn("Unknown action '$action'")
+                    response.status = HttpServletResponse.SC_NOT_FOUND
+                    return simpleView("Unknown action '$action'")
+                }
             }
         } catch(e: MyRequestException) {
             element = e.element
@@ -161,7 +167,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         if (inId == null || inId.isBlank()) return error_json("Required parameter 'id (Repository URL) is not specified", HttpServletResponse.SC_BAD_REQUEST)
         if (inProjectId == null || inProjectId.isBlank()) return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
 
-        val info = Util.Companion.getGitHubInfo(inId) ?: return error_json("Malformed GitHub repository URL: $inId", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+        val info = Util.getGitHubInfo(inId) ?: return error_json("Malformed GitHub repository URL: $inId", HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
         val project = getProject(inProjectId)
 
         if (!user.isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) {
@@ -228,18 +234,13 @@ class WebHooksController(descriptor: PluginDescriptor,
                                 if (action == "continue") {
                                     request.getParameter("original_action") ?: "add"
                                 } else action
-                        if ("add" == action) {
-                            element = doAddWebHook(ghc, info, user, key)
-                        } else if ("check" == action) {
-                            element = doCheckWebHook(ghc, info)
-                        } else if ("ping" == action) {
-                            element = doTestWebHook(ghc, info)
-                        } else if ("delete" == action) {
-                            element = doDeleteWebHook(ghc, info)
-                        } else if ("install" == action) {
-                            element = doInstallWebHook(ghc, info, user, key)
-                        } else {
-                            element = null
+                        element = when (action) {
+                            "add" -> doAddWebHook(ghc, info, user, key)
+                            "check" -> doCheckWebHook(ghc, info)
+                            "ping" -> doTestWebHook(ghc, info)
+                            "delete" ->  doDeleteWebHook(ghc, info)
+                            "install" -> doInstallWebHook(ghc, info, user, key)
+                            else -> null
                         }
                         if (element != null) return element
                     } catch(e: GitHubAccessException) {
@@ -284,46 +285,46 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
+    private fun doAddWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement {
         val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
-        when (result.first) {
+        return when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Webhook for the GitHub repository '${info.id}' is already installed", info)
+                gh_json(result.first.name, "Webhook for the GitHub repository '${info.id}' is already installed", info)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Successfully installed webhook for the GitHub repository '${info.id}'", info)
+                gh_json(result.first.name, "Successfully installed webhook for the GitHub repository '${info.id}'", info)
             }
         }
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement? {
+    private fun doInstallWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo, user: SUser, connection: OAuthConnectionDescriptor): JsonElement {
         val result = myWebHooksManager.doInstallWebHook(info, ghc, user, connection)
         val url = result.second.getUIUrl()
-        when (result.first) {
+        return when (result.first) {
             HookAddOperationResult.AlreadyExists -> {
-                return gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a> is already <a href=\"$url\" target=\"_blank\">installed</a>", info, false)
+                gh_json(result.first.name, "Webhook for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a> is already <a href=\"$url\" target=\"_blank\">installed</a>", info, false)
             }
             HookAddOperationResult.Created -> {
-                return gh_json(result.first.name, "Successfully installed <a href=\"$url\" target=\"_blank\">webhook</a> for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a>", info, false)
+                gh_json(result.first.name, "Successfully installed <a href=\"$url\" target=\"_blank\">webhook</a> for the GitHub repository <a href=\"${info.getRepositoryUrl()}\">${info.id}</a>", info, false)
             }
         }
     }
 
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement? {
+    private fun doCheckWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement {
         myWebHooksManager.doGetAllWebHooks(info, ghc)
         val hook = myWebHooksManager.getHook(info)
-        if (hook != null) {
-            return gh_json("Ok", "Updated webhook for the GitHub repository '${info.id}'", info)
+        return if (hook != null) {
+            gh_json("Ok", "Updated webhook for the GitHub repository '${info.id}'", info)
         } else {
-            return gh_json("Ok", "No webhooks found for the GitHub repository '${info.id}'", info)
+            gh_json("Ok", "No webhooks found for the GitHub repository '${info.id}'", info)
         }
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doTestWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement? {
+    private fun doTestWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement {
         myWebHooksManager.doGetAllWebHooks(info, ghc)
         val hook = myWebHooksManager.getHook(info)
         @Suppress("IfNullToElvis")
@@ -336,14 +337,13 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
     @Throws(GitHubAccessException::class, RequestException::class, IOException::class)
-    private fun doDeleteWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement? {
-        val result = myWebHooksManager.doDeleteWebHook(info, ghc)
-        when (result) {
+    private fun doDeleteWebHook(ghc: GitHubClientEx, info: GitHubRepositoryInfo): JsonElement {
+        return when (val result = myWebHooksManager.doDeleteWebHook(info, ghc)) {
             HookDeleteOperationResult.NeverExisted -> {
-                return gh_json(result.name, "Webhook for the GitHub repository '${info.id}' does not exist", info)
+                gh_json(result.name, "Webhook for the GitHub repository '${info.id}' does not exist", info)
             }
             HookDeleteOperationResult.Removed -> {
-                return gh_json(result.name, "Successfully removed webhook for the GitHub repository '${info.id}'", info)
+                gh_json(result.name, "Successfully removed webhook for the GitHub repository '${info.id}'", info)
             }
         }
     }
@@ -411,7 +411,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         }
 
         val mapServerToInfos = allGitVcsRoots
-                .mapNotNull { Util.Companion.getGitHubInfo(it) }
+                .mapNotNull { Util.getGitHubInfo(it) }
                 .toHashSet()
                 // Filter by connection (if any specified)
                 .filter { connection == null || Util.isConnectionToServer(connection, it.server) }
@@ -419,7 +419,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
         val toCheck = mapServerToInfos
                 .mapValues {
-                    it.value.filter { Status.OK != getHookStatus(myWebHooksManager.getHook(it)).status }
+                    it.value.filter { repoInfo -> Status.OK != getHookStatus(myWebHooksManager.getHook(repoInfo)).status }
                 }.filterValues { it.isNotEmpty() }
 
         // For each repository return either check result or redirect request to show in UI.
@@ -457,10 +457,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                         LOG.info("Trying with token: ${token.oauthLogin}, connector is ${connection.id}")
                         ghc.setOAuth2Token(token.accessToken)
                         try {
-                            val element = doCheckWebHook(ghc, info)
-                            if (element != null) {
-                                elements.add(element)
-                            }
+                            elements.add(doCheckWebHook(ghc, info))
                         } catch(e: GitHubAccessException) {
                             val element = getErrorResult(e, connection, info, token)
                             if (element != null) elements.add(element)
@@ -537,13 +534,13 @@ fun redirect_json(url: String): JsonElement {
 }
 
 private fun url(url: String, vararg params: Pair<String, Any>): String {
-    return url(url, params.associateBy({ it -> it.first }, { it -> it.second.toString() }))
+    return url(url, params.associateBy({ it.first }, { it.second.toString() }))
 }
 
 private fun url(url: String, params: Map<String, Any>): String {
     val sb = StringBuilder()
     sb.append(url)
-    if (!params.isEmpty()) sb.append('?')
+    if (params.isNotEmpty()) sb.append('?')
     for ((key, value) in params) {
         sb.append(key).append('=').append(WebUtil.encode(value.toString())).append('&')
     }

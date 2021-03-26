@@ -78,14 +78,14 @@ open class ActionContext(val storage: WebHooksStorage,
 
         for (hook in filtered) {
             if (hooks.isEmpty()) {
-                result.put(hook, addHook(hook)!!)
+                result[hook] = addHook(hook)!!
             } else {
                 val same = hooks.firstOrNull { it.isSame(hook) }
                 if (same != null) {
-                    result.put(hook, same)
+                    result[hook] = same
                     continue
                 } else {
-                    result.put(hook, addHook(hook)!!)
+                    result[hook] = addHook(hook)!!
                 }
             }
         }

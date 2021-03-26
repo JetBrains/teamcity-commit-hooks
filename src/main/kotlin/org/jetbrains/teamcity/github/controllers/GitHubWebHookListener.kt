@@ -58,28 +58,26 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                             private val WebHooksManager: WebHooksManager) : BaseController() {
 
     companion object {
-        val PATH = "/app/hooks/github"
-        val X_GitHub_Event = "X-GitHub-Event"
-        val X_Hub_Signature = "X-Hub-Signature"
+        const val PATH = "/app/hooks/github"
+        const val X_GitHub_Event = "X-GitHub-Event"
+        const val X_Hub_Signature = "X-Hub-Signature"
 
         val SupportedEvents = listOf("ping", "push", "pull_request")
 
-        val MaxPayloadSize = TeamCityProperties.getLong("teamcity.githubWebhooks.payload.maxKb", 5 * 1024L) * 1024L;
+        val MaxPayloadSize = TeamCityProperties.getLong("teamcity.githubWebhooks.payload.maxKb", 5 * 1024L) * 1024L
 
         private val AcceptedPullRequestActions = listOf("opened", "reopened", "synchronize")
 
         private val LOG = Util.getLogger(GitHubWebHookListener::class.java)
 
         fun getPubKeyFromRequestPath(path: String): String? {
-            val indexOfPathPart = path.indexOf(PATH + "/")
-            val pubKey: String?
-            if (indexOfPathPart != -1) {
+            val indexOfPathPart = path.indexOf("$PATH/")
+            return if (indexOfPathPart != -1) {
                 val substring = path.substring(indexOfPathPart + PATH.length + 1)
-                pubKey = if (substring.isNotBlank()) substring else null
+                if (substring.isNotBlank()) substring else null
             } else {
-                pubKey = null
+                null
             }
-            return pubKey
         }
 
         private fun simpleText(response: HttpServletResponse, @MagicConstant(valuesFromClass = HttpServletResponse::class) status: Int, text: String): ModelAndView? {
@@ -98,9 +96,9 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         // Looks like GET is not necessary, POST is enough
         setSupportedMethods(METHOD_POST)
         WebControllerManager.registerController(PATH, this)
-        WebControllerManager.registerController(PATH + "/**", this)
+        WebControllerManager.registerController("$PATH/**", this)
         AuthorizationInterceptor.addPathNotRequiringAuth(PATH)
-        AuthorizationInterceptor.addPathNotRequiringAuth(PATH + "/**")
+        AuthorizationInterceptor.addPathNotRequiringAuth("$PATH/**")
     }
 
     override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
@@ -202,11 +200,10 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                 }
             }
         } catch(e: Exception) {
-            val message: String
-            if (e is JsonSyntaxException || e is JsonIOException) {
-                message = "Failed to parse payload"
+            val message = if (e is JsonSyntaxException || e is JsonIOException) {
+                "Failed to parse payload"
             } else {
-                message = "Failed to process request (event type is '$eventType')"
+                "Failed to process request (event type is '$eventType')"
             }
             LOG.warnAndDebugDetails(message, e)
             return simpleText(response, SC_SERVICE_UNAVAILABLE, message + ": ${e.message}")
@@ -274,7 +271,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
     private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHooksStorage.HookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         if (payload.action !in AcceptedPullRequestActions) {
             LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo $hookInfo")
-            return SC_ACCEPTED to "Unrelated action, expected one of " + AcceptedPullRequestActions
+            return SC_ACCEPTED to "Unrelated action, expected one of $AcceptedPullRequestActions"
         }
         val repository = payload.pullRequest?.base?.repo
         val url = repository?.htmlUrl
@@ -298,7 +295,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             val mergeCommitSha = payload.pullRequest.mergeCommitSha
             val mergeBranchName = "refs/pull/$id/merge"
             if (!mergeCommitSha.isNullOrBlank()) {
-                updateBranches(hookInfo, mergeBranchName, mergeCommitSha!!)
+                updateBranches(hookInfo, mergeBranchName, mergeCommitSha)
             } else if (hookInfo.lastBranchRevisions?.get(mergeBranchName).isNullOrEmpty()) {
                 // Firstly discovered merge branch, probably PR is just created.
                 // Lets wait for branch to appear in background (using REST API polling)
@@ -317,7 +314,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         if (dispatcher != null) {
             val layered = LayeredHttpServletRequest(request)
             SessionUser.setUser(layered, user)
-            layered.setAttribute("INTERNAL_REQUEST", true);
+            layered.setAttribute("INTERNAL_REQUEST", true)
             dispatcher.forward(layered, response)
             return null
         }
@@ -333,17 +330,14 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
     }
 
     private fun wrapResponseIfNeeded(response: HttpServletResponse, authData: AuthDataStorage.AuthData): HttpServletResponse {
-        if (authData.repository != null) return response;
+        if (authData.repository != null) return response
 
         // If per-organization GitHub webhook sends us information about repository TC not aware of,
         // TC server (REST API) would return 404,
         // After several non 2xx codes GitHub would no longer send webhooks at all.
         // We've to emulate that TC is aware of all repos
         return object : HttpServletResponseWrapper(response) {
-            private fun fix404(sc: Int): Int {
-                if (sc == 404) return 200;
-                return sc;
-            }
+            private fun fix404(sc: Int): Int = if (sc == 404) 200 else sc
 
             override fun setStatus(sc: Int) {
                 super.setStatus(fix404(sc))

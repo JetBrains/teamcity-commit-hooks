@@ -24,7 +24,7 @@ import javax.crypto.spec.SecretKeySpec
 class HMacUtil {
     companion object {
         private val LOG = Util.getLogger(HMacUtil::class.java)
-        val HMAC_Algorithm = "HmacSHA1"
+        const val HMAC_Algorithm = "HmacSHA1"
 
         fun checkHMac(message: ByteArray, key: ByteArray, expected: String): Boolean {
             val hmac = calculateHMac(message, key)

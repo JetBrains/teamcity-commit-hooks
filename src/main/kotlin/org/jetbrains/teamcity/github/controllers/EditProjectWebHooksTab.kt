@@ -22,7 +22,6 @@ import jetbrains.buildServer.Used
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.controllers.FormUtil
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
-import jetbrains.buildServer.log.LogUtil
 import jetbrains.buildServer.serverSide.*
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
@@ -45,8 +44,8 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
                              val tokensHelper: TokensHelper,
                              val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
-        val TAB_TITLE_PREFIX = "GitHub Webhooks"
-        val TAB_ENABLE_INTERNAL_PROPERTY = "teamcity.github-webhooks.tab.enabled"
+        const val TAB_TITLE_PREFIX = "GitHub Webhooks"
+        const val TAB_ENABLE_INTERNAL_PROPERTY = "teamcity.github-webhooks.tab.enabled"
     }
 
     init {
@@ -105,7 +104,7 @@ class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerMana
 
     }
 
-    override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView? {
+    override fun doHandle(request: HttpServletRequest, response: HttpServletResponse): ModelAndView {
         val projectExternalId = request.getParameter("projectId")
         val project = projectManager.findProjectByExternalId(projectExternalId) ?: return simpleView("Project with id '$projectExternalId' does not exist anymore.")
         val user = SessionUser.getUser(request) ?: return simpleView("Session User not found.")
@@ -117,8 +116,8 @@ class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerMana
         webHooksBean.updatePager()
 
         val modelAndView = ModelAndView(jsp)
-        modelAndView.model.put("webHooksBean", webHooksBean)
-        modelAndView.model.put("pluginResourcesPath", descriptor.pluginResourcesPath)
+        modelAndView.model["webHooksBean"] = webHooksBean
+        modelAndView.model["pluginResourcesPath"] = descriptor.pluginResourcesPath
         return modelAndView
     }
 
@@ -173,7 +172,7 @@ class ProjectWebHooksBean(val project: SProject,
             }
 
             val hook = webHooksManager.getHook(info)
-            hooks.put(info, WebHookDetails(hook, roots.toList(), project, versionedSettingsManager))
+            hooks[info] = WebHookDetails(hook, roots.toList(), project, versionedSettingsManager)
         }
     }
 
@@ -185,7 +184,7 @@ class ProjectWebHooksBean(val project: SProject,
         for (server in servers) {
             val connections = helper.getConnections(project, server)
             val tokens = helper.getExistingTokens(connections, user)
-            map.put(server, !connections.isNotEmpty() || !tokens.isNotEmpty())
+            map[server] = connections.isEmpty() || tokens.isEmpty()
         }
         return map
     }
@@ -197,7 +196,7 @@ class ProjectWebHooksBean(val project: SProject,
     }
 
     fun getDataJson(info: GitHubRepositoryInfo): JsonElement {
-        return WebHooksController.Companion.getRepositoryInfo(info, webHooksManager)
+        return WebHooksController.getRepositoryInfo(info, webHooksManager)
     }
 }
 
@@ -212,7 +211,7 @@ class WebHookDetails(val info: WebHooksStorage.HookInfo?,
     val usagesMap: Map<SVcsRoot, VcsRootUsages> by lazy {
         val map = HashMap<SVcsRoot, VcsRootUsages>()
         for (root in roots) {
-            map.put(root, VcsRootUsagesBean(root, project, versionedSettingsManager))
+            map[root] = VcsRootUsagesBean(root, project, versionedSettingsManager)
         }
         map
     }

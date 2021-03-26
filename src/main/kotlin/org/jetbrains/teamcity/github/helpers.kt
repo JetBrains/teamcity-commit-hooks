@@ -55,7 +55,7 @@ fun Iterable<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>>.filterKnownServers(
     return this.filter { entry ->
         Util.getProjects(entry.value).any { project ->
             val connections = cache[project, { connectionsManager.getAvailableConnections(project).filterNotNull() }]
-            connections.filter { Util.isConnectionToServer(it, entry.key.server) }.isNotEmpty()
+            connections.any { Util.isConnectionToServer(it, entry.key.server) }
         }
     }
 }

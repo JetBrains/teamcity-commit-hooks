@@ -70,27 +70,31 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
         val user = SessionUser.getUser(request) ?: return
 
         val repository = request.getParameter("repository")
-        val info = repository?.let { org.jetbrains.teamcity.github.Util.Companion.parseGitRepoUrl(it) }
+        val info = repository?.let { Util.parseGitRepoUrl(it) }
         model["repository"] = repository.orEmpty()
 
         var connection: OAuthConnectionDescriptor? = info?.let { getConnection(request, project) }
 
         val hasToken: Boolean
         val hasConnections: Boolean
-        if (info == null) {
-            hasToken = false
-            hasConnections = false
-        } else if (connection != null) {
-            hasToken = tokensHelper.getExistingTokens(listOf(connection), user).isNotEmpty()
-            hasConnections = true
-        } else {
-            val pair = getConnections(project, user, info.server)
-            val connections = pair?.first
-            if (connections != null && connections.size == 1) {
-                connection = connections.first()
+        when {
+            info == null -> {
+                hasToken = false
+                hasConnections = false
             }
-            hasConnections = connections?.isNotEmpty() == true
-            hasToken = pair?.second == true
+            connection != null -> {
+                hasToken = tokensHelper.getExistingTokens(listOf(connection), user).isNotEmpty()
+                hasConnections = true
+            }
+            else -> {
+                val pair = getConnections(project, user, info.server)
+                val connections = pair?.first
+                if (connections != null && connections.size == 1) {
+                    connection = connections.first()
+                }
+                hasConnections = connections?.isNotEmpty() == true
+                hasToken = pair?.second == true
+            }
         }
 
         model["connectionId"] = connection?.id.orEmpty()
@@ -113,11 +117,10 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
         val connectionProjectId = request.getParameter("connectionProjectId").nullIfBlank()
 
         if (connectionId != null) {
-            val connectionProject: SProject?
-            if (connectionProjectId != null) {
-                connectionProject = projectsManager.findProjectByExternalId(connectionProjectId)
+            val connectionProject = if (connectionProjectId != null) {
+                projectsManager.findProjectByExternalId(connectionProjectId)
             } else {
-                connectionProject = project
+                project
             }
             return connectionProject?.let { connectionsManager.findConnectionById(it, connectionId) }
         }
@@ -131,13 +134,17 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
             return null
         }
         val tokens = tokensHelper.getExistingTokens(connections, user)
-        if (tokens.isEmpty()) {
-            LOG.debug("Found ${connections.size} to GitHub server $server, but no tokens for user '$user'")
-            return connections to false
-        } else if (tokens.size == 1) {
-            LOG.debug("Found connection/token for user '$user' to GitHub server $server. Will use it")
-        } else {
-            LOG.debug("Found ${tokens.size} connections/tokens for user '$user' to GitHub server $server. Cannot determine which to use")
+        when {
+            tokens.isEmpty() -> {
+                LOG.debug("Found ${connections.size} to GitHub server $server, but no tokens for user '$user'")
+                return connections to false
+            }
+            tokens.size == 1 -> {
+                LOG.debug("Found connection/token for user '$user' to GitHub server $server. Will use it")
+            }
+            else -> {
+                LOG.debug("Found ${tokens.size} connections/tokens for user '$user' to GitHub server $server. Cannot determine which to use")
+            }
         }
         return tokens.keys to true
     }

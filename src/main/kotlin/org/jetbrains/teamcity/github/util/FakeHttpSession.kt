@@ -27,7 +27,7 @@ import javax.servlet.http.HttpSessionContext
 
 class FakeHttpSession : HttpSession {
 
-    private val myId: String
+    private val myId: String = "" + ourCounter.incrementAndGet()
     private val myCreationTime = System.currentTimeMillis()
     private val myAttrs = ConcurrentHashMap<String, Any>()
     @Volatile private var myMaxInactiveInterval: Int = 0
@@ -35,10 +35,6 @@ class FakeHttpSession : HttpSession {
     @Volatile
     var isInvalidated: Boolean = false
         private set
-
-    init {
-        myId = "" + ourCounter.incrementAndGet()
-    }
 
     override fun getCreationTime(): Long {
         return myCreationTime
@@ -93,7 +89,7 @@ class FakeHttpSession : HttpSession {
     }
 
     override fun setAttribute(string: String, `object`: Any) {
-        myAttrs.put(string, `object`)
+        myAttrs[string] = `object`
     }
 
     override fun putValue(string: String, `object`: Any) {

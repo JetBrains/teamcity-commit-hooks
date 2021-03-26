@@ -50,11 +50,11 @@ class WebHooksManager(links: WebLinks,
         }
     }
 
-    fun init(): Unit {
+    fun init() {
         repoStateEventDispatcher.addListener(myRepoStateListener)
     }
 
-    fun destroy(): Unit {
+    fun destroy() {
         repoStateEventDispatcher.removeListener(myRepoStateListener)
     }
 
@@ -119,7 +119,7 @@ class WebHooksManager(links: WebLinks,
     }
 
     fun getHookForPubKey(authData: AuthDataStorage.AuthData): WebHooksStorage.HookInfo? {
-        return authData.repository?.let { storage.getHooks(it).firstOrNull { it.callbackUrl.endsWith(authData.public) } }
+        return authData.repository?.let { storage.getHooks(it).firstOrNull { hook -> hook.callbackUrl.endsWith(authData.public) } }
     }
 
 }

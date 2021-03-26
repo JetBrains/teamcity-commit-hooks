@@ -47,7 +47,7 @@ object GetAllWebHooksAction {
                 && "json" == it.config["content_type"]
             }
             val active = filtered.filter { it.isActive }
-            if (filtered.size > 0) {
+            if (filtered.isNotEmpty()) {
                 LOG.debug("Found ${filtered.size} webhook${filtered.size.s} for repository ${info.id}; ${active.size} - active; ${hooks.size - filtered.size} - other")
             } else {
                 LOG.debug("No webhooks found for repository ${info.id}")
@@ -64,9 +64,7 @@ object GetAllWebHooksAction {
                     // No access
                     // Probably token does not have permissions
                     val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess) // Weird. No header?
-                    val pair = TokensHelper.getHooksAccessType(scopes)
-                    val accessType = pair.first
-                    when (accessType) {
+                    when (TokensHelper.getHooksAccessType(scopes).first) {
                         TokensHelper.HookAccessType.NO_ACCESS -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
                         TokensHelper.HookAccessType.READ -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
                         TokensHelper.HookAccessType.WRITE, TokensHelper.HookAccessType.ADMIN -> throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)

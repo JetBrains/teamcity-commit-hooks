@@ -49,9 +49,7 @@ object GetPullRequestDetailsAction {
                     // No access
                     // Probably token does not have permissions
                     val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: throw GitHubAccessException(GitHubAccessException.Type.NoAccess) // Weird. No header?
-                    val pair = TokensHelper.getHooksAccessType(scopes)
-                    val accessType = pair.first
-                    when (accessType) {
+                    when (TokensHelper.getHooksAccessType(scopes).first) {
                         TokensHelper.HookAccessType.NO_ACCESS -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
                         TokensHelper.HookAccessType.READ -> throw GitHubAccessException(GitHubAccessException.Type.TokenScopeMismatch)
                         TokensHelper.HookAccessType.WRITE, TokensHelper.HookAccessType.ADMIN -> throw GitHubAccessException(GitHubAccessException.Type.UserHaveNoAccess)

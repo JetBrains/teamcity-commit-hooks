@@ -37,6 +37,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import kotlin.math.max
 
 /**
  * AuthData storage
@@ -107,11 +108,11 @@ class AuthDataStorage(executorServices: ExecutorServices,
         }
     }
 
-    fun init(): Unit {
+    fun init() {
         myServerEventDispatcher.addListener(myServerListener)
     }
 
-    fun destroy(): Unit {
+    fun destroy() {
         myServerEventDispatcher.removeListener(myServerListener)
     }
 
@@ -134,7 +135,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
     fun store(data: AuthData) {
         myDataLock.write {
             myData.remove(data.public)
-            myData.put(data.public, data)
+            myData[data.public] = data
             myDataModificationCounter++
         }
         LOG.info("Stored auth data $data")
@@ -261,7 +262,7 @@ class AuthDataStorage(executorServices: ExecutorServices,
         myDataLock.write {
             myData.clear()
             myData.putAll(map)
-            val counter = Math.max(myDataModificationCounter, myStoredDataModificationCounter) + 1
+            val counter = max(myDataModificationCounter, myStoredDataModificationCounter) + 1
             myDataModificationCounter = counter
             myStoredDataModificationCounter = counter
         }

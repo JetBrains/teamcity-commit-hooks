@@ -45,16 +45,16 @@ class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places:
         val info: GitHubRepositoryInfo = item.additionalData["GitHubInfo"] as GitHubRepositoryInfo
 
         val connections = helper.getConnections(project, info.server)
-        model.put("has_connections", connections.isNotEmpty())
+        model["has_connections"] = connections.isNotEmpty()
         val tokens = helper.getExistingTokens(connections, user)
-        model.put("has_tokens", tokens.isNotEmpty())
+        model["has_tokens"] = tokens.isNotEmpty()
 
-        model.put("gson", Gson())
-        model.put("pluginResourcesPath", myResourcesPath)
+        model["gson"] = Gson()
+        model["pluginResourcesPath"] = myResourcesPath
     }
 
     override fun isAvailable(request: HttpServletRequest): Boolean {
-        if (!super.isAvailable(request)) return false;
+        if (!super.isAvailable(request)) return false
         val item = getStatusItem(request)
         val project = item.additionalData["Project"] as SProject? ?: return false
         if (!SessionUser.getUser(request).isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) return false

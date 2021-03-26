@@ -39,11 +39,11 @@ import java.util.regex.Pattern
 
 class Util {
     companion object {
-        private val LOG_CATEGORY = Loggers.VCS_CATEGORY + ".CommitHooks"
+        private const val LOG_CATEGORY = Loggers.VCS_CATEGORY + ".CommitHooks"
         private val LOG = getLogger("Util")
 
         fun getLogger(name: String): Logger {
-            return Logger.getInstance(LOG_CATEGORY + "." + name)
+            return Logger.getInstance("$LOG_CATEGORY.$name")
         }
 
         fun getLogger(clazz: Class<out Any>): Logger {
@@ -64,7 +64,7 @@ class Util {
             return parseGitRepoUrl(url)
         }
 
-        fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet<SProject>())
+        fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet())
 
         val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
 
@@ -121,11 +121,11 @@ class Util {
             val urlHost = getHost(url) ?: return url == host
             if (urlHost == host) return true
             val u2: URL
-            try {
+            return try {
                 u2 = URL(host)
-                return urlHost == u2.host
+                urlHost == u2.host
             } catch(e: Exception) {
-                return false
+                false
             }
         }
 
@@ -257,7 +257,7 @@ class Util {
                     .mapNotNull {
                         when (it.oauthProvider.type) {
                             GHEOAuthProvider.TYPE -> {
-                                it.parameters[GitHubConstants.GITHUB_URL_PARAM]?.let { getHost(it) }
+                                it.parameters[GitHubConstants.GITHUB_URL_PARAM]?.let { url -> getHost(url) }
                             }
                             GitHubOAuthProvider.TYPE -> {
                                 "github.com"

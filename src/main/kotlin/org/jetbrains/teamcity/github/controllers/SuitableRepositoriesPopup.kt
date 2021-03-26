@@ -37,7 +37,7 @@ class SuitableRepositoriesPopup(descriptor: PluginDescriptor,
 
     private val myViewPath = descriptor.getPluginResourcesPath("suitableRepositoriesPopup.jsp")
 
-    fun register(): Unit {
+    fun register() {
         myWebControllerManager.registerController("/webhooks/github/suitableRepositoriesPopup.html", this)
     }
 
@@ -54,15 +54,15 @@ class SuitableRepositoriesPopup(descriptor: PluginDescriptor,
                     .toSet()
                     .forEach { info ->
                         val connections = Util.findConnections(myOauthConnectionManager, project, info.server)
-                        if (connections.isNotEmpty()) repos.put(info, connections.first())
+                        if (connections.isNotEmpty()) repos[info] = connections.first()
                     }
 
         }
 
         val mv = ModelAndView(myViewPath)
-        mv.model.put("repositoriesMap", repos)
-        mv.model.put("hasConnections", hasConnections)
-        mv.model.put("project", project)
+        mv.model["repositoriesMap"] = repos
+        mv.model["hasConnections"] = hasConnections
+        mv.model["project"] = project
         return mv
     }
 }

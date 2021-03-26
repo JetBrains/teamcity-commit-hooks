@@ -58,11 +58,11 @@ class TokensHelper(
         }
 
         fun isSuitableAccessType(accessType: HookAccessType): Boolean {
-            when (accessType) {
-                HookAccessType.NO_ACCESS -> return false
-                HookAccessType.READ -> return false
-                HookAccessType.WRITE -> return true // Though write is not enough for 'delete' action, we can disable webhook
-                HookAccessType.ADMIN -> return true
+            return when (accessType) {
+                HookAccessType.NO_ACCESS -> false
+                HookAccessType.READ -> false
+                HookAccessType.WRITE -> true // Though write is not enough for 'delete' action, we can disable webhook
+                HookAccessType.ADMIN -> true
             }
         }
     }
@@ -73,7 +73,7 @@ class TokensHelper(
 
     fun getExistingTokens(connections: Collection<OAuthConnectionDescriptor>, user: SUser): Map<OAuthConnectionDescriptor, List<OAuthToken>> {
         return connections.map {
-            it to storage.getUserTokens(it.id, user).filter { isSuitableToken(it) && !myIncorrectTokens.contains(it) }
+            it to storage.getUserTokens(it.id, user).filter { token -> isSuitableToken(token) && !myIncorrectTokens.contains(token) }
         }.filter { it.second.isNotEmpty() }.toMap()
     }
 

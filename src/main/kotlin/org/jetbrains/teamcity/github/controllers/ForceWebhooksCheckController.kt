@@ -27,10 +27,10 @@ import javax.servlet.http.HttpServletResponse
 class ForceWebhooksCheckController(private val WebControllerManager: WebControllerManager,
                                    private val WebhookPeriodicalChecker: WebhookPeriodicalChecker) : BaseController() {
     companion object {
-        val PATH = "/app/hooks/check"
+        const val PATH = "/app/hooks/check"
     }
 
-    fun register(): Unit {
+    fun register() {
         if (!jetbrains.buildServer.DevelopmentMode.isEnabled) return
         setSupportedMethods(WebContentGenerator.METHOD_POST, WebContentGenerator.METHOD_GET)
         WebControllerManager.registerController(PATH, this)

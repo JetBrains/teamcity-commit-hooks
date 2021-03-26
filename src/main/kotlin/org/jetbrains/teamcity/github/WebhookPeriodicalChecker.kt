@@ -58,10 +58,10 @@ class WebhookPeriodicalChecker(
 
     companion object {
         private val LOG = Util.getLogger(WebhookPeriodicalChecker::class.java)
-        val TYPE = "GitHubWebHookProblem"
+        const val TYPE = "GitHubWebHookProblem"
         val CATEGORY: ItemCategory = ItemCategory("GitHubWebHookProblem", "GitHub webhook problem", ItemSeverity.WARN)
 
-        val CHECK_INTERVAL_PROPERTY = "teamcity.githubWebhooks.checkInterval.min"
+        const val CHECK_INTERVAL_PROPERTY = "teamcity.githubWebhooks.checkInterval.min"
     }
 
     override fun getType(): String = TYPE
@@ -89,7 +89,7 @@ class WebhookPeriodicalChecker(
     override fun report(scope: HealthStatusScope, resultConsumer: HealthStatusItemConsumer) {
         if (!canReportItemsFor(scope)) return
         val gitRoots = HashSet<SVcsRoot>()
-        Util.findSuitableRoots(scope, { gitRoots.add(it); true })
+        Util.findSuitableRoots(scope) { gitRoots.add(it); true }
 
         val incorrectHooks = myWebHooksStorage.getIncorrectHooks()
         val incorrectHooksInfos = incorrectHooks.map { it.first }.toHashSet()
@@ -210,9 +210,9 @@ class WebhookPeriodicalChecker(
 
                     // Remove hooks removed on remote server from storages.
                     val removed = myWebHooksStorage.getHooks(info).filter { it.status == Status.MISSING }
-                    if (!removed.isEmpty()) {
+                    if (removed.isNotEmpty()) {
                         LOG.info("$removed ${removed.size.pluralize("webhook")} missing on remote server and would be removed locally")
-                        val pubKeysToRemove = removed.map { GitHubWebHookListener.getPubKeyFromRequestPath(it.callbackUrl) }.filterNotNull()
+                        val pubKeysToRemove = removed.mapNotNull { GitHubWebHookListener.getPubKeyFromRequestPath(it.callbackUrl) }
                         myWebHooksStorage.delete(info) {it in removed}
                         myAuthDataStorage.remove(myAuthDataStorage.findAllForRepository(info).filter { it.public in pubKeysToRemove })
                     }

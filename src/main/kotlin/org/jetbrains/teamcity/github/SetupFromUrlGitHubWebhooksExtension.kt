@@ -65,7 +65,7 @@ class SetupFromUrlGitHubWebhooksExtension(
         // Load webhooks for repository and install new one if there's no good webhooks there
         infos@for (info in infos) {
             val connections = myTokensHelper.getConnections(buildType.project, info.server)
-                    .plus(myWebHooksManager.authDataStorage.findAllForRepository(info).map { getConnection(it) }.filterNotNull())
+                    .plus(myWebHooksManager.authDataStorage.findAllForRepository(info).mapNotNull { getConnection(it) })
                     // Like #toSet with custom #equals:
                     .map { (it.project to it.id) to it }.toMap().values
             val connectionToTokensMap = myTokensHelper.getExistingTokens(connections, user)
@@ -96,7 +96,6 @@ class SetupFromUrlGitHubWebhooksExtension(
     private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
         val info = authData.connection
         val project = myProjectManager.findProjectByExternalId(info.projectExternalId) ?: return null
-        val connection = myOAuthConnectionsManager.findConnectionById(project, info.id) ?: return null
-        return connection
+        return myOAuthConnectionsManager.findConnectionById(project, info.id)
     }
 }

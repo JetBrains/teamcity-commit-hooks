@@ -146,7 +146,7 @@ object CreateWebHookAction {
     private fun checkExisting(client: GitHubClientEx, context: ActionContext, hookInfo: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo): Boolean {
         val pubKey = getPubKey(hookInfo.callbackUrl)
         val authData = pubKey?.let { context.authDataStorage.find(it) }
-        if (authData == null) {
+        return if (authData == null) {
             // Unknown webhook or old callback url format, remove from GitHub and local cache
             // Possible cause: local cache was cleared, old callback url format.
             try {
@@ -155,10 +155,8 @@ object CreateWebHookAction {
             } catch(ignored: GitHubAccessException) {
                 hookInfo.status = Status.INCORRECT
             }
-            return false
-        } else {
-            return !hookInfo.status.bad
-        }
+            false
+        } else !hookInfo.status.bad
     }
 
     private fun getPubKey(url: String?): String? {

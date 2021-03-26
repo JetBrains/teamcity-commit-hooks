@@ -57,7 +57,7 @@ class LayeredHttpServletRequest(request: HttpServletRequest) : HttpServletReques
     }
 
     override fun setAttribute(string: String, value: Any) {
-        myAttributes.put(string, value)
+        myAttributes[string] = value
     }
 
     override fun getRequestedSessionId(): String? {

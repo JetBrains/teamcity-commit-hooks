@@ -28,14 +28,14 @@ import java.util.*
 open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
                                    private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
     companion object {
-        val TYPE = "GitHubWebHooksSuggestion"
+        const val TYPE = "GitHubWebHooksSuggestion"
         val CATEGORY: ItemCategory = SuggestionCategory(ItemSeverity.INFO, "Reduce GitHub repository overhead and speedup changes detection by switching to GitHub webhook", null)
 
         fun <T : VcsRoot> splitRoots(vcsRoots: Collection<T>): MultiMapToSet<GitHubRepositoryInfo, T> {
             val map = MultiMapToSet<GitHubRepositoryInfo, T>()
 
             for (root in vcsRoots) {
-                val info = Util.Companion.getGitHubInfo(root) ?: continue
+                val info = Util.getGitHubInfo(root) ?: continue
 
                 // Ignore roots with unresolved references in url
                 if (info.isHasParameterReferences()) continue
@@ -52,27 +52,27 @@ open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
 
             val processed = HashSet<GitHubRepositoryInfo>()
 
-            for ((info, pairs) in groupByGitHubInfo) {
+            for ((info, repoPairs) in groupByGitHubInfo) {
                 if (info == null) continue
                 // Ignore roots with unresolved references in url
                 if (info.isHasParameterReferences()) continue
                 if (hasHooksInStorage(info)) continue
 
-                val groupByProject: Map<SProject, List<Pair<SBuildType, VcsRootInstance>>> = pairs.groupBy { it.first.project }
+                val groupByProject: Map<SProject, List<Pair<SBuildType, VcsRootInstance>>> = repoPairs.groupBy { it.first.project }
 
-                for ((project, pairs) in groupByProject) {
+                for ((project, projectPairs) in groupByProject) {
                     val item = WebHookAddHookHealthItem(info, project)
 
                     // we already created health item for this repository
                     if (!processed.add(info)) continue
 
-                    val instances: List<VcsRootInstance> = pairs.map { it.second }
+                    val instances: List<VcsRootInstance> = projectPairs.map { it.second }
 
                     // Project
                     resultConsumer.consumeForProject(project, item)
 
                     // BuildTypes
-                    pairs.map { it.first }.forEach { resultConsumer.consumeForBuildType(it, item) }
+                    projectPairs.map { it.first }.forEach { resultConsumer.consumeForBuildType(it, item) }
 
                     // VcsRoots
                     instances
