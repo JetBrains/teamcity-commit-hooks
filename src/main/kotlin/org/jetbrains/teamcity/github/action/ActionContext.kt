@@ -44,7 +44,7 @@ open class ActionContext(val storage: WebHooksStorage,
         return base + '/' + authData.public
     }
 
-    fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>): Map<RepositoryHook, WebHooksStorage.HookInfo> {
+    fun updateHooks(server: String, repo: RepositoryId, filtered: List<RepositoryHook>): Map<RepositoryHook, WebHookInfo> {
         // TODO: Report more than one active webhook in storage as misconfiguration
         if (filtered.isEmpty()) {
             // Mark old hooks as removed
@@ -53,7 +53,7 @@ open class ActionContext(val storage: WebHooksStorage,
             }
             return emptyMap()
         }
-        val result = HashMap<RepositoryHook, WebHooksStorage.HookInfo>()
+        val result = HashMap<RepositoryHook, WebHookInfo>()
         val hooks = storage.getHooks(server, repo).toMutableList()
 
         val missing = hooks.any { hi ->
@@ -92,9 +92,9 @@ open class ActionContext(val storage: WebHooksStorage,
         return result
     }
 
-    fun updateOneHook(server: String, repo: RepositoryId, rh: RepositoryHook): WebHooksStorage.HookInfo? {
+    fun updateOneHook(server: String, repo: RepositoryId, rh: RepositoryHook): WebHookInfo? {
         val hooks = storage.getHooks(server, repo).toMutableList()
-        var result: WebHooksStorage.HookInfo? = null
+        var result: WebHookInfo? = null
         if (!hooks.any { it.isSame(rh) }) {
             return addHook(rh)
         } else {
@@ -115,7 +115,7 @@ open class ActionContext(val storage: WebHooksStorage,
         return result
     }
 
-    fun addHook(created: RepositoryHook): WebHooksStorage.HookInfo? {
+    fun addHook(created: RepositoryHook): WebHookInfo? {
         val callbackUrl = created.callbackUrl
         if (callbackUrl == null) {
             LOG.warn("Received RepositoryHook without callback url, ignoring it")
@@ -127,7 +127,7 @@ open class ActionContext(val storage: WebHooksStorage,
         return info
     }
 
-    fun getHook(info: GitHubRepositoryInfo): WebHooksStorage.HookInfo? {
+    fun getHook(info: GitHubRepositoryInfo): WebHookInfo? {
         val hooks = storage.getHooks(info)
         return hooks.firstOrNull { !it.status.bad } ?: hooks.firstOrNull()
     }

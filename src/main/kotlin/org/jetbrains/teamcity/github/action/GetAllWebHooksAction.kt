@@ -32,7 +32,7 @@ object GetAllWebHooksAction {
     private val LOG = Util.getLogger(GetAllWebHooksAction::class.java)
 
     @Throws(GitHubAccessException::class)
-    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext): Map<RepositoryHook, WebHooksStorage.HookInfo> {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext): Map<RepositoryHook, WebHookInfo> {
         val service = RepositoryService(client)
         val repo = info.getRepositoryId()
         try {

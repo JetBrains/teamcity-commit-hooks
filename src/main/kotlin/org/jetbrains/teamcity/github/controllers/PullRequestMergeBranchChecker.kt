@@ -50,14 +50,14 @@ class PullRequestMergeBranchChecker(
     private val myLowPrioExecutor = ExecutorServices.lowPriorityExecutorService
     private val myScheduledActions = ConcurrentHashMap<GitHubRepositoryInfo, Action>()
 
-    fun schedule(info: GitHubRepositoryInfo, hookInfo: WebHooksStorage.HookInfo, user: UserEx, prNumber: Int) {
+    fun schedule(info: GitHubRepositoryInfo, hookInfo: WebHookInfo, user: UserEx, prNumber: Int) {
         LOG.info("Scheduling check for repo ${info.id} PR #$prNumber")
         val action = Action(info, hookInfo, user, prNumber)
         myScheduledActions.remove(info)?.cancel() // Cancel previous action
         action.schedule(myNormalExecutor)
     }
 
-    inner class Action(val info: GitHubRepositoryInfo, val hook: WebHooksStorage.HookInfo, val user: UserEx, private val prNumber: Int) : Runnable {
+    inner class Action(val info: GitHubRepositoryInfo, val hook: WebHookInfo, val user: UserEx, private val prNumber: Int) : Runnable {
         private var attempt: Int = 0
         @Volatile
         private var active = true

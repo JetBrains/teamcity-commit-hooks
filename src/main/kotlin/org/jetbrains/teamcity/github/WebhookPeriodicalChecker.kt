@@ -138,7 +138,7 @@ class WebhookPeriodicalChecker(
         myAuthDataCleaner.cleanup()
 
         val toCheck = ArrayDeque(myWebHooksStorage.getAll())
-        val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, WebHooksStorage.HookInfo>>()
+        val toPing = ArrayDeque<Triple<GitHubRepositoryInfo, Pair<GitHubClientEx, String>, WebHookInfo>>()
         if (toCheck.isEmpty()) {
             LOG.debug("No configured webhooks found")
         } else {
@@ -355,7 +355,7 @@ class WebhookPeriodicalChecker(
     // TODO: Should mention HookInfo
     private val myIncorrectHooks: Cache<GitHubRepositoryInfo, String> = CacheBuilder.newBuilder().expireAfterWrite(120, TimeUnit.MINUTES).build()
 
-    private fun report(info: GitHubRepositoryInfo, hook: WebHooksStorage.HookInfo, reason: String, status: Status = Status.INCORRECT) {
+    private fun report(info: GitHubRepositoryInfo, hook: WebHookInfo, reason: String, status: Status = Status.INCORRECT) {
         myIncorrectHooks.put(info, reason)
         hook.status = status
     }

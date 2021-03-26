@@ -200,7 +200,7 @@ class ProjectWebHooksBean(val project: SProject,
     }
 }
 
-class WebHookDetails(val info: WebHooksStorage.HookInfo?,
+class WebHookDetails(val info: WebHookInfo?,
                      val roots: List<SVcsRoot>,
                      val project: SProject,
                      val versionedSettingsManager: VersionedSettingsManager
@@ -284,7 +284,7 @@ class VcsRootUsagesBeanCombined(usages: List<VcsRootUsagesBean> = emptyList()) :
     }
 }
 
-data class WebHooksStatus(val status: Status, val hook: WebHooksStorage.HookInfo?) {
+data class WebHooksStatus(val status: Status, val hook: WebHookInfo?) {
     @Used("jps")
     fun getActions(): List<String> {
         return when (status) {
@@ -329,7 +329,7 @@ val Status.good: Boolean
         return this in listOf(Status.OK, Status.WAITING_FOR_SERVER_RESPONSE)
     }
 
-fun getHookStatus(hook: WebHooksStorage.HookInfo?): WebHooksStatus {
+fun getHookStatus(hook: WebHookInfo?): WebHooksStatus {
     if (hook == null) {
         return WebHooksStatus(Status.NOT_FOUND, hook)
     }

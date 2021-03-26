@@ -17,13 +17,14 @@
 package org.jetbrains.teamcity.github.json
 
 import com.google.gson.*
+import org.jetbrains.teamcity.github.WebHookInfo
 import org.jetbrains.teamcity.github.WebHooksStorage
 import org.jetbrains.teamcity.github.controllers.Status
 import java.lang.reflect.Type
 import java.util.*
 
-object HookInfoTypeAdapter : JsonDeserializer<WebHooksStorage.HookInfo>, JsonSerializer<WebHooksStorage.HookInfo> {
-    override fun serialize(src: WebHooksStorage.HookInfo, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
+object HookInfoTypeAdapter : JsonDeserializer<WebHookInfo>, JsonSerializer<WebHookInfo> {
+    override fun serialize(src: WebHookInfo, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
         val obj = JsonObject()
 
         obj.addProperty("url", src.url)
@@ -36,7 +37,7 @@ object HookInfoTypeAdapter : JsonDeserializer<WebHooksStorage.HookInfo>, JsonSer
         return obj
     }
 
-    override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): WebHooksStorage.HookInfo {
+    override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): WebHookInfo {
         if (json !is JsonObject) throw JsonParseException("JsonObject expected")
 
         val url = json.getAsJsonPrimitive("url").asString
@@ -48,7 +49,7 @@ object HookInfoTypeAdapter : JsonDeserializer<WebHooksStorage.HookInfo>, JsonSer
         val lastUsed = json.get("lastUsed")?.let { context.deserialize<Date>(it, Date::class.java) }
         val lastBranchRevisions = json.get("lastBranchRevisions")?.let { context.deserialize<Map<String, String>>(it, Map::class.java) }?.let { HashMap(it) }
 
-        return WebHooksStorage.HookInfo(url, callbackUrl, key, key.id, status, lastUsed, lastBranchRevisions)
+        return WebHookInfo(url, callbackUrl, key, key.id, status, lastUsed, lastBranchRevisions)
     }
 
 }

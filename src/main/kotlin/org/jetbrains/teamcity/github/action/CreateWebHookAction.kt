@@ -39,7 +39,7 @@ object CreateWebHookAction {
     private val LOG = Util.getLogger(CreateWebHookAction::class.java)
 
     @Throws(GitHubAccessException::class)
-    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHooksStorage.HookInfo> {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, context: ActionContext, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHookInfo> {
         val repo = info.getRepositoryId()
         val service = RepositoryService(client)
 
@@ -143,7 +143,7 @@ object CreateWebHookAction {
 
     }
 
-    private fun checkExisting(client: GitHubClientEx, context: ActionContext, hookInfo: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo): Boolean {
+    private fun checkExisting(client: GitHubClientEx, context: ActionContext, hookInfo: WebHookInfo, info: GitHubRepositoryInfo): Boolean {
         val pubKey = getPubKey(hookInfo.callbackUrl)
         val authData = pubKey?.let { context.authDataStorage.find(it) }
         return if (authData == null) {

@@ -53,7 +53,7 @@ object DeleteWebHookAction {
         return HookDeleteOperationResult.Removed
     }
 
-    private fun doDeleteOrDisable(client: GitHubClientEx, context: ActionContext, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryServiceEx): HookDeleteOperationResult {
+    private fun doDeleteOrDisable(client: GitHubClientEx, context: ActionContext, hook: WebHookInfo, info: GitHubRepositoryInfo, service: RepositoryServiceEx): HookDeleteOperationResult {
         try {
             delete(client, hook, info, service, context)
         } catch(e: GitHubAccessException) {
@@ -66,7 +66,7 @@ object DeleteWebHookAction {
         return HookDeleteOperationResult.Removed
     }
 
-    private fun delete(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryService, context: ActionContext) {
+    private fun delete(client: GitHubClientEx, hook: WebHookInfo, info: GitHubRepositoryInfo, service: RepositoryService, context: ActionContext) {
         try {
             service.deleteHook(info.getRepositoryId(), hook.id.toInt())
         } catch(e: RequestException) {
@@ -88,7 +88,7 @@ object DeleteWebHookAction {
         GitHubWebHookListener.getPubKeyFromRequestPath(hook.callbackUrl)?.let { context.authDataStorage.delete(it) }
     }
 
-    private fun disable(client: GitHubClientEx, hook: WebHooksStorage.HookInfo, info: GitHubRepositoryInfo, service: RepositoryServiceEx, context: ActionContext) {
+    private fun disable(client: GitHubClientEx, hook: WebHookInfo, info: GitHubRepositoryInfo, service: RepositoryServiceEx, context: ActionContext) {
         try {
             val rh = service.disableHook(info.getRepositoryId(), hook.id)
             context.updateOneHook(info.server, info.getRepositoryId(), rh)

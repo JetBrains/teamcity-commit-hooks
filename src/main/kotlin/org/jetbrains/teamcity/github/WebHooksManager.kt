@@ -63,12 +63,12 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doInstallWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHooksStorage.HookInfo> {
+    fun doInstallWebHook(info: GitHubRepositoryInfo, client: GitHubClientEx, user: SUser, connection: OAuthConnectionDescriptor): Pair<HookAddOperationResult, WebHookInfo> {
         return CreateWebHookAction.doRun(info, client, user, this, connection)
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx): Map<RepositoryHook, WebHooksStorage.HookInfo> {
+    fun doGetAllWebHooks(info: GitHubRepositoryInfo, client: GitHubClientEx): Map<RepositoryHook, WebHookInfo> {
         return GetAllWebHooksAction.doRun(info, client, this)
     }
 
@@ -78,11 +78,11 @@ class WebHooksManager(links: WebLinks,
     }
 
     @Throws(IOException::class, RequestException::class, GitHubAccessException::class)
-    fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, hook: WebHooksStorage.HookInfo) {
+    fun doTestWebHook(info: GitHubRepositoryInfo, ghc: GitHubClientEx, hook: WebHookInfo) {
         return TestWebHookAction.doRun(info, ghc, this, hook)
     }
 
-    fun updateLastUsed(hookInfo: WebHooksStorage.HookInfo, date: Date) {
+    fun updateLastUsed(hookInfo: WebHookInfo, date: Date) {
         // TODO: We should not show vcs root instances in health report if hook was used in last 7 (? or any other number) days. Even if we have not created that hook.
         val used = hookInfo.lastUsed
         hookInfo.status = Status.OK
@@ -91,12 +91,12 @@ class WebHooksManager(links: WebLinks,
         }
     }
 
-    fun updateBranchRevisions(hookInfo: WebHooksStorage.HookInfo, map: Map<String, String>) {
+    fun updateBranchRevisions(hookInfo: WebHookInfo, map: Map<String, String>) {
         hookInfo.status = Status.OK
         hookInfo.updateBranchMapping(map)
     }
 
-    private fun isBranchesInfoUpToDate(hook: WebHooksStorage.HookInfo, newBranches: Map<String, String>): Boolean {
+    private fun isBranchesInfoUpToDate(hook: WebHookInfo, newBranches: Map<String, String>): Boolean {
         val hookBranches = hook.lastBranchRevisions
 
         // Maybe we have forgot about revisions (cache cleanup after server restart)
@@ -118,7 +118,7 @@ class WebHooksManager(links: WebLinks,
         return true
     }
 
-    fun getHookForPubKey(authData: AuthDataStorage.AuthData): WebHooksStorage.HookInfo? {
+    fun getHookForPubKey(authData: AuthDataStorage.AuthData): WebHookInfo? {
         return authData.repository?.let { storage.getHooks(it).firstOrNull { hook -> hook.callbackUrl.endsWith(authData.public) } }
     }
 

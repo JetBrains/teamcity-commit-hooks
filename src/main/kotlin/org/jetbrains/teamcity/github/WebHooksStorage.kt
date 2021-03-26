@@ -31,11 +31,11 @@ import jetbrains.buildServer.util.FileUtil
 import jetbrains.buildServer.util.cache.CacheProvider
 import org.eclipse.egit.github.core.RepositoryHook
 import org.eclipse.egit.github.core.RepositoryId
-import org.jetbrains.teamcity.github.controllers.Status
 import org.jetbrains.teamcity.github.controllers.bad
 import org.jetbrains.teamcity.github.json.HookInfoTypeAdapter
 import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.io.File
+import java.lang.reflect.Type
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
@@ -57,14 +57,15 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
         private const val VERSION: Int = 1
 
-        private val hooksListType = object : TypeToken<List<HookInfo>>() {}.type
+        val hooksListType: Type = object : TypeToken<List<WebHookInfo>>() {}.type
+
         val gson: Gson = GsonBuilder()
                 .setPrettyPrinting()
                 .registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter)
-                .registerTypeAdapter(HookInfo::class.java, HookInfoTypeAdapter)
+                .registerTypeAdapter(WebHookInfo::class.java, HookInfoTypeAdapter)
                 .create()!!
 
-        internal fun getJsonObjectFromData(data: List<HookInfo>): JsonObject {
+        internal fun getJsonObjectFromData(data: List<WebHookInfo>): JsonObject {
             val list = data.toHashSet().toMutableList()
             list.sortWith(Comparator { a, b -> a.key.toString().compareTo(b.key.toString()) })
 
@@ -74,14 +75,14 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             return obj
         }
 
-        internal fun getDataFromJsonObject(obj: JsonObject): Map<MapKey, List<HookInfo>>? {
+        internal fun getDataFromJsonObject(obj: JsonObject): Map<MapKey, List<WebHookInfo>>? {
             val version = obj.getAsJsonPrimitive("version").asInt
             if (version != VERSION) {
                 LOG.warn("Stored data have outdated version $version")
                 return null
             }
             val array = obj.getAsJsonArray("hooks")
-            val hooks = gson.fromJson<List<HookInfo>>(array, hooksListType)
+            val hooks = gson.fromJson<List<WebHookInfo>>(array, hooksListType)
 
             return hooks.groupBy { it.key.toMapKey() }
         }
@@ -133,83 +134,6 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    /**
-     * It's highly recommended not to modify any 'var' field outside of WebHooksStorage#update methods
-     * since modifications may be not stored on disk
-     */
-    class HookInfo(val url: String, // API URL
-                   val callbackUrl: String, // TC URL (GitHubWebHookListener)
-
-                   val key: Key = Key.fromHookUrl(url),
-                   val id: Long = key.id,
-
-                   var status: Status,
-                   var lastUsed: Date? = null,
-                   var lastBranchRevisions: MutableMap<String, String>? = null
-    ) {
-        companion object {
-            private fun oneFromJson(string: String): HookInfo? = gson.fromJson(string, HookInfo::class.java)
-            private fun listFromJson(string: String): List<HookInfo> = gson.fromJson(string, hooksListType) ?: emptyList()
-
-            fun fromJson(json: String): List<HookInfo> {
-                return when {
-                    json.startsWith("{") -> {
-                        listOfNotNull(oneFromJson(json))
-                    }
-                    json.startsWith("[") -> {
-                        listFromJson(json)
-                    }
-                    else -> {
-                        throw IllegalArgumentException("Unexpected content: $json")
-                    }
-                }
-            }
-
-            fun toJson(hooks: List<HookInfo>): String {
-                return gson.toJson(hooks)
-            }
-        }
-
-        @Suppress("DeprecatedCallableAddReplaceWith")
-        @Deprecated("")
-        fun toJson(): String = gson.toJson(this)
-
-        fun isSame(hook: RepositoryHook): Boolean {
-            return id == hook.id && url == hook.url && callbackUrl == hook.callbackUrl
-        }
-
-        fun getUIUrl(): String {
-            return "https://${key.server}/${key.owner}/${key.name}/settings/hooks/$id"
-        }
-
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (other?.javaClass != javaClass) return false
-            other as HookInfo
-
-            if (url != other.url) return false
-            if (callbackUrl != other.callbackUrl) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = url.hashCode()
-            result = 31 * result + callbackUrl.hashCode()
-            return result
-        }
-
-        fun updateBranchMapping(update: Map<String, String>): Map<String, String> {
-            if (lastBranchRevisions == null) lastBranchRevisions = HashMap()
-            lastBranchRevisions!!.putAll(update)
-            return lastBranchRevisions!!
-        }
-
-        override fun toString(): String {
-            return "HookInfo(url='$url', callbackUrl='$callbackUrl', status=$status, lastUsed=$lastUsed)"
-        }
-    }
-
     data class MapKey internal constructor(val server: String, val owner: String, val name: String) {
 
         private val hashCode = Objects.hash(server.toLowerCase(), owner.toLowerCase(), name.toLowerCase())
@@ -235,7 +159,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    private val myData = HashMap<MapKey, MutableList<HookInfo>>()
+    private val myData = HashMap<MapKey, MutableList<WebHookInfo>>()
     private val myDataLock = ReentrantReadWriteLock()
 
     private val myFileWatcher = fileWatcherFactory.createSingleFilesWatcher(getStorageFile(),
@@ -275,7 +199,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     /**
      * Adds hook if it not existed previously
      */
-    fun getOrAdd(created: RepositoryHook): HookInfo {
+    fun getOrAdd(created: RepositoryHook): WebHookInfo {
         val key = Key.fromHookUrl(created.url)
         val mapKey = key.toMapKey()
 
@@ -293,7 +217,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             val hook = hooks?.firstOrNull { it.isSame(created) }
             if (hook != null) return hook
 
-            val toAdd = HookInfo(url = created.url, callbackUrl = created.callbackUrl!!, key = key, status = created.getStatus())
+            val toAdd = WebHookInfo(url = created.url, callbackUrl = created.callbackUrl!!, key = key, status = created.getStatus())
 
             if (hooks == null || hooks.isEmpty()) {
                 hooks = mutableListOf(toAdd)
@@ -307,14 +231,14 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    fun delete(hookInfo: HookInfo) {
+    fun delete(hookInfo: WebHookInfo) {
         LOG.info("Removing $hookInfo")
         myDataLock.write {
             myData[hookInfo.key.toMapKey()]?.remove(hookInfo)
         }
     }
 
-    fun delete(info: GitHubRepositoryInfo, deleteFilter: (HookInfo) -> Boolean) {
+    fun delete(info: GitHubRepositoryInfo, deleteFilter: (WebHookInfo) -> Boolean) {
         if (!getHooks(info).any { deleteFilter(it) }) return
 
         val key = MapKey(info.server, info.getRepositoryId())
@@ -329,7 +253,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
     }
 
-    fun update(server: String, repo: RepositoryId, update: (HookInfo) -> Unit): Boolean {
+    fun update(server: String, repo: RepositoryId, update: (WebHookInfo) -> Unit): Boolean {
         val key = MapKey(server, repo)
         val hooks = myDataLock.read {
             myData[key]?.toMutableList() ?: return false
@@ -340,15 +264,15 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         return true
     }
 
-    fun getHooks(info: GitHubRepositoryInfo): List<HookInfo> {
+    fun getHooks(info: GitHubRepositoryInfo): List<WebHookInfo> {
         return getHooks(info.server, info.getRepositoryId())
     }
 
-    fun getHooks(server: String, repo: RepositoryId): List<HookInfo> {
+    fun getHooks(server: String, repo: RepositoryId): List<WebHookInfo> {
         return getHooks(MapKey(server, repo))
     }
 
-    private fun getHooks(key: MapKey): List<HookInfo> {
+    private fun getHooks(key: MapKey): List<WebHookInfo> {
         return myDataLock.read {
             myData[key]?.toList()
         } ?: emptyList()
@@ -363,8 +287,8 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         return false
     }
 
-    fun getIncorrectHooks(): List<Pair<GitHubRepositoryInfo, HookInfo>> {
-        val result = ArrayList<Pair<GitHubRepositoryInfo, HookInfo>>()
+    fun getIncorrectHooks(): List<Pair<GitHubRepositoryInfo, WebHookInfo>> {
+        val result = ArrayList<Pair<GitHubRepositoryInfo, WebHookInfo>>()
         myDataLock.read {
             for ((key, hooks) in myData) {
                 val bad = hooks.filter { it.status.bad }
@@ -377,8 +301,8 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         return result
     }
 
-    fun getAll(): List<Pair<GitHubRepositoryInfo, HookInfo>> {
-        val result = ArrayList<Pair<GitHubRepositoryInfo, HookInfo>>()
+    fun getAll(): List<Pair<GitHubRepositoryInfo, WebHookInfo>> {
+        val result = ArrayList<Pair<GitHubRepositoryInfo, WebHookInfo>>()
         myDataLock.read {
             for ((key, hooks) in myData) {
                 val info = key.toInfo()

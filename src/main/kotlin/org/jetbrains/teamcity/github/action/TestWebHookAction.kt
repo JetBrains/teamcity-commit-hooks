@@ -25,7 +25,7 @@ object TestWebHookAction {
     private val LOG = Util.getLogger(TestWebHookAction::class.java)
 
     @Throws(GitHubAccessException::class)
-    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext, hook: WebHooksStorage.HookInfo) {
+    fun doRun(info: GitHubRepositoryInfo, client: GitHubClientEx, context: ActionContext, hook: WebHookInfo) {
         val service = RepositoryService(client)
         try {
             service.testHook(info.getRepositoryId(), hook.id.toInt())

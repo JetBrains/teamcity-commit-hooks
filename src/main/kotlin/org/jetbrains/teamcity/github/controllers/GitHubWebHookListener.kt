@@ -211,7 +211,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return null
     }
 
-    private fun getHookInfoWithWaiting(authData: AuthDataStorage.AuthData, eventType: String?): WebHooksStorage.HookInfo? {
+    private fun getHookInfoWithWaiting(authData: AuthDataStorage.AuthData, eventType: String?): WebHookInfo? {
         // There's possibility that listener invoked prior to 'CreateWebHookAction' finishes storing it in WebHooksManager
         // Seems it's ok to do that since we already checked that request presumable comes from GitHub
         for (i in 1..10) {
@@ -225,7 +225,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun getAuthData(subPath: String) = AuthDataStorage.find(subPath)
 
-    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHooksStorage.HookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         val url = payload.repository?.gitUrl
         LOG.info("Received ping payload from webhook:${payload.hook_id}(${payload.hook.url}) for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
@@ -246,7 +246,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return doForwardToRestApi(info, user, request, response)
     }
 
-    private fun doHandlePushEvent(payload: PushWebHookPayload, hookInfo: WebHooksStorage.HookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePushEvent(payload: PushWebHookPayload, hookInfo: WebHookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         val url = payload.repository?.gitUrl
         LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
         if (url == null) {
@@ -268,7 +268,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return doForwardToRestApi(info, user, request, response)
     }
 
-    private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHooksStorage.HookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
         if (payload.action !in AcceptedPullRequestActions) {
             LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo $hookInfo")
             return SC_ACCEPTED to "Unrelated action, expected one of $AcceptedPullRequestActions"
@@ -321,11 +321,11 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         return SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
     }
 
-    private fun updateLastUsed(hookInfo: WebHooksStorage.HookInfo) {
+    private fun updateLastUsed(hookInfo: WebHookInfo) {
         WebHooksManager.updateLastUsed(hookInfo, Date())
     }
 
-    private fun updateBranches(hookInfo: WebHooksStorage.HookInfo, branch: String, commitSha: String) {
+    private fun updateBranches(hookInfo: WebHookInfo, branch: String, commitSha: String) {
         WebHooksManager.updateBranchRevisions(hookInfo, mapOf(branch to commitSha))
     }
 
