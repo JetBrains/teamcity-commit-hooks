@@ -259,7 +259,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         return result
     }
 
-    private fun getStorageFile(): File {
+    fun getStorageFile(): File {
         return File(myServerPaths.pluginDataDirectory, "commit-hooks/webhooks.json")
     }
 
