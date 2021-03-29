@@ -25,6 +25,7 @@ import jetbrains.buildServer.serverSide.BuildServerAdapter
 import jetbrains.buildServer.serverSide.BuildServerListener
 import jetbrains.buildServer.serverSide.ServerPaths
 import jetbrains.buildServer.serverSide.TeamCityProperties
+import jetbrains.buildServer.serverSide.executors.ExecutorServices
 import jetbrains.buildServer.serverSide.impl.FileWatcherFactory
 import jetbrains.buildServer.util.EventDispatcher
 import jetbrains.buildServer.util.FileUtil
@@ -37,6 +38,7 @@ import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.io.File
 import java.lang.reflect.Type
 import java.util.*
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -51,11 +53,15 @@ import kotlin.concurrent.write
 class WebHooksStorage(cacheProvider: CacheProvider,
                       fileWatcherFactory: FileWatcherFactory,
                       private val myServerPaths: ServerPaths,
-                      private val myServerEventDispatcher: EventDispatcher<BuildServerListener>) {
+                      private val myServerEventDispatcher: EventDispatcher<BuildServerListener>,
+                      executorServices: ExecutorServices) {
+
     companion object {
         private val LOG: Logger = Util.getLogger(WebHooksStorage::class.java)
 
         private const val VERSION: Int = 1
+        private const val DEFAULT_PERSIST_INTERVAL_MS = 300000L // 5 minutes
+        private const val DEFAULT_FIRST_HOOK_PERSIST_INTERVAL_MS = 1000L // 1 second
 
         val hooksListType: Type = object : TypeToken<List<WebHookInfo>>() {}.type
 
@@ -98,6 +104,8 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
     private val myData = HashMap<RepoKey, MutableList<WebHookInfo>>()
     private val myDataLock = ReentrantReadWriteLock()
+    private val executor = executorServices.normalExecutorService
+    private var isPersistTaskScheduled: Boolean = false
 
     private val myFileWatcher = fileWatcherFactory.createSingleFilesWatcher(getStorageFile(),
                                                                             TeamCityProperties.getInteger("teamcity.commitHooks.webHookStorage.watchInterval", 5000))
@@ -159,9 +167,11 @@ class WebHooksStorage(cacheProvider: CacheProvider,
             if (hooks == null || hooks.isEmpty()) {
                 hooks = mutableListOf(toAdd)
                 myData[mapKey] = hooks
+                schedulePersist(DEFAULT_FIRST_HOOK_PERSIST_INTERVAL_MS)
             } else {
                 hooks.add(toAdd)
                 myData[mapKey] = hooks
+                schedulePersist()
             }
             LOG.info("Added $toAdd")
             return toAdd
@@ -251,6 +261,16 @@ class WebHooksStorage(cacheProvider: CacheProvider,
 
     private fun getStorageFile(): File {
         return File(myServerPaths.pluginDataDirectory, "commit-hooks/webhooks.json")
+    }
+
+    private fun schedulePersist() {
+        schedulePersist(TeamCityProperties.getLong("teamcity.commitHooks.webHookStorage.persistIntervalMs", DEFAULT_PERSIST_INTERVAL_MS))
+    }
+
+    private fun schedulePersist(delayMs: Long) {
+        if (isPersistTaskScheduled)
+            return
+        executor.schedule({ persist() }, delayMs, TimeUnit.MILLISECONDS)
     }
 
     private fun persist() {
