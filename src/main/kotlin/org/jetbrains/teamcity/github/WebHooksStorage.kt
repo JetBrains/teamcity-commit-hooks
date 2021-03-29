@@ -270,7 +270,14 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     private fun schedulePersist(delayMs: Long) {
         if (isPersistTaskScheduled)
             return
-        executor.schedule({ persist() }, delayMs, TimeUnit.MILLISECONDS)
+        isPersistTaskScheduled = true
+        executor.schedule({
+                              isPersistTaskScheduled = false
+                              persist()
+                          },
+                          delayMs,
+                          TimeUnit.MILLISECONDS
+        )
     }
 
     private fun persist() {
