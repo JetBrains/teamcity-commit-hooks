@@ -30,6 +30,15 @@ class WebHooksStorageIntegrationTest: BaseServerTestCase() {
     }
 
     @Test
+    fun `test delete hook`() {
+        val info123 = hookStorage?.getOrAdd(repoHook(123,  "http://fake.callback.url"))
+        val info345 = hookStorage?.getOrAdd(repoHook(345,  "http://fake.callback.url"))
+        then(hookStorage?.getAll()?.map { it.second }).hasSize(2)
+        hookStorage?.delete(info123!!)
+        then(hookStorage?.getAll()?.map { it.second }).isEqualTo(listOf(info345))
+    }
+
+    @Test
     fun `test 2 hooks`() {
         val hook = repoHook(123,  "http://fake.callback.url")
         hookStorage?.getOrAdd(hook)
