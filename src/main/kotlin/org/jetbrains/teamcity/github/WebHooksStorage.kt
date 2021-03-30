@@ -38,6 +38,7 @@ import org.jetbrains.teamcity.github.json.SimpleDateTypeAdapter
 import java.io.File
 import java.lang.reflect.Type
 import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -102,7 +103,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     private val myData = HashMap<RepoKey, MutableList<WebHookInfo>>()
     private val myDataLock = ReentrantReadWriteLock()
     private val executor = executorServices.lowPriorityExecutorService
-    private var isPersistTaskScheduled: Boolean = false
+    private var isPersistTaskScheduled = AtomicBoolean(false)
 
     private val myFileWatcher = fileWatcherFactory.createSingleFilesWatcher(getStorageFile(),
                                                                             TeamCityProperties.getInteger("teamcity.commitHooks.webHookStorage.watchInterval", 5000))
@@ -125,7 +126,7 @@ class WebHooksStorage(cacheProvider: CacheProvider,
         }
 
         override fun serverShutdown() {
-            persist()
+            persist {}
             myFileWatcher.stop()
         }
     }
@@ -260,23 +261,26 @@ class WebHooksStorage(cacheProvider: CacheProvider,
     }
 
     private fun schedulePersist() {
-        if (isPersistTaskScheduled)
+        if (!isPersistTaskScheduled.compareAndSet(false, true))
             return
-        isPersistTaskScheduled = true
         executor.submit {
-            isPersistTaskScheduled = false
-            persist()
+            persist {
+                isPersistTaskScheduled.set(false)
+            }
         }
     }
 
-    private fun persist() {
+    private fun persist(before: () -> Unit) {
         myFileWatcher.runActionWithDisabledObserver {
-            persistImpl()
+            persistImpl(before)
         }
     }
 
     @Synchronized
-    private fun persistImpl() {
+    private fun persistImpl(before: () -> Unit) {
+
+        before()
+
         val obj = myDataLock.read {
             getJsonObjectFromData(myData.values.flatten())
         }
