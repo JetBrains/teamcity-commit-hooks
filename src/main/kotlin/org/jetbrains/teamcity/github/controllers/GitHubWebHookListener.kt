@@ -66,7 +66,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
         val MaxPayloadSize = TeamCityProperties.getLong("teamcity.githubWebhooks.payload.maxKb", 5 * 1024L) * 1024L
 
-        private val AcceptedPullRequestActions = listOf("opened", "reopened", "synchronize")
+        private val AcceptedPullRequestActions = listOf("opened", "edited", "closed", "reopened", "synchronize", "labeled", "unlabeled")
 
         private val LOG = Util.getLogger(GitHubWebHookListener::class.java)
 
@@ -280,7 +280,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             LOG.warn(message)
             return SC_BAD_REQUEST to message
         }
-        LOG.info("Received pull_request payload from webhook for repo ${repository.owner?.login}/${repository.name}")
+        LOG.info("Received pull_request payload from webhook for repo ${repository.owner?.login}/${repository.name}, action: ${payload.action}")
         val info = Util.getGitHubInfo(url)
         if (info == null) {
             val message = "Cannot determine repository info from url '$url'"
