@@ -73,7 +73,7 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
      * Available only if there's at least one github repository in project and subprojects
      */
     override fun isAvailable(request: HttpServletRequest): Boolean {
-        if (!TeamCityProperties.getBoolean(TAB_ENABLE_INTERNAL_PROPERTY)) return false
+        if (!TeamCityProperties.getBooleanOrTrue(TAB_ENABLE_INTERNAL_PROPERTY)) return false
 
         val superIsAvailable = super.isAvailable(request)
         if (!superIsAvailable) return false
