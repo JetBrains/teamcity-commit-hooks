@@ -163,7 +163,8 @@ class PullRequestMergeBranchChecker(
             val httpId = info.id
             val sshId = info.server + ":" + info.owner + "/" + info.name
             try {
-                val response = RestApiFacade.request("POST", user, "text/plain", "/app/rest/vcs-root-instances/commitHookNotification", "locator=type:jetbrains.git,or:(property:(name:url,value:$httpId,matchType:contains),property:(name:url,value:$sshId,matchType:contains))", emptyMap())
+                val response = RestApiFacade.request("POST", user, "text/plain", "/app/rest/vcs-root-instances/commitHookNotification", 
+                                                                                 "locator=vcsRoot:(type:jetbrains.git,count:99999),or:(property:(name:url,value:$httpId,matchType:contains),property:(name:url,value:$sshId,matchType:contains)),count:99999", emptyMap())
                 if (response == null) {
                     LOG.warn("REST is unavailable, failed to start checking for changes")
                 } else {
