@@ -16,7 +16,6 @@
 
 package org.jetbrains.teamcity.github.controllers
 
-import com.google.common.io.LimitInputStream
 import com.google.gson.JsonIOException
 import com.google.gson.JsonSyntaxException
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
@@ -39,10 +38,7 @@ import org.jetbrains.teamcity.github.*
 import org.jetbrains.teamcity.github.util.LayeredHttpServletRequest
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
-import java.io.BufferedReader
-import java.io.ByteArrayInputStream
-import java.io.IOException
-import java.io.InputStreamReader
+import java.io.*
 import java.util.*
 import java.util.concurrent.TimeUnit
 import javax.servlet.http.HttpServletRequest
@@ -355,5 +351,77 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                 super.sendError(fix404(sc))
             }
         }
+    }
+}
+
+// copied from Guava 13.0 and transformed to Kotlin
+class LimitInputStream(`in`: InputStream, limit: Long) : FilterInputStream(`in`) {
+    private var left: Long
+    private var mark: Long = -1
+
+    @Throws(IOException::class)
+    override fun available(): Int {
+        return Math.min(`in`.available().toLong(), left).toInt()
+    }
+
+    @Synchronized
+    override fun mark(readlimit: Int) {
+        `in`.mark(readlimit)
+        mark = left
+        // it's okay to mark even if mark isn't supported, as reset won't work
+    }
+
+    @Throws(IOException::class)
+    override fun read(): Int {
+        if (left == 0L) {
+            return -1
+        }
+        val result = `in`.read()
+        if (result != -1) {
+            --left
+        }
+        return result
+    }
+
+    @Throws(IOException::class)
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        if (left == 0L) {
+            return -1
+        }
+        val result = `in`.read(b, off, Math.min(len.toLong(), left).toInt())
+        if (result != -1) {
+            left -= result.toLong()
+        }
+        return result
+    }
+
+    @Synchronized
+    @Throws(IOException::class)
+    override fun reset() {
+        if (!`in`.markSupported()) {
+            throw IOException("Mark not supported")
+        }
+        if (mark == -1L) {
+            throw IOException("Mark not set")
+        }
+        `in`.reset()
+        left = mark
+    }
+
+    @Throws(IOException::class)
+    override fun skip(n: Long): Long {
+        val skipped = `in`.skip(Math.min(n, left))
+        left -= skipped
+        return skipped
+    }
+
+    /**
+     * Wraps another input stream, limiting the number of bytes which can be read.
+     *
+     * @param in the input stream to be wrapped
+     * @param limit the maximum number of bytes to be read
+     */
+    init {
+        left = limit
     }
 }
