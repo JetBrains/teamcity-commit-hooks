@@ -66,8 +66,8 @@ repositories {
     maven {
         url "https://packages.jetbrains.team/maven/p/tc/maven"
         credentials {
-            username "${teamcity['space.app.clientId']}"
-            password "${teamcity['space.app.secret']}"
+            username System.getenv("SPACE_APP_CLIENTID")
+            password System.getenv("SPACE_APP_SECRET")
         }
     }
     mavenCentral()
