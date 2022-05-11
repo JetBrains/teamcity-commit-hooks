@@ -63,6 +63,13 @@ project.plugins.withType(JavaPlugin) {
 
 repositories {
     maven { url "https://download.jetbrains.com/teamcity-repository" }
+    maven {
+        url "https://packages.jetbrains.team/maven/p/tc/maven"
+        credentials {
+            username "${teamcity['space.app.clientId']}"
+            password "${teamcity['space.app.secret']}"
+        }
+    }
     mavenCentral()
     mavenLocal()
 }
