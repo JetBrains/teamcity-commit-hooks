@@ -167,13 +167,18 @@ class WebhookPeriodicalChecker(
                 continue
             }
 
-            val connection = getConnection(authData)
-            if (connection == null) {
-                LOG.warn("OAuth Connection for repository '$info' not found")
-                report(info, hook, "OAuth connection used to install webhook is unavailable", Status.NO_INFO)
+            val connectionInfo = authData.connection
+            val project = myProjectManager.findProjectByExternalId(connectionInfo.projectExternalId)
+            if (project == null) {
+                LOG.warn("OAuth Connection project '${connectionInfo.projectExternalId}' not found")
                 continue
             }
 
+            val connection = myOAuthConnectionsManager.findConnectionById(project, connectionInfo.id)
+            if (connection == null) {
+                LOG.warn("OAuth Connection with id '${connectionInfo.id}' not found in project ${project.describe(true)} and it parents")
+                continue;
+            }
             val user = myUserModel.findUserById(authData.userId)
             if (user == null) {
                 LOG.warn("TeamCity user '${authData.userId}' which created webhook for repository '${info.id}' no longer exists")
@@ -181,7 +186,7 @@ class WebhookPeriodicalChecker(
                 continue
             }
 
-            val tokens = myTokensHelper.getExistingTokens(listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
+            val tokens = myTokensHelper.getExistingTokens(project, listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
             if (tokens.isEmpty()) {
                 LOG.warn("No OAuth tokens to access repository '${info.id}'")
                 report(info, hook, "No OAuth tokens found to access repository", Status.NO_INFO)
@@ -249,7 +254,7 @@ class WebhookPeriodicalChecker(
                     when (e.type) {
                         GitHubAccessException.Type.InvalidCredentials -> {
                             LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                            myOAuthTokensStorage.removeToken(connection.id, token)
+                            myOAuthTokensStorage.removeToken(connection.tokenStorageId, token)
                             retry = true
                         }
                         GitHubAccessException.Type.TokenScopeMismatch -> {
@@ -335,21 +340,6 @@ class WebhookPeriodicalChecker(
             LOG.debug("Reaching request quota limit (${ghc.remainingRequests}/${ghc.requestLimit}) for server '${info.server}', will try checking it's webhooks later")
             ignoredServers.add(info.server)
         }
-    }
-
-    private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
-        val info = authData.connection
-        val project = myProjectManager.findProjectByExternalId(info.projectExternalId)
-        if (project == null) {
-            LOG.warn("OAuth Connection project '${info.projectExternalId}' not found")
-            return null
-        }
-        val connection = myOAuthConnectionsManager.findConnectionById(project, info.id)
-        if (connection == null) {
-            LOG.warn("OAuth Connection with id '${info.id}' not found in project ${project.describe(true)} and it parents")
-            return null
-        }
-        return connection
     }
 
     // TODO: Should mention HookInfo

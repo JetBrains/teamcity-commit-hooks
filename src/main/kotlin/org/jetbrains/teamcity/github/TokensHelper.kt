@@ -71,9 +71,9 @@ class TokensHelper(
         return Util.findConnections(connectionsManager, project, server)
     }
 
-    fun getExistingTokens(connections: Collection<OAuthConnectionDescriptor>, user: SUser): Map<OAuthConnectionDescriptor, List<OAuthToken>> {
+    fun getExistingTokens(project: SProject, connections: Collection<OAuthConnectionDescriptor>, user: SUser): Map<OAuthConnectionDescriptor, List<OAuthToken>> {
         return connections.map {
-            it to storage.getUserTokens(it.id, user).filter { token -> isSuitableToken(token) && !myIncorrectTokens.contains(token) }
+            it to storage.getUserTokens(it.id, user, project, true).filter { token -> isSuitableToken(token) && !myIncorrectTokens.contains(token) }
         }.filter { it.second.isNotEmpty() }.toMap()
     }
 

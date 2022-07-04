@@ -198,7 +198,7 @@ class WebHooksController(descriptor: PluginDescriptor,
 
         attempts@
         for (i in 0..2) {
-            val tokens = myTokensHelper.getExistingTokens(connections, user)
+            val tokens = myTokensHelper.getExistingTokens(project, connections, user)
             if (tokens.isEmpty()) {
                 // obtain access token
                 LOG.info("Could not find a valid GitHub token for user ${user.username}, will try to obtain one using connection ${connection.id}")
@@ -352,7 +352,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         when (e.type) {
             GitHubAccessException.Type.InvalidCredentials -> {
                 LOG.warn("Removing incorrect (outdated) token (user:${token.oauthLogin}, scope:${token.scope})")
-                myOAuthTokensStorage.removeToken(connection.id, token)
+                myOAuthTokensStorage.removeToken(connection.tokenStorageId, token)
             }
             GitHubAccessException.Type.TokenScopeMismatch -> {
                 LOG.warn("Token (user:${token.oauthLogin}, scope:${token.scope}) have not enough scope")
@@ -437,7 +437,7 @@ class WebHooksController(descriptor: PluginDescriptor,
                 }
                 continue
             }
-            val connectionToTokensMap = myTokensHelper.getExistingTokens(connections, user)
+            val connectionToTokensMap = myTokensHelper.getExistingTokens(project, connections, user)
             if (connectionToTokensMap.isEmpty()) {
                 for (info in infos) {
                     val message = "No tokens to access server $server"

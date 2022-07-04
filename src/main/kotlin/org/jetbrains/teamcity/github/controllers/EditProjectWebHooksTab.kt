@@ -183,7 +183,7 @@ class ProjectWebHooksBean(val project: SProject,
         val servers = hooks.map { it.key.server }.toHashSet()
         for (server in servers) {
             val connections = helper.getConnections(project, server)
-            val tokens = helper.getExistingTokens(connections, user)
+            val tokens = helper.getExistingTokens(project, connections, user)
             map[server] = connections.isEmpty() || tokens.isEmpty()
         }
         return map

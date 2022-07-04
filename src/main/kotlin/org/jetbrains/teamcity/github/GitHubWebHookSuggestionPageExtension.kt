@@ -46,7 +46,7 @@ class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places:
 
         val connections = helper.getConnections(project, info.server)
         model["has_connections"] = connections.isNotEmpty()
-        val tokens = helper.getExistingTokens(connections, user)
+        val tokens = helper.getExistingTokens(project, connections, user)
         model["has_tokens"] = tokens.isNotEmpty()
 
         model["gson"] = Gson()

@@ -83,7 +83,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
                 hasConnections = false
             }
             connection != null -> {
-                hasToken = tokensHelper.getExistingTokens(listOf(connection), user).isNotEmpty()
+                hasToken = tokensHelper.getExistingTokens(project, listOf(connection), user).isNotEmpty()
                 hasConnections = true
             }
             else -> {
@@ -133,7 +133,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
             LOG.debug("There's no connections to GitHub server $server in project ${project.describe(true)} and parents")
             return null
         }
-        val tokens = tokensHelper.getExistingTokens(connections, user)
+        val tokens = tokensHelper.getExistingTokens(project, connections, user)
         when {
             tokens.isEmpty() -> {
                 LOG.debug("Found ${connections.size} to GitHub server $server, but no tokens for user '$user'")

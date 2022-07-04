@@ -122,15 +122,22 @@ class PullRequestMergeBranchChecker(
                 return false
             }
 
-            val connection = getConnection(authData)
-            if (connection == null) {
-                LOG.warn("OAuth Connection for repository '${info.id}' not found")
+            val connectionInfo = authData.connection
+            val project = myProjectManager.findProjectByExternalId(connectionInfo.projectExternalId)
+            if (project == null) {
+                LOG.warn("OAuth Connection project '${connectionInfo.projectExternalId}' not found")
                 return false
             }
 
-            val tokens = myTokensHelper.getExistingTokens(listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
+            val connection = myOAuthConnectionsManager.findConnectionById(project, connectionInfo.id)
+            if (connection == null) {
+                LOG.warn("OAuth Connection with id '${connectionInfo.id}' not found in project ${project.describe(true)} and it parents")
+                return false
+            }
+
+            val tokens = myTokensHelper.getExistingTokens(project, listOf(connection), user).entries.firstOrNull()?.value.orEmpty()
             if (tokens.isEmpty()) {
-                LOG.warn("No OAuth tokens to access repository '${info.id}'")
+                LOG.warn("No OAuth tokens to access repository '${connectionInfo.id}'")
                 return false
             }
 
@@ -176,19 +183,4 @@ class PullRequestMergeBranchChecker(
         }
     }
 
-
-    private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
-        val info = authData.connection
-        val project = myProjectManager.findProjectByExternalId(info.projectExternalId)
-        if (project == null) {
-            LOG.warn("OAuth Connection project '${info.projectExternalId}' not found")
-            return null
-        }
-        val connection = myOAuthConnectionsManager.findConnectionById(project, info.id)
-        if (connection == null) {
-            LOG.warn("OAuth Connection with id '${info.id}' not found in project ${project.describe(true)} and it parents")
-            return null
-        }
-        return connection
-    }
 }
