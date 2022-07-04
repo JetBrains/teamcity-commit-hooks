@@ -154,10 +154,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
         val content: ByteArray
         try {
-            var estimatedSize = request.contentLength
-            if (estimatedSize == -1) estimatedSize = 8 * 1024
-
-            content = LimitInputStream(request.inputStream, MaxPayloadSize).readBytes(estimatedSize)
+            content = LimitInputStream(request.inputStream, MaxPayloadSize).readBytes()
         } catch(e: IOException) {
             LOG.warnAndDebugDetails("Failed to read payload of $eventType event", e)
             return simpleText(response, SC_SERVICE_UNAVAILABLE, "Failed to read payload: ${e.message}")
