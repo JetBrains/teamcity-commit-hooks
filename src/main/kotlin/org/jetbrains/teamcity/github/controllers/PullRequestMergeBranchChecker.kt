@@ -18,7 +18,6 @@ package org.jetbrains.teamcity.github.controllers
 
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.executors.ExecutorServices
-import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants

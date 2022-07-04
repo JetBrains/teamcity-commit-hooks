@@ -22,7 +22,6 @@ import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.serverSide.executors.ExecutorServices
 import jetbrains.buildServer.serverSide.healthStatus.*
-import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthTokensStorage
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
