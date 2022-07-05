@@ -86,8 +86,7 @@ dependencies {
     provided(group: 'org.jetbrains.teamcity', name: 'oauth', version: "${TeamCityVersion}")
     provided(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${TeamCityVersion}")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
-
-    testCompileOnly('org.assertj:assertj-core:2.2.0')
+    testImplementation('org.assertj:assertj-core:2.2.0')
 
     // For Server-side Integration tests
     if (file("$teamcityDir").exists()) {
