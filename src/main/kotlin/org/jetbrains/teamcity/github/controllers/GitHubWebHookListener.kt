@@ -113,7 +113,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
         }
 
         val signature = request.getHeader(X_Hub_Signature)
-        if (signature == null || signature.isNullOrBlank()) {
+        if (signature == null || signature.isBlank()) {
             LOG.warn("Received event without signature ($X_Hub_Signature header)")
             return simpleText(response, SC_BAD_REQUEST, "'$X_Hub_Signature' header is missing")
         }
@@ -351,7 +351,13 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
     }
 }
 
-// copied from Guava 13.0 and transformed to Kotlin
+/**
+ * Wraps another input stream, limiting the number of bytes which can be read.
+ * Copied from Guava 13.0 and transformed to Kotlin
+ *
+ * @param in the input stream to be wrapped
+ * @param limit the maximum number of bytes to be read
+ */
 class LimitInputStream(`in`: InputStream, limit: Long) : FilterInputStream(`in`) {
     private var left: Long
     private var mark: Long = -1
@@ -412,12 +418,6 @@ class LimitInputStream(`in`: InputStream, limit: Long) : FilterInputStream(`in`)
         return skipped
     }
 
-    /**
-     * Wraps another input stream, limiting the number of bytes which can be read.
-     *
-     * @param in the input stream to be wrapped
-     * @param limit the maximum number of bytes to be read
-     */
     init {
         left = limit
     }

@@ -5,7 +5,7 @@ import java.util.*
 
 data class RepoKey internal constructor(val server: String, val owner: String, val name: String) {
 
-    private val hashCode = Objects.hash(server.toLowerCase(), owner.toLowerCase(), name.toLowerCase())
+    private val hashCode = Objects.hash(server.lowercase(), owner.lowercase(), name.lowercase())
 
     constructor(server: String, repo: RepositoryId) : this(server.trimEnd('/'), repo.owner, repo.name)
 

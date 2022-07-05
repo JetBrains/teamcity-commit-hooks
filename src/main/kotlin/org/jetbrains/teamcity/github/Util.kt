@@ -66,7 +66,7 @@ class Util {
 
         fun getProjects(roots: Collection<SVcsRoot>): Set<SProject> = roots.map { it.project }.toCollection(HashSet())
 
-        val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
+        private val GITHUB_REPO_URL_PATTERN = "([^/:@]+)[/:]([a-zA-Z0-9\\.\\-_]+)/([a-zA-Z0-9\\.\\-_]+)$".toPattern()
 
         fun parseGitRepoUrl(url: String): GitHubRepositoryInfo? {
             val matcher = GITHUB_REPO_URL_PATTERN.matcher(url)

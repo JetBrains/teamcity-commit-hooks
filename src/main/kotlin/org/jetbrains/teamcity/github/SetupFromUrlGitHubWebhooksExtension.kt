@@ -57,7 +57,7 @@ class SetupFromUrlGitHubWebhooksExtension(
 
         if (filtered.isEmpty()) return
 
-        val affectedRootsCount = filtered.values.sumBy { it.size }
+        val affectedRootsCount = filtered.values.sumOf { it.size }
         LOG.info("Will try to install GitHub webhooks to ${filtered.size} ${filtered.size.pluralize("repository")} (used in $affectedRootsCount vcs ${affectedRootsCount.pluralize("root")})")
 
         val infos = filtered.keys

@@ -23,7 +23,7 @@ import java.lang.reflect.Type
 import java.util.*
 
 object OAuthTokenJsonSerializer : JsonSerializer<OAuthToken>, JsonDeserializer<OAuthToken> {
-    val simple = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()
+    val simple: Gson = GsonBuilder().registerTypeAdapter(Date::class.java, SimpleDateTypeAdapter).create()
 
     private val AccessTokenField = "myAccessToken"
 

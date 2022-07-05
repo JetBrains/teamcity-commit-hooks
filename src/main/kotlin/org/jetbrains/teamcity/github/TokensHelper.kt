@@ -32,7 +32,7 @@ class TokensHelper(
 
     companion object {
         fun getHooksAccessType(client: GitHubClientEx): Pair<HookAccessType, RepoAccessType>? {
-            val scopes = client.tokenOAuthScopes?.map { it.toLowerCase() } ?: return null
+            val scopes = client.tokenOAuthScopes?.map { it.lowercase() } ?: return null
             return getHooksAccessType(scopes)
         }
 
@@ -43,12 +43,6 @@ class TokensHelper(
             if (scopes.contains("write:repo_hook")) return HookAccessType.WRITE to RepoAccessType.All
             if (scopes.contains("read:repo_hook")) return HookAccessType.READ to RepoAccessType.All
             return HookAccessType.NO_ACCESS to RepoAccessType.All
-        }
-
-        fun getRootsAccessType(scopes: List<String>): RepoAccessType {
-            if (scopes.contains("public_repo")) return RepoAccessType.PublicOnly
-            if (scopes.contains("repo")) return RepoAccessType.All
-            return RepoAccessType.NotSpecified
         }
 
         fun isSuitableToken(token: OAuthToken): Boolean {

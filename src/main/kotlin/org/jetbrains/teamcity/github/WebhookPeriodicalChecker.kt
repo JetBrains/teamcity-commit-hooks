@@ -176,7 +176,7 @@ class WebhookPeriodicalChecker(
             val connection = myOAuthConnectionsManager.findConnectionById(project, connectionInfo.id)
             if (connection == null) {
                 LOG.warn("OAuth Connection with id '${connectionInfo.id}' not found in project ${project.describe(true)} and it parents")
-                continue;
+                continue
             }
             val user = myUserModel.findUserById(authData.userId)
             if (user == null) {
@@ -222,28 +222,28 @@ class WebhookPeriodicalChecker(
                     }
 
                     // Update info for all loaded hooks
-                    for ((key, hook) in loaded) {
+                    for ((key, loadedHook) in loaded) {
                         val lastResponse = key.lastResponse
                         if (lastResponse == null || lastResponse.code == 0) {
                             LOG.debug("No last response info for hook ${key.url!!}")
                             // Lets ask GH to send us ping request, so next time there would be some 'lastResponse'
-                            toPing.add(Triple(info, ghc to token.accessToken, hook))
+                            toPing.add(Triple(info, ghc to token.accessToken, loadedHook))
                             continue
                         }
                         when (lastResponse.code) {
                             in 200..299 -> {
                                 LOG.debug("Last response is OK")
-                                hook.status = if (!key.isActive) Status.DISABLED else Status.OK
+                                loadedHook.status = if (!key.isActive) Status.DISABLED else Status.OK
                             }
                             in 400..599 -> {
                                 val reason = "Last payload delivery failed: (${lastResponse.code}) ${lastResponse.message}"
                                 LOG.info(reason)
-                                report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
+                                report(info, loadedHook, reason, Status.PAYLOAD_DELIVERY_FAILED)
                             }
                             else -> {
                                 val reason = "Unexpected payload delivery response: (${lastResponse.code}) ${lastResponse.message}"
                                 LOG.info(reason)
-                                report(info, hook, reason, Status.PAYLOAD_DELIVERY_FAILED)
+                                report(info, loadedHook, reason, Status.PAYLOAD_DELIVERY_FAILED)
                             }
                         }
                     }
