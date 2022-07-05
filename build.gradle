@@ -90,8 +90,8 @@ dependencies {
 
     // For Server-side Integration tests
     if (file("$teamcityDir").exists()) {
-        testCompile files("$teamcityDir/devPackage/tests/tests-integration.jar")
-        testCompile fileTree(dir: "$teamcityDir/webapps/ROOT/WEB-INF/lib/", include: '*.jar')
+        testImplementation files("$teamcityDir/devPackage/tests/tests-integration.jar")
+        testImplementation fileTree(dir: "$teamcityDir/webapps/ROOT/WEB-INF/lib/", include: '*.jar')
     }
 }
 
