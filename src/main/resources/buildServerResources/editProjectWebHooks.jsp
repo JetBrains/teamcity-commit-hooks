@@ -55,6 +55,8 @@
         <input type="hidden" name="tab" value="editProjectWebHooks"/>
     </form>
 
+    <div class="error" id="webhookError"></div>
+
     <div id="webHooksTable" class="selection noMargin">
         <c:if test="${not empty webHooksBean.visibleHooks}">
         <l:tableWithHighlighting className="parametersTable" id="projectVcsRoots" highlightImmediately="true">
