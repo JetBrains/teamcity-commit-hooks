@@ -80,13 +80,17 @@ class Util {
         }
 
         fun isSupportedProtocol(candidate: String): Boolean {
-            when (candidate) {
-                "https://" -> return true
-                "http://" -> return true
-                "ssh://" -> return true
-                "git://" -> return true
-                "git@" -> return true
-                "" -> return true
+            if (candidate in setOf("git@", ""))
+                return true;
+            val username = candidate.substringAfter("://")
+            if (username !in setOf("git@", ""))
+                return false;
+            val protocol = candidate.substringBefore("://")
+            when (protocol.lowercase()) {
+                "https" -> return true
+                "http" -> return true
+                "ssh" -> return true
+                "git" -> return true
                 else -> return false
             }
         }
