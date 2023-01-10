@@ -40,6 +40,10 @@ class UtilTest {
         // Even non-GitHub sites could match
         doSuccessUrlParsingTest("git://git.csync.org/projects/csync.git", "git.csync.org", "projects", "csync")
         doSuccessUrlParsingTest("git://git.libssh.org/projects/libssh.git", "git.libssh.org", "projects", "libssh")
+
+        // Related to TW-79176
+        doSuccessUrlParsingTest("ssh://git@github.com/VladRassokhin/intellij-hcl.git", "github.com", "VladRassokhin", "intellij-hcl")
+        doSuccessUrlParsingTest("https://git@github.com/VladRassokhin/intellij-hcl.git", "github.com", "VladRassokhin", "intellij-hcl")
     }
 
     @Test
