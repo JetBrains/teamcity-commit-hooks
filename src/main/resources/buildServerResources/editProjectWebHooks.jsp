@@ -30,6 +30,8 @@
 </bs:linkCSS>
 <%--@elvariable id="currentProject" type="jetbrains.buildServer.serverSide.SProject"--%>
 
+<c:set var="canEditCurrentProject" value="${not currentProject.readOnly and afn:permissionGrantedForProject(currentProject, 'EDIT_PROJECT')}"/>
+
 <div class="editProjectPage">
     <h2 class="noBorder">GitHub Webhooks</h2>
     <p>Only GitHub Git VCS roots are shown</p>
@@ -64,7 +66,11 @@
                 <th>Repository
                     <span class="spinner" style="display: none"><i class="icon-refresh icon-spin"></i> Refreshing...</span>
                 </th>
-                <th class="edit"><a href="#" onclick="BS.GitHubWebHooks.checkAll(this, '${webHooksBean.project.externalId}', ${webHooksBean.form.recursive}); return false">Check All</a></th>
+                <th class="edit">
+                    <c:if test="canEditCurrentProject">
+                        <a href="#" onclick="BS.GitHubWebHooks.checkAll(this, '${webHooksBean.project.externalId}', ${webHooksBean.form.recursive}); return false">Check All</a>
+                    </c:if>
+                </th>
                 <th class="edit">Status</th>
                 <th class="usages">Usages</th>
             </tr>
@@ -215,7 +221,7 @@
             </c:forEach>
             BS.GitHubWebHooks.renderTable($j('#webHooksTable'));
             BS.PeriodicalRefresh.start(5, function () {
-                BS.GitHubWebHooks.refreshTable($j('#webHooksTable'));
+                BS.GitHubWebHooks.refreshTable($j('#webHooksTable'), '${webHooksBean.project.externalId}');
             });
         })();
     </script>

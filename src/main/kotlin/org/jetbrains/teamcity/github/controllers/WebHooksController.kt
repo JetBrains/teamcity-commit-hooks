@@ -486,10 +486,18 @@ class WebHooksController(descriptor: PluginDescriptor,
 
     private fun doHandleGetInfoAction(request: HttpServletRequest): JsonElement {
         val inRepositories = request.getParameterValues("repository") ?: return error_json("Missing required parameter 'repository'", HttpServletResponse.SC_BAD_REQUEST)
+        val inProjectId = request.getParameter("projectId")
+        if (inProjectId.isNullOrBlank()) return error_json("Required parameter 'projectId' is missing", HttpServletResponse.SC_BAD_REQUEST)
+        val project = getProject(inProjectId)
+        val user = SessionUser.getUser(request)
         val array = JsonArray()
         for (inRepository in inRepositories) {
             val info = Util.getGitHubInfo(inRepository)
-            array.add(getRepositoryInfo(info, myWebHooksManager))
+            val json = getRepositoryInfo(info, myWebHooksManager)
+            if (!user.isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) {
+                json.add("actions", JsonArray())
+            }
+            array.add(json)
         }
         val result = JsonObject()
         result.add("result", array)
