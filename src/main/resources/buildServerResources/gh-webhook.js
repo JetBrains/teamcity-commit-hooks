@@ -470,7 +470,7 @@ BS.GitHubWebHooks = {};
         line.find("[data-view=link]").html(getLinkHtml(repository, hook));
     }
 
-    WH.refresh = function (element, repositories, table) {
+    WH.refresh = function (element, repositories, table, projectId) {
         if (repositories === undefined) {
             if (table !== undefined) {
                 var data_holders = $j(table).find("[data-repository]");
@@ -495,6 +495,7 @@ BS.GitHubWebHooks = {};
             method: 'post',
             parameters: {
                 'action': 'get-info',
+                'projectId': projectId,
                 'repository': repositories
             },
             onComplete: function (transport) {
@@ -533,8 +534,8 @@ BS.GitHubWebHooks = {};
         })
     };
 
-    WH.refreshTable = function (table) {
-        WH.refresh(undefined, undefined, table)
+    WH.refreshTable = function (table, projectId) {
+        WH.refresh(undefined, undefined, table, projectId)
     };
 
     WH.renderTable = function (table) {

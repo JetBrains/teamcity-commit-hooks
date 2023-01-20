@@ -16,6 +16,7 @@
 
 package org.jetbrains.teamcity.github.controllers
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.intellij.util.SmartList
 import jetbrains.buildServer.Used
@@ -23,6 +24,7 @@ import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.controllers.FormUtil
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.serverSide.*
+import jetbrains.buildServer.serverSide.auth.Permission
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
 import jetbrains.buildServer.users.SUser
@@ -196,7 +198,11 @@ class ProjectWebHooksBean(val project: SProject,
     }
 
     fun getDataJson(info: GitHubRepositoryInfo): JsonElement {
-        return WebHooksController.getRepositoryInfo(info, webHooksManager)
+        val json = WebHooksController.getRepositoryInfo(info, webHooksManager)
+        if (!user.isPermissionGrantedForProject(project.projectId, Permission.EDIT_PROJECT)) {
+            json.add("actions", JsonArray())
+        }
+        return json
     }
 }
 
