@@ -26,6 +26,11 @@ if (version.length() == 0 || version == 'null') {
 }
 
 ext {
+    pluginVersion = project.hasProperty("PluginVersion") ? "$PluginVersion"
+                                                         : "SNAPSHOT"
+    teamcityVersion = project.hasProperty("TeamCityVersion") ? "$TeamCityVersion"
+                                                             : "SNAPSHOT"
+
     teamcityDir = "$rootDir/servers/TeamCity-${TeamCityVersion}"
     teamcityDataDir = "$rootDir/data/" + (
             (TeamCityVersion ==~ /(\d+\.\d+).*/) ?
