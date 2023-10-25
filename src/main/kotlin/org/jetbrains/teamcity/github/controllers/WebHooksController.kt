@@ -74,7 +74,7 @@ class WebHooksController(descriptor: PluginDescriptor,
     }
 
     companion object {
-        const val PATH = "/webhooks/github/webhooks.html"
+        const val PATH = "/oauth/github/webhooks/webhooks.html"
 
         private val LOG = Util.getLogger(WebHooksController::class.java)
 

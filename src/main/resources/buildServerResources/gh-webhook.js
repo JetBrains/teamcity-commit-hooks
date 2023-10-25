@@ -22,7 +22,7 @@ BS.GitHubWebHooks = {};
 
     WH.SIGN_IN_BUTTON_TITLE = "Sign in to GitHub";
     WH.INSTALL_BUTTON_TITLE = "Install webhook";
-    WH.WEBHOOKS_CONTROLLER_PATH = "/webhooks/github/webhooks.html";
+    WH.WEBHOOKS_CONTROLLER_PATH = "/oauth/github/webhooks/webhooks.html";
 
     function onActionSuccessBasic(json, result) {
         var info = json['info'];

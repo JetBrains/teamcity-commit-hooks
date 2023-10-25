@@ -154,12 +154,7 @@ class PullRequestMergeBranchChecker(
                     return false
                 } catch (e: GitHubAccessException) {
                     LOG.info("Cannot check PR merge branch status for repository ${info.id}, cause ${e.message}")
-                    @Suppress("NON_EXHAUSTIVE_WHEN")
-                    when (e.type) {
-                        GitHubAccessException.Type.InvalidCredentials -> continue@tokens
-                        GitHubAccessException.Type.TokenScopeMismatch -> continue@tokens
-                        GitHubAccessException.Type.InternalServerError -> return true
-                    }
+                    if (e.type == GitHubAccessException.Type.InternalServerError) return true
                 }
             }
             return false
