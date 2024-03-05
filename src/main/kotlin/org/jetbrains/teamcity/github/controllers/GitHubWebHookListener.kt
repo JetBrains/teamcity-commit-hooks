@@ -20,6 +20,7 @@ import com.google.gson.JsonIOException
 import com.google.gson.JsonSyntaxException
 import jetbrains.buildServer.controllers.AuthorizationInterceptor
 import jetbrains.buildServer.controllers.BaseController
+import jetbrains.buildServer.serverSide.SecurityContextEx
 import jetbrains.buildServer.serverSide.TeamCityProperties
 import jetbrains.buildServer.users.UserModelEx
 import jetbrains.buildServer.users.impl.UserEx
@@ -51,7 +52,8 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                             private val AuthDataStorage: AuthDataStorage,
                             private val UserModel: UserModelEx,
                             private val PullRequestMergeBranchChecker: PullRequestMergeBranchChecker,
-                            private val WebHooksManager: WebHooksManager) : BaseController() {
+                            private val WebHooksManager: WebHooksManager,
+                            private val SecurityContext: SecurityContextEx) : BaseController() {
 
     companion object {
         const val PATH = "/app/hooks/github"
@@ -311,7 +313,9 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             val layered = LayeredHttpServletRequest(request)
             SessionUser.setUser(layered, user)
             layered.setAttribute("INTERNAL_REQUEST", true)
-            dispatcher.forward(layered, response)
+            SecurityContext.runAs(user) {
+                dispatcher.forward(layered, response)
+            }
             return null
         }
         return SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
