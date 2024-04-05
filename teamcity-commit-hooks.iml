@@ -17,5 +17,6 @@
     <orderEntry type="module" module-name="web-core" />
     <orderEntry type="module" module-name="server-test-core" scope="TEST" />
     <orderEntry type="library" name="kotlin-stdlib" level="project" />
+    <orderEntry type="module" module-name="migration" />
   </component>
 </module>
