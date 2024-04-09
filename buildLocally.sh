@@ -1,3 +1,6 @@
+# This script configures the plugin to run within the local TeamCity project in IntelliJ IDEA. 
+# To build it automatically you should rebase branch commit_hooks_plugin_ij_configuration in the Core
+
 plugin_name="teamcity-commit-hooks"
 assembled_plugin="build/distributions/${plugin_name}"
 web_deployment_debug=""
