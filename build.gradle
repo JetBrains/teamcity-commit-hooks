@@ -1,3 +1,5 @@
+import java.nio.file.Paths
+
 buildscript {
     ext.kotlinVersion = '1.7.20'
     repositories {
@@ -7,29 +9,24 @@ buildscript {
         }
     }
     dependencies {
-        classpath group: 'com.github.rodm', name: 'gradle-teamcity-plugin', version: '1.4.1'
+        classpath group: 'io.github.rodm', name: 'gradle-teamcity-plugin', version: '1.5.2'
         classpath group: 'org.jetbrains.kotlin', name: 'kotlin-gradle-plugin', version: "${kotlinVersion}"
     }
 }
 
 apply plugin: 'java'
 apply plugin: 'kotlin'
-apply plugin: 'com.github.rodm.teamcity-server'
+apply plugin: 'io.github.rodm.teamcity-server'
 apply plugin: 'idea'
 
 group = 'org.jetbrains.teamcity.github'
 
-version = "$System.env.BUILD_NUMBER"
-
-if (version.length() == 0 || version == 'null') {
-    version = "SNAPSHOT"
-}
+initializeWorkspace()
 
 ext {
     pluginVersion = project.hasProperty("PluginVersion") ? "$PluginVersion"
                                                          : "SNAPSHOT"
-    teamcityVersion = project.hasProperty("TeamCityVersion") ? "$TeamCityVersion"
-                                                             : "SNAPSHOT"
+    TeamCityVersion = anyParam('teamcityVersion') ?: "SNAPSHOT"
 
     teamcityDir = "$rootDir/servers/TeamCity-${TeamCityVersion}"
     teamcityDataDir = "$rootDir/data/" + (
@@ -40,11 +37,7 @@ ext {
     teamcityJavaHome = System.properties['java.home']
 }
 
-if (TeamCityDir != null && TeamCityDir != "") {
-    ext.teamcityDir = TeamCityDir
-    ext.teamcityDataDir = "$teamcityDir/data"
-}
-
+def localRepo = anyParamPath('TC_LOCAL_REPO')
 
 
 // Remove repositories added by plugins
@@ -53,6 +46,12 @@ project.plugins.withType(JavaPlugin) {
 }
 
 repositories {
+    if (localRepo) {
+        maven {
+            name = "local-teamcity-artifacts"
+            url "file:///${localRepo}"
+        }
+    }
     maven { url "https://download.jetbrains.com/teamcity-repository" }
     maven {
         url "https://packages.jetbrains.team/maven/p/tc/maven"
@@ -78,12 +77,7 @@ dependencies {
     provided(group: 'org.jetbrains.teamcity', name: 'server-web-api', version: "${TeamCityVersion}")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}")
     testImplementation('org.assertj:assertj-core:2.2.0')
-
-    // For Server-side Integration tests
-    if (file("$teamcityDir").exists()) {
-        testImplementation files("$teamcityDir/devPackage/tests/tests-integration.jar")
-        testImplementation fileTree(dir: "$teamcityDir/webapps/ROOT/WEB-INF/lib/", include: '*.jar')
-    }
+    testImplementation(group: 'org.jetbrains.teamcity.internal', name: 'integration-test', version: "${TeamCityVersion}")
 }
 
 sourceCompatibility = "1.8"
@@ -95,6 +89,7 @@ test {
 
 teamcity {
     version = TeamCityVersion
+    allowSnapshotVersions = true
 
     server {
         descriptor {
@@ -111,6 +106,7 @@ teamcity {
         environments {
             teamcityDev {
                 version = TeamCityVersion
+                allowSnapshotVersions = true
                 homeDir = file(teamcityDir)
                 dataDir = file(teamcityDataDir)
                 javaHome = file(teamcityJavaHome)
@@ -129,17 +125,50 @@ teamcity {
 // Do not include version into plugin archive name
 project.tasks.getByName('serverPlugin').version = ''
 
-if (!file("$teamcityDir").exists()) {
-    logger.warn("No TeamCity installation found at '$teamcityDir', integration tests would be skipped");
-} else {
-    sourceSets {
-        test.kotlin.srcDirs += 'src/test-integration/kotlin'
-    }
+sourceSets {
+    test.kotlin.srcDirs += 'src/test-integration/kotlin'
 }
 
 idea {
     module {
         downloadJavadoc = false
         downloadSources = true
+    }
+}
+
+def anyParamPath(String... names) {
+    def param = anyParam(names);
+    if (param == null || param.isEmpty())
+        return null
+    return (Paths.get(param).isAbsolute()) ?
+           Paths.get(param) : getRootDir().toPath().resolve(param)
+}
+
+def anyParam(String... names) {
+    def param
+    try {
+        param = names.findResult {
+            project.hasProperty(it) ? project.getProperty(it) : System.getProperty(it) ?: System.getenv(it) ?: null
+        }
+        if (param == null || param.isEmpty())
+            param = null
+    } finally {
+        println("AnyParam: $names -> $param")
+    }
+    return param
+}
+
+def initializeWorkspace() {
+    if (System.getProperty("idea.active") != null) {
+        println "Attempt to configure workspace in IDEA"
+        def coreVersionProperties = project.projectDir.toPath().parent.parent.resolve(".version.properties")
+        if (coreVersionProperties.toFile().exists()) {
+            def p = new Properties().tap {
+                it.load(new FileInputStream(coreVersionProperties.toFile()))
+            }
+            p.forEach { k,v ->
+                System.setProperty(k, v);
+            }
+        }
     }
 }
