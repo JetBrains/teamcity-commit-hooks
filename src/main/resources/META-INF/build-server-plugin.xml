@@ -12,6 +12,7 @@
     <bean class="org.jetbrains.teamcity.github.controllers.GitHubWebHookListener" init-method="register"/>
     <bean class="org.jetbrains.teamcity.github.controllers.WebHooksController" init-method="register"/>
     <bean class="org.jetbrains.teamcity.github.controllers.SuitableRepositoriesPopup" init-method="register"/>
+    <bean class="org.jetbrains.teamcity.github.util.WebHooksHelper" />
 
     <bean class="org.jetbrains.teamcity.github.WebHooksStorage" init-method="init" destroy-method="destroy"/>
 
