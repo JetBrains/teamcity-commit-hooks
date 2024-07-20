@@ -14,15 +14,15 @@ import jetbrains.buildServer.util.FileUtil
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.util.ThreadUtil
 import jetbrains.buildServer.web.openapi.WebControllerManager
-import jetbrains.buildServer.web.util.SessionUser
 import jetbrains.buildServer.web.util.WebUtil
+import org.eclipse.egit.github.core.Repository
 import org.eclipse.egit.github.core.client.GsonUtilsEx
 import org.eclipse.egit.github.core.event.PingWebHookPayload
 import org.eclipse.egit.github.core.event.PullRequestPayloadEx
 import org.eclipse.egit.github.core.event.PushWebHookPayload
 import org.intellij.lang.annotations.MagicConstant
 import org.jetbrains.teamcity.github.*
-import org.jetbrains.teamcity.github.util.LayeredHttpServletRequest
+import org.jetbrains.teamcity.github.util.WebHooksHelper
 import org.springframework.http.MediaType
 import org.springframework.web.servlet.ModelAndView
 import java.io.*
@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import javax.servlet.http.HttpServletResponse.*
-import javax.servlet.http.HttpServletResponseWrapper
 
 class GitHubWebHookListener(private val WebControllerManager: WebControllerManager,
                             private val AuthorizationInterceptor: AuthorizationInterceptor,
@@ -39,7 +38,9 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                             private val UserModel: UserModelEx,
                             private val PullRequestMergeBranchChecker: PullRequestMergeBranchChecker,
                             private val WebHooksManager: WebHooksManager,
-                            private val SecurityContext: SecurityContextEx) : BaseController() {
+                            private val SecurityContext: SecurityContextEx,
+                            private val webhooksHelper: WebHooksHelper
+) : BaseController() {
 
     companion object {
         const val PATH = "/app/hooks/github"
@@ -166,17 +167,17 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
             when (eventType) {
                 "ping" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PingWebHookPayload::class.java)
-                    val pair = doHandlePingEvent(payload, hookInfo, request, wrapResponseIfNeeded(response, authData), user)
+                    val pair = doHandlePingEvent(payload, hookInfo, user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
                 "push" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PushWebHookPayload::class.java)
-                    val pair = doHandlePushEvent(payload, hookInfo, request, wrapResponseIfNeeded(response, authData), user)
+                    val pair = doHandlePushEvent(payload, hookInfo, user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
                 "pull_request" -> {
                     val payload = GsonUtilsEx.fromJson(contentReader, PullRequestPayloadEx::class.java)
-                    val pair = doHandlePullRequestEvent(payload, hookInfo, request, wrapResponseIfNeeded(response, authData), user)
+                    val pair = doHandlePullRequestEvent(payload, hookInfo, user)
                     return pair?.let { simpleText(response, pair.first, pair.second) }
                 }
             }
@@ -206,50 +207,26 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun getAuthData(subPath: String) = AuthDataStorage.find(subPath)
 
-    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
-        val url = payload.repository?.gitUrl
+    private fun doHandlePingEvent(payload: PingWebHookPayload, hookInfo: WebHookInfo?, user: UserEx): Pair<Int, String>? {
         LOG.info("Received ping payload from webhook:${payload.hook_id}(${payload.hook.url}) for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
-        if (url == null) {
-            val message = "Ping event payload have no repository url specified"
-            LOG.warn(message)
-            return SC_BAD_REQUEST to message
-        }
-        val info = Util.getGitHubInfo(url)
-        if (info == null) {
-            val message = "Cannot determine repository info from url '$url'"
-            LOG.warn(message)
-            return SC_SERVICE_UNAVAILABLE to message
-        }
         if (hookInfo != null) {
             updateLastUsed(hookInfo)
         }
 
-        return doForwardToRestApi(info, user, request, response)
+        return scheduleChangesCollection(payload.repository, user)
     }
 
-    private fun doHandlePushEvent(payload: PushWebHookPayload, hookInfo: WebHookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
-        val url = payload.repository?.gitUrl
+    private fun doHandlePushEvent(payload: PushWebHookPayload, hookInfo: WebHookInfo?, user: UserEx): Pair<Int, String>? {
         LOG.info("Received push payload from webhook for repo ${payload.repository?.owner?.login}/${payload.repository?.name}")
-        if (url == null) {
-            val message = "Push event payload have no repository url specified"
-            LOG.warn(message)
-            return SC_BAD_REQUEST to message
-        }
-        val info = Util.getGitHubInfo(url)
-        if (info == null) {
-            val message = "Cannot determine repository info from url '$url'"
-            LOG.warn(message)
-            return SC_SERVICE_UNAVAILABLE to message
-        }
         if (hookInfo != null) {
             updateLastUsed(hookInfo)
             updateBranches(hookInfo, payload.ref, payload.after)
         }
 
-        return doForwardToRestApi(info, user, request, response)
+        return scheduleChangesCollection(payload.repository, user)
     }
 
-    private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHookInfo?, request: HttpServletRequest, response: HttpServletResponse, user: UserEx): Pair<Int, String>? {
+    private fun doHandlePullRequestEvent(payload: PullRequestPayloadEx, hookInfo: WebHookInfo?, user: UserEx): Pair<Int, String>? {
         if (payload.action !in AcceptedPullRequestActions) {
             LOG.info("Ignoring 'pull_request' event with action '${payload.action}' as unrelated for repo $hookInfo")
             return SC_ACCEPTED to "Unrelated action, expected one of $AcceptedPullRequestActions"
@@ -284,24 +261,24 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                 PullRequestMergeBranchChecker.schedule(info, hookInfo, user, id)
             }
         }
-        return doForwardToRestApi(info, user, request, response)
+        return scheduleChangesCollection(repository, user)
     }
 
-    private fun doForwardToRestApi(info: GitHubRepositoryInfo, user: UserEx, request: HttpServletRequest, response: HttpServletResponse): Pair<Int, String>? {
-        val httpId = info.id
-        val sshId = info.server + ":" + info.owner + "/" + info.name
-        val dispatcher = request.getRequestDispatcher("/app/rest/vcs-root-instances/commitHookNotification?" +
-                                                      "locator=vcsRoot:(type:jetbrains.git,count:99999),or:(property:(name:url,value:$httpId,matchType:contains,ignoreCase:true),property:(name:url,value:$sshId,matchType:contains,ignoreCase:true)),count:99999")
-        if (dispatcher != null) {
-            val layered = LayeredHttpServletRequest(request)
-            SessionUser.setUser(layered, user)
-            layered.setAttribute("INTERNAL_REQUEST", true)
-            SecurityContext.runAs(user) {
-                dispatcher.forward(layered, response)
+    private fun scheduleChangesCollection(repository: Repository, user: UserEx): Pair<Int, String>? {
+        return SecurityContext.runAs<Pair<Int, String>>(user) {
+            val vcsRoots = webhooksHelper.findRelevantVcsRootInstances(repository)
+            if (vcsRoots.isEmpty())
+                SC_OK to "No relevant VCS roots found"
+            else {
+                webhooksHelper.checkForChanges(vcsRoots)
+                val vcsRootIdSet = vcsRoots.map { it.parent.externalId }.toSet()
+                val vcsRootIds = vcsRootIdSet.joinToString("\n")
+
+               SC_OK to "Checking for changes scheduled for ${vcsRoots.size} " +
+                       StringUtil.pluralize("instance", vcsRoots.size) + " of the following VCS " +
+                       StringUtil.pluralize("root", vcsRootIdSet.size) + ":\n" + vcsRootIds
             }
-            return null
         }
-        return SC_SERVICE_UNAVAILABLE to "Cannot forward to REST API"
     }
 
     private fun updateLastUsed(hookInfo: WebHookInfo) {
@@ -310,34 +287,6 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
 
     private fun updateBranches(hookInfo: WebHookInfo, branch: String, commitSha: String) {
         WebHooksManager.updateBranchRevisions(hookInfo, mapOf(branch to commitSha))
-    }
-
-    private fun wrapResponseIfNeeded(response: HttpServletResponse, authData: AuthDataStorage.AuthData): HttpServletResponse {
-        if (authData.repository != null) return response
-
-        // If per-organization GitHub webhook sends us information about repository TC not aware of,
-        // TC server (REST API) would return 404,
-        // After several non 2xx codes GitHub would no longer send webhooks at all.
-        // We've to emulate that TC is aware of all repos
-        return object : HttpServletResponseWrapper(response) {
-            private fun fix404(sc: Int): Int = if (sc == 404) 200 else sc
-
-            override fun setStatus(sc: Int) {
-                super.setStatus(fix404(sc))
-            }
-
-            override fun setStatus(sc: Int, sm: String?) {
-                super.setStatus(fix404(sc), sm)
-            }
-
-            override fun sendError(sc: Int, msg: String?) {
-                super.sendError(fix404(sc), msg)
-            }
-
-            override fun sendError(sc: Int) {
-                super.sendError(fix404(sc))
-            }
-        }
     }
 }
 
