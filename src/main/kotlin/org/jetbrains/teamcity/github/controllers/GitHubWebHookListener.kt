@@ -274,7 +274,7 @@ class GitHubWebHookListener(private val WebControllerManager: WebControllerManag
                 val vcsRootIdSet = vcsRoots.map { it.parent.externalId }.toSet()
                 val vcsRootIds = vcsRootIdSet.joinToString("\n")
 
-               SC_OK to "Checking for changes scheduled for ${vcsRoots.size} " +
+                SC_ACCEPTED to "Checking for changes scheduled for ${vcsRoots.size} " +
                        StringUtil.pluralize("instance", vcsRoots.size) + " of the following VCS " +
                        StringUtil.pluralize("root", vcsRootIdSet.size) + ":\n" + vcsRootIds
             }
