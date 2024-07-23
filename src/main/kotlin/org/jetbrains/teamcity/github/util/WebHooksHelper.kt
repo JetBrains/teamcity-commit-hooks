@@ -1,12 +1,18 @@
 package org.jetbrains.teamcity.github.util
 
 import jetbrains.buildServer.serverSide.ProjectManager
+import jetbrains.buildServer.serverSide.auth.Permission
+import jetbrains.buildServer.serverSide.auth.SecurityContext
+import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
 import jetbrains.buildServer.vcs.ChangesCheckingService
 import jetbrains.buildServer.vcs.OperationRequestor
 import jetbrains.buildServer.vcs.VcsRootInstance
 import org.eclipse.egit.github.core.Repository
 
-class WebHooksHelper(private val projectManager: ProjectManager, private val changesCheckingService: ChangesCheckingService) {
+class WebHooksHelper(private val projectManager: ProjectManager,
+                     private val versionedSettingsManager: VersionedSettingsManager,
+                     private val securityContext: SecurityContext,
+                     private val changesCheckingService: ChangesCheckingService) {
 
     fun findRelevantVcsRootInstances(repository: Repository): Collection<VcsRootInstance> {
         if (repository.cloneUrl.isNullOrEmpty())
@@ -23,9 +29,17 @@ class WebHooksHelper(private val projectManager: ProjectManager, private val cha
                     repoUrls.contains(it)
                 }
             }
+        val authorityHolder = securityContext.authorityHolder
         return prefilteredVcsRoots
-            .flatMap { it.usagesInConfigurations.map { buildType -> buildType.getVcsRootInstanceForParent(it)} }
-            .toSet().filterNotNull()
+            .flatMap {
+                vcsRoot ->
+                    vcsRoot.usagesInConfigurations
+                        .filter { buildType -> authorityHolder.isPermissionGrantedForProject(buildType.projectId, Permission.VIEW_BUILD_CONFIGURATION_SETTINGS) }
+                        .map { buildType -> buildType.getVcsRootInstanceForParent(vcsRoot) } +
+                    versionedSettingsManager.getProjectsByOwnSettingsRoot(vcsRoot)
+                        .filter { project -> authorityHolder.isPermissionGrantedForProject(project.projectId, Permission.VIEW_BUILD_CONFIGURATION_SETTINGS) }
+                        .map { project -> versionedSettingsManager.getVersionedSettingsVcsRootInstance(project) }
+            }.toSet().filterNotNull()
             .filter { repoUrls.contains(normalizeGitUrl(it.getProperty("url"))) }
     }
 
