@@ -250,7 +250,7 @@ class WebhookPeriodicalChecker(
                         GitHubAccessException.Type.UserHaveNoAccess -> {
                             LOG.warn("User (TC:${user.describe(false)}, GH:${token.oauthLogin}) have no access to repository ${info.id}, cannot check hook status")
                             if (tokens.map { it.oauthLogin }.distinct().size == 1) {
-                                report(info, hook, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook have no longer access to repository", Status.NO_INFO)
+                                report(info, hook, "User (TC:${user.describe(false)}, GH:${token.oauthLogin}) installed webhook no longer has access to repository", Status.NO_INFO)
                             } else {
                                 // TODO: ??? Seems TC user has many tokens with different GH users
                             }
