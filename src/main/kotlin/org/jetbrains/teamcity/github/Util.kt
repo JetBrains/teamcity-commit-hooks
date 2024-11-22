@@ -172,12 +172,13 @@ class Util {
         }
 
         /**
-         * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
+         * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots and GitHub App Connections are not configured
          */
-        fun getVcsRootsWhereHookCanBeInstalled(buildTypes: Collection<SBuildType>, connectionsManager: OAuthConnectionsManager): List<Pair<SBuildType, VcsRootInstance>> {
+        fun getVcsRootsWhereHookCanBeInstalledForSuggestion(buildTypes: Collection<SBuildType>, connectionsManager: OAuthConnectionsManager): List<Pair<SBuildType, VcsRootInstance>> {
             val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = LinkedHashSet()
             val mapProjectToBuildTypes = buildTypes.groupBy { it.project }
             for ((project, types) in mapProjectToBuildTypes) {
+                if (Util.isGitHubAppConfigured(project, connectionsManager)) continue
                 doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, false, project, buildTypes = types, recursive = false, result = result)
             }
             return result.toList()
@@ -256,6 +257,10 @@ class Util {
                         }
                     }
                     .toHashSet()
+        }
+
+        fun isGitHubAppConfigured(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
+            return connectionsManager.getAvailableConnections(project).find { it.oauthProvider.type == "GitHubApp" } != null
         }
     }
 }

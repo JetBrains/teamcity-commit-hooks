@@ -32,7 +32,7 @@ open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
         }
 
         fun report(buildTypes: Collection<SBuildType>, resultConsumer: HealthStatusItemConsumer, oauthConnectionsManager: OAuthConnectionsManager, hasHooksInStorage: (GitHubRepositoryInfo) -> Boolean) {
-            val pairs = Util.getVcsRootsWhereHookCanBeInstalled(buildTypes, oauthConnectionsManager)
+            val pairs = Util.getVcsRootsWhereHookCanBeInstalledForSuggestion(buildTypes, oauthConnectionsManager)
 
             val groupByGitHubInfo: Map<GitHubRepositoryInfo?, List<Pair<SBuildType, VcsRootInstance>>> = pairs.groupBy { Util.getGitHubInfo(it.second) }
 
