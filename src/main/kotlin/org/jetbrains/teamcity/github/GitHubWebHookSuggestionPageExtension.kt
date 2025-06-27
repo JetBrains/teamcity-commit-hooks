@@ -5,6 +5,7 @@ package org.jetbrains.teamcity.github
 import com.google.gson.Gson
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.auth.Permission
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.web.openapi.PagePlaces
 import jetbrains.buildServer.web.openapi.PluginDescriptor
@@ -13,7 +14,7 @@ import jetbrains.buildServer.web.util.SessionUser
 import org.springframework.beans.factory.annotation.Autowired
 import javax.servlet.http.HttpServletRequest
 
-class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places: PagePlaces, private val connectionsManager: OAuthConnectionsManager) : HealthStatusItemPageExtension(GitHubWebHookSuggestion.TYPE, places) {
+class GitHubWebHookSuggestionPageExtension(descriptor: PluginDescriptor, places: PagePlaces, private val connectionsManager: ProjectConnectionsManager) : HealthStatusItemPageExtension(GitHubWebHookSuggestion.TYPE, places) {
     @Autowired
     lateinit var helper: TokensHelper
     private val myResourcesPath = descriptor.pluginResourcesPath

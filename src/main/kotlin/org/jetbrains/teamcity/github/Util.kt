@@ -6,6 +6,8 @@ import com.intellij.openapi.diagnostic.Logger
 import jetbrains.buildServer.log.Loggers
 import jetbrains.buildServer.serverSide.SBuildType
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.connections.ConnectionDescriptor
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.healthStatus.HealthStatusScope
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
@@ -81,15 +83,17 @@ class Util {
             }
         }
 
-        fun findConnections(manager: OAuthConnectionsManager, project: SProject, server: String): List<OAuthConnectionDescriptor> {
+        fun findConnections(manager: ProjectConnectionsManager, project: SProject, server: String): List<OAuthConnectionDescriptor> {
             return manager.getAvailableConnections(project)
                     .filter {
-                        it != null && isConnectionToServer(it, server)
+                        it is OAuthConnectionDescriptor && isConnectionToServer(it, server)
+                    }.map {
+                        it as OAuthConnectionDescriptor
                     }
         }
 
         fun isConnectionToServer(connection: OAuthConnectionDescriptor, server: String): Boolean {
-            when (connection.oauthProvider.type) {
+            when (connection.connectionProvider.type) {
                 GHEOAuthProvider.TYPE -> {
                     // Check server url
                     val url = connection.parameters[GitHubConstants.GITHUB_URL_PARAM] ?: return false
@@ -165,7 +169,7 @@ class Util {
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
-        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): List<VcsRootInstance> {
+        fun getVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: ProjectConnectionsManager): List<VcsRootInstance> {
             val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = LinkedHashSet()
             doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, false, project, recursive = true, result = result)
             return result.map { it.second }.toSet().toList()
@@ -174,7 +178,7 @@ class Util {
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots and GitHub App Connections are not configured
          */
-        fun getVcsRootsWhereHookCanBeInstalledForSuggestion(buildTypes: Collection<SBuildType>, connectionsManager: OAuthConnectionsManager): List<Pair<SBuildType, VcsRootInstance>> {
+        fun getVcsRootsWhereHookCanBeInstalledForSuggestion(buildTypes: Collection<SBuildType>, connectionsManager: ProjectConnectionsManager): List<Pair<SBuildType, VcsRootInstance>> {
             val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = LinkedHashSet()
             val mapProjectToBuildTypes = buildTypes.groupBy { it.project }
             for ((project, types) in mapProjectToBuildTypes) {
@@ -187,21 +191,22 @@ class Util {
         /**
          * Returns project suitable Git SVcsRoots or VcsRootInstances if there are OAuth connections corresponding to these VCS roots
          */
-        fun isVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
+        fun isVcsRootsWhereHookCanBeInstalled(project: SProject, connectionsManager: ProjectConnectionsManager): Boolean {
             val result: MutableCollection<Pair<SBuildType, VcsRootInstance>> = ArrayList(1)
             doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, true, project, recursive = true, result = result)
             return result.isNotEmpty()
         }
 
-        private fun doGetVcsRootsWhereHookCanBeInstalled(connectionsManager: OAuthConnectionsManager, fast: Boolean, project: SProject, buildTypes: List<SBuildType> = project.ownBuildTypes, inner: Boolean = false, recursive: Boolean = true, result: MutableCollection<Pair<SBuildType, VcsRootInstance>>) {
+        private fun doGetVcsRootsWhereHookCanBeInstalled(connectionsManager: ProjectConnectionsManager, fast: Boolean, project: SProject, buildTypes: List<SBuildType> = project.ownBuildTypes, inner: Boolean = false, recursive: Boolean = true, result: MutableCollection<Pair<SBuildType, VcsRootInstance>>) {
             val start = if (!inner) System.currentTimeMillis() else 0
+
+            if (project.isArchived) return
 
             val oauthServers = getOAuthServers(project, connectionsManager)
             if (oauthServers.isEmpty()) return
             val oauthServersPattern = Pattern.compile(oauthServers.joinToString(separator = "|") { Pattern.quote(it) })
 
             if (oauthServers.isNotEmpty()) for (bt in buildTypes) {
-                if (bt.project.isArchived) continue
                 for (root in bt.vcsRoots) {
                     if (isSuitableVcsRoot(root, false)) {
                         val vri = bt.getVcsRootInstanceForParent(root) ?: continue
@@ -238,7 +243,7 @@ class Util {
             }
         }
 
-        fun getOAuthServers(project: SProject, connectionsManager: OAuthConnectionsManager): Set<String> {
+        fun getOAuthServers(project: SProject, connectionsManager: ProjectConnectionsManager): Set<String> {
             return connectionsManager
                     .getAvailableConnections(project)
                     .filterNotNull()
@@ -246,7 +251,7 @@ class Util {
                         it.parameters[GitHubConstants.CLIENT_ID_PARAM] != null && it.parameters[GitHubConstants.CLIENT_SECRET_PARAM] != null
                     }
                     .mapNotNull {
-                        when (it.oauthProvider.type) {
+                        when (it.connectionProvider.type) {
                             GHEOAuthProvider.TYPE -> {
                                 it.parameters[GitHubConstants.GITHUB_URL_PARAM]?.let { url -> getHost(url) }
                             }
@@ -259,8 +264,8 @@ class Util {
                     .toHashSet()
         }
 
-        fun isGitHubAppConfigured(project: SProject, connectionsManager: OAuthConnectionsManager): Boolean {
-            return connectionsManager.getAvailableConnections(project).find { it.oauthProvider.type == "GitHubApp" } != null
+        fun isGitHubAppConfigured(project: SProject, connectionsManager: ProjectConnectionsManager): Boolean {
+            return connectionsManager.getAvailableConnections(project).find { it.connectionProvider.type == "GitHubApp" } != null
         }
     }
 }

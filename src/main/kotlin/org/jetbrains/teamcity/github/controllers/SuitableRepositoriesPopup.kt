@@ -5,6 +5,8 @@ package org.jetbrains.teamcity.github.controllers
 import jetbrains.buildServer.controllers.BaseController
 import jetbrains.buildServer.controllers.SimpleView
 import jetbrains.buildServer.serverSide.ProjectManager
+import jetbrains.buildServer.serverSide.connections.ConnectionDescriptor
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.web.openapi.PluginDescriptor
@@ -18,7 +20,7 @@ import javax.servlet.http.HttpServletResponse
 
 class SuitableRepositoriesPopup(descriptor: PluginDescriptor,
                                 val myWebControllerManager: WebControllerManager,
-                                val myOauthConnectionManager: OAuthConnectionsManager,
+                                val myOauthConnectionManager: ProjectConnectionsManager,
                                 val myProjectManager: ProjectManager) : BaseController() {
 
     private val myViewPath = descriptor.getPluginResourcesPath("suitableRepositoriesPopup.jsp")

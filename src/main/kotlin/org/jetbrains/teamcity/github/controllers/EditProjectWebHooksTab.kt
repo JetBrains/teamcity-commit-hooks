@@ -11,7 +11,7 @@ import jetbrains.buildServer.controllers.FormUtil
 import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.serverSide.*
 import jetbrains.buildServer.serverSide.auth.Permission
-import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.versionedSettings.VersionedSettingsManager
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.util.Pager
@@ -30,7 +30,7 @@ class EditProjectWebHooksTab(places: PagePlaces, descriptor: PluginDescriptor,
                              val webHooksManager: WebHooksManager,
                              val versionedSettingsManager: VersionedSettingsManager,
                              val tokensHelper: TokensHelper,
-                             val oAuthConnectionsManager: OAuthConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
+                             val oAuthConnectionsManager: ProjectConnectionsManager) : EditProjectTab(places, "editProjectWebHooks", descriptor.getPluginResourcesPath("editProjectWebHooksTab.jsp"), TAB_TITLE_PREFIX) {
     companion object {
         const val TAB_TITLE_PREFIX = "GitHub Webhooks"
         const val TAB_ENABLE_INTERNAL_PROPERTY = "teamcity.github-webhooks.tab.enabled"
@@ -84,7 +84,7 @@ class EditProjectWebHooksController(server: SBuildServer, wcm: WebControllerMana
                                     val projectManager: ProjectManager,
                                     val versionedSettingsManager: VersionedSettingsManager,
                                     val tokensHelper: TokensHelper,
-                                    val oAuthConnectionsManager: OAuthConnectionsManager) : BaseController(server) {
+                                    val oAuthConnectionsManager: ProjectConnectionsManager) : BaseController(server) {
     private val jsp = descriptor.getPluginResourcesPath("editProjectWebHooks.jsp")
 
     init {
@@ -123,7 +123,7 @@ class ProjectWebHooksBean(val project: SProject,
                           val versionedSettingsManager: VersionedSettingsManager,
                           val helper: TokensHelper,
                           val user: SUser,
-                          val oAuthConnectionsManager: OAuthConnectionsManager) {
+                          val oAuthConnectionsManager: ProjectConnectionsManager) {
     val hooks: SortedMap<GitHubRepositoryInfo, WebHookDetails> = TreeMap(GitHubRepositoryInfo.LexicographicalComparator)
 
     val form: ProjectWebHooksForm = ProjectWebHooksForm()

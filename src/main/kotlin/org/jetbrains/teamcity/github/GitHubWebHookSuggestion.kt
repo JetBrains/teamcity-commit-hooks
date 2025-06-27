@@ -5,14 +5,13 @@ package org.jetbrains.teamcity.github
 import jetbrains.buildServer.dataStructures.MultiMapToSet
 import jetbrains.buildServer.serverSide.SBuildType
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.healthStatus.*
-import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.vcs.VcsRoot
 import jetbrains.buildServer.vcs.VcsRootInstance
-import java.util.*
 
 open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
-                                   private val OAuthConnectionsManager: OAuthConnectionsManager) : HealthStatusReport() {
+                                   private val OAuthConnectionsManager: ProjectConnectionsManager) : HealthStatusReport() {
     companion object {
         const val TYPE = "GitHubWebHooksSuggestion"
         val CATEGORY: ItemCategory = SuggestionCategory(ItemSeverity.INFO, "Reduce GitHub repository overhead and speedup changes detection by switching to GitHub webhook", null)
@@ -31,7 +30,7 @@ open class GitHubWebHookSuggestion(private val WebHooksManager: WebHooksManager,
             return map
         }
 
-        fun report(buildTypes: Collection<SBuildType>, resultConsumer: HealthStatusItemConsumer, oauthConnectionsManager: OAuthConnectionsManager, hasHooksInStorage: (GitHubRepositoryInfo) -> Boolean) {
+        fun report(buildTypes: Collection<SBuildType>, resultConsumer: HealthStatusItemConsumer, oauthConnectionsManager: ProjectConnectionsManager, hasHooksInStorage: (GitHubRepositoryInfo) -> Boolean) {
             val pairs = Util.getVcsRootsWhereHookCanBeInstalledForSuggestion(buildTypes, oauthConnectionsManager)
 
             val groupByGitHubInfo: Map<GitHubRepositoryInfo?, List<Pair<SBuildType, VcsRootInstance>>> = pairs.groupBy { Util.getGitHubInfo(it.second) }

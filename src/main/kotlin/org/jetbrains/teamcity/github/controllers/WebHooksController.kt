@@ -13,6 +13,7 @@ import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildServer
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.auth.Permission
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthToken
@@ -44,7 +45,7 @@ import javax.servlet.http.HttpServletResponse
 
 class WebHooksController(descriptor: PluginDescriptor,
                          val myWebControllerManager: WebControllerManager,
-                         val myOAuthConnectionsManager: OAuthConnectionsManager,
+                         val myOAuthConnectionsManager: ProjectConnectionsManager,
                          val myOAuthTokensStorage: OAuthTokensStorage,
                          val myWebHooksManager: WebHooksManager,
                          val myTokensHelper: TokensHelper,
@@ -501,7 +502,7 @@ class WebHooksController(descriptor: PluginDescriptor,
         if (connection == null) {
             throw NotFoundException("There's no connection with id '$inConnectionId' found in the project ${connectionOwnerProject.fullName} and it parents")
         }
-        return connection
+        return connection as OAuthConnectionDescriptor
     }
 
     private fun getProject(externalId: String?): SProject =

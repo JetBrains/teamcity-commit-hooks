@@ -5,8 +5,8 @@ package org.jetbrains.teamcity.github
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SBuildType
 import jetbrains.buildServer.serverSide.TeamCityProperties
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
-import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientEx
 import jetbrains.buildServer.serverSide.oauth.github.GitHubClientFactory
 import jetbrains.buildServer.serverSide.oauth.github.GitHubConstants
@@ -14,12 +14,11 @@ import jetbrains.buildServer.serverSide.setupFromUrl.SetupFromUrlExtension
 import jetbrains.buildServer.users.SUser
 import jetbrains.buildServer.vcs.SVcsRoot
 import org.jetbrains.teamcity.github.action.HookAddOperationResult
-import java.util.*
 
 class SetupFromUrlGitHubWebhooksExtension(
         private val myProjectManager: ProjectManager,
         private val myWebHooksManager: WebHooksManager,
-        private val myOAuthConnectionsManager: OAuthConnectionsManager,
+        private val myOAuthConnectionsManager: ProjectConnectionsManager,
         private val myTokensHelper: TokensHelper
 ) : SetupFromUrlExtension {
     companion object {
@@ -84,6 +83,6 @@ class SetupFromUrlGitHubWebhooksExtension(
     private fun getConnection(authData: AuthDataStorage.AuthData): OAuthConnectionDescriptor? {
         val info = authData.connection
         val project = myProjectManager.findProjectByExternalId(info.projectExternalId) ?: return null
-        return myOAuthConnectionsManager.findConnectionById(project, info.id)
+        return myOAuthConnectionsManager.findConnectionById(project, info.id) as OAuthConnectionDescriptor
     }
 }

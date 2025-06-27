@@ -6,6 +6,7 @@ import jetbrains.buildServer.controllers.admin.projects.EditProjectTab
 import jetbrains.buildServer.serverSide.ProjectManager
 import jetbrains.buildServer.serverSide.SProject
 import jetbrains.buildServer.serverSide.auth.Permission
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.users.SUser
@@ -19,7 +20,7 @@ import javax.servlet.http.HttpServletRequest
 
 class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
                         private val tokensHelper: TokensHelper,
-                        private val connectionsManager: OAuthConnectionsManager,
+                        private val connectionsManager: ProjectConnectionsManager,
                         private val projectsManager: ProjectManager
 ) : EditProjectTab(places, "installWebHook", descriptor.getPluginResourcesPath("installPage.jsp"), "Install GitHub Webhook") {
 
@@ -108,7 +109,7 @@ class InstallWebhookTab(places: PagePlaces, descriptor: PluginDescriptor,
             } else {
                 project
             }
-            return connectionProject?.let { connectionsManager.findConnectionById(it, connectionId) }
+            return connectionProject?.let { connectionsManager.findConnectionById(it, connectionId) as OAuthConnectionDescriptor }
         }
         return null
     }

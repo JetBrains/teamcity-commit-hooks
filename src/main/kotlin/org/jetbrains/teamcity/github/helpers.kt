@@ -5,8 +5,8 @@ package org.jetbrains.teamcity.github
 import com.google.common.cache.Cache
 import com.google.common.cache.CacheBuilder
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
-import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.util.StringUtil
 import jetbrains.buildServer.vcs.SVcsRoot
 import org.eclipse.egit.github.core.RepositoryHook
@@ -36,11 +36,11 @@ fun RepositoryHook.getStatus(): Status {
 }
 
 
-fun Iterable<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>>.filterKnownServers(connectionsManager: OAuthConnectionsManager): List<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>> {
+fun Iterable<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>>.filterKnownServers(connectionsManager: ProjectConnectionsManager): List<Map.Entry<GitHubRepositoryInfo, Set<SVcsRoot>>> {
     val cache: Cache<SProject, List<OAuthConnectionDescriptor>> = CacheBuilder.newBuilder().build()
     return this.filter { entry ->
         Util.getProjects(entry.value).any { project ->
-            val connections = cache[project, { connectionsManager.getAvailableConnections(project).filterNotNull() }]
+            val connections = cache[project, { connectionsManager.getAvailableConnections(project).map { it as OAuthConnectionDescriptor } }]
             connections.any { Util.isConnectionToServer(it, entry.key.server) }
         }
     }

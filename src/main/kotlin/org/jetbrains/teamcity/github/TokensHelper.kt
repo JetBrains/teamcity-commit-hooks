@@ -3,6 +3,8 @@
 package org.jetbrains.teamcity.github
 
 import jetbrains.buildServer.serverSide.SProject
+import jetbrains.buildServer.serverSide.connections.ConnectionDescriptor
+import jetbrains.buildServer.serverSide.connections.ProjectConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionDescriptor
 import jetbrains.buildServer.serverSide.oauth.OAuthConnectionsManager
 import jetbrains.buildServer.serverSide.oauth.OAuthToken
@@ -12,7 +14,7 @@ import jetbrains.buildServer.users.SUser
 import java.util.*
 
 class TokensHelper(
-        private val connectionsManager: OAuthConnectionsManager,
+        private val connectionsManager: ProjectConnectionsManager,
         private val storage: OAuthTokensStorage
 ) {
 
