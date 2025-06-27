@@ -21,7 +21,6 @@ import java.net.MalformedURLException
 import java.net.URI
 import java.net.URISyntaxException
 import java.net.URL
-import java.util.*
 import java.util.regex.Pattern
 
 class Util {
@@ -203,20 +202,30 @@ class Util {
                                                          buildTypes: List<SBuildType> = project.ownBuildTypes,
                                                          inner: Boolean = false,
                                                          recursive: Boolean = true,
+                                                         checkedRoots: MutableMap<VcsRootInstance, Boolean> = mutableMapOf(),
                                                          result: MutableCollection<Pair<SBuildType, VcsRootInstance>>) {
             val start = if (!inner) System.currentTimeMillis() else 0
 
             if (project.isArchived) return
 
             if (gitHubServers.isEmpty()) return
-            val oauthServersPattern = Pattern.compile(gitHubServers.joinToString(separator = "|") { Pattern.quote(it) })
+            val oauthServersPattern = lazy { Pattern.compile(gitHubServers.joinToString(separator = "|") { Pattern.quote(it) }) }
 
             if (gitHubServers.isNotEmpty()) for (bt in buildTypes) {
-                for (root in bt.vcsRoots) {
-                    if (isSuitableVcsRoot(root, false)) {
-                        val vri = bt.getVcsRootInstanceForParent(root) ?: continue
+                for (vri in bt.vcsRootInstances) {
+                    val alreadyChecked = checkedRoots[vri]
+                    if (alreadyChecked != null && alreadyChecked) {
+                        result.add(bt to vri)
+                        continue
+                    }
+
+                    if (alreadyChecked != null) continue
+
+                    checkedRoots[vri] = false
+
+                    if (isSuitableVcsRoot(vri, false)) {
                         val url = vri.properties[Constants.VCS_PROPERTY_GIT_URL] ?: continue
-                        if (!oauthServersPattern.matcher(url).find()) {
+                        if (!oauthServersPattern.value.matcher(url).find()) {
                             LOG.debug("Found Git VCS root instance '$vri' but it's url ($url) not mentions any of oauth connected servers: $gitHubServers")
                             continue
                         }
@@ -228,6 +237,7 @@ class Util {
                         } else {
                             LOG.debug("Found Suitable GitHub-like VCS root instance '$vri' with oauth connection to '${info.server}'")
                             result.add(bt to vri)
+                            checkedRoots[vri] = true
                             if (fast) {
                                 if (!inner) LOG.debug("In project '$project' found at least one VCS root instance with OAuth connection in fast mode in ~${System.currentTimeMillis() - start} ms")
                                 return
@@ -238,10 +248,14 @@ class Util {
             }
 
             if (recursive) for (subProject in project.ownProjects) {
+                if (subProject.isVirtual) continue
                 val availableGitHubServers = mutableSetOf<String>()
                 availableGitHubServers.addAll(gitHubServers)
                 availableGitHubServers.addAll(getOwnGitHubServers(subProject, connectionsManager))
-                doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, fast, subProject, recursive = recursive, result = result, inner = true, gitHubServers = availableGitHubServers)
+                doGetVcsRootsWhereHookCanBeInstalled(connectionsManager, fast, subProject,
+                                                     recursive = true, result = result,
+                                                     inner = true, gitHubServers = availableGitHubServers,
+                                                     checkedRoots = checkedRoots)
                 if (fast && result.isNotEmpty()) return
             }
 
