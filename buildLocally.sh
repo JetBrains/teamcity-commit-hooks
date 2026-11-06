@@ -4,7 +4,7 @@
 plugin_name="teamcity-commit-hooks"
 assembled_plugin="build/distributions/${plugin_name}"
 web_deployment_debug=""
-wd="external-repos/${plugin_name}/"
+wd="opensource/commit-hooks/"
 
 pwd
 
